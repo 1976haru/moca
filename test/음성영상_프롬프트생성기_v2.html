@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>음성·영상 생성기 v2 — 카테고리 자동 매칭</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f3f0f8;--panel:#fff;--line:#e0d4ea;--text:#2a1a3a;--muted:#7a6a8a;
+  --el:#1A3A8A;--el2:#2A5AC0;--el-bg:#e8f0ff;--el-line:#a0b8e8;
+  --iv:#5A1A9A;--iv2:#7A2AC0;--iv-bg:#f0e8ff;--iv-line:#b090e0;
+  --gold:#B07000;--green:#1A7A1A;--red:#AA2000;
+  --sh:0 3px 14px rgba(60,20,80,.09);
+}
+body{font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;padding-bottom:24px}
+button,input,select,textarea{font:inherit}
+.wrap{max-width:1040px;margin:0 auto;padding:12px 13px}
+
+/* 상단 */
+.top{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);
+  border-radius:18px;padding:11px 16px;margin-bottom:11px;box-shadow:var(--sh)}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#1A3A8A,#5A1A9A);
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.top-text h1{font-size:16px;font-weight:800}
+.top-text p{font-size:10px;color:var(--muted);margin-top:1px}
+.badge{background:linear-gradient(135deg,#1A3A8A,#5A1A9A);color:#fff;font-size:9px;
+  font-weight:800;padding:2px 7px;border-radius:999px;margin-left:5px}
+
+/* 탭 */
+.main-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:11px}
+.main-tab{padding:10px;border:1.5px solid var(--line);border-radius:13px;cursor:pointer;
+  text-align:center;background:#fff;transition:.13s;font-weight:800;font-size:13px;font-family:inherit}
+.main-tab.on-el{background:var(--el-bg);border-color:var(--el);color:var(--el)}
+.main-tab.on-iv{background:var(--iv-bg);border-color:var(--iv);color:var(--iv)}
+
+/* 박스 */
+.box{background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:13px 15px;margin-bottom:10px;box-shadow:var(--sh)}
+.box.el{background:#f5f8ff;border-color:var(--el-line)}
+.box.iv{background:#f8f4ff;border-color:var(--iv-line)}
+.box.cat{background:linear-gradient(135deg,#fff5f0,#fff0f8);border-color:#e8c0d0}
+.sec{font-size:11px;font-weight:800;color:#8a7a9a;text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid #f0e4f4;padding-bottom:7px;margin-bottom:10px}
+
+/* API 바 */
+.api-bar{background:#fff;border:1px solid var(--line);border-radius:13px;padding:10px 13px;margin-bottom:10px}
+.api-head{display:flex;justify-content:space-between;cursor:pointer;align-items:center}
+.api-head span{font-size:12px;font-weight:700;color:#5a4a6a}
+.api-body{margin-top:8px;display:none}
+.api-body.on{display:block}
+.apirow{display:flex;gap:5px}
+.apisave{padding:0 12px;border:none;border-radius:9px;background:#efe8ff;color:#5a1a9a;cursor:pointer;font-weight:700;font-family:inherit}
+
+/* 입력 */
+label{display:block;font-size:11px;font-weight:700;color:#5a4a6a;margin:7px 0 3px}
+input[type=text],input[type=password],select,textarea{
+  width:100%;background:#fafafa;border:1px solid var(--line);border-radius:10px;
+  padding:8px 11px;font-size:12px;outline:none;transition:.13s;color:var(--text)}
+input:focus,select:focus,textarea:focus{border-color:#9070c0;background:#fff}
+textarea{resize:vertical;line-height:1.75}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.r3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+/* 카테고리 선택 */
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.cat-card{border:2px solid var(--line);border-radius:12px;padding:10px 8px;cursor:pointer;
+  text-align:center;background:#fff;transition:.14s;position:relative}
+.cat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(90,26,154,.1)}
+.cat-card.on{border-width:2.5px}
+.cat-icon{font-size:22px;margin-bottom:4px}
+.cat-name{font-size:11px;font-weight:800;margin-bottom:2px}
+.cat-desc{font-size:9px;color:var(--muted);line-height:1.35}
+.cat-auto{position:absolute;top:5px;right:5px;background:var(--green);color:#fff;
+  font-size:8px;font-weight:800;padding:1px 5px;border-radius:999px}
+
+/* 화자 카드 */
+.speaker-wrap{display:flex;flex-direction:column;gap:7px}
+.speaker-card{background:#fff;border:1.5px solid var(--el-line);border-radius:12px;
+  padding:10px 12px;display:flex;align-items:flex-start;gap:10px;transition:.13s}
+.speaker-card:hover{border-color:var(--el)}
+.sp-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:19px;flex-shrink:0;color:#fff;font-weight:800}
+.sp-info{flex:1;min-width:0}
+.sp-name{font-size:12px;font-weight:800;margin-bottom:3px;color:var(--text)}
+.sp-voice{font-size:10px;color:var(--muted);margin-bottom:6px}
+.sp-controls{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.sp-voice-inp{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:10px;
+  background:#fafafa;outline:none;font-family:inherit;width:100%}
+.sp-voice-inp:focus{border-color:var(--iv)}
+.sp-right{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.emotion-sel{font-size:10px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;
+  background:#fafafa;font-family:inherit}
+.test-btn{padding:5px 10px;border:none;border-radius:8px;background:var(--el-bg);
+  color:var(--el);cursor:pointer;font-size:10px;font-weight:800;font-family:inherit;white-space:nowrap;transition:.12s}
+.test-btn:hover{background:var(--el);color:#fff}
+.test-btn:disabled{opacity:.4;cursor:not-allowed}
+.sp-delete{background:none;border:none;cursor:pointer;color:#ccc;font-size:16px;
+  padding:0 2px;align-self:flex-start;line-height:1}
+.sp-delete:hover{color:var(--red)}
+
+/* 슬라이더 */
+.sl-row{display:flex;align-items:center;gap:6px;margin-top:4px}
+.sl-label{font-size:9px;color:var(--muted);min-width:55px}
+input[type=range]{-webkit-appearance:none;height:4px;border-radius:999px;background:var(--line);border:none;flex:1;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:#fff;border:2.5px solid var(--iv);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.sl-val{font-size:9px;font-weight:800;color:var(--iv);min-width:28px;text-align:right}
+
+/* 보이스 라이브러리 */
+.voice-lib{background:#fff;border:1px solid var(--el-line);border-radius:12px;padding:11px 13px;margin-top:9px}
+.voice-lib-title{font-size:11px;font-weight:800;color:var(--el);margin-bottom:8px}
+.voice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.voice-item{background:var(--el-bg);border:1px solid var(--el-line);border-radius:9px;
+  padding:6px 8px;cursor:pointer;transition:.12s}
+.voice-item:hover{background:#dceeff;border-color:var(--el)}
+.voice-item .vname{font-size:10px;font-weight:800;color:var(--el)}
+.voice-item .vdesc{font-size:9px;color:var(--muted);margin-top:1px}
+.voice-item .vid{font-size:8px;color:#aaa;margin-top:2px;font-family:monospace}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:none;
+  border-radius:10px;cursor:pointer;font-size:12px;font-weight:800;font-family:inherit;
+  transition:.13s;white-space:nowrap;color:#fff}
+.btn:hover{transform:translateY(-1px);opacity:.9}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-el{background:linear-gradient(135deg,var(--el),var(--el2))}
+.btn-iv{background:linear-gradient(135deg,var(--iv),var(--iv2))}
+.btn-green{background:linear-gradient(135deg,#1A6A1A,#2A9A2A)}
+.btn-gold{background:linear-gradient(135deg,#B07000,#E09000)}
+.btn-gray{background:#f0eaf5;color:var(--text);border:1px solid var(--line)}
+.btn-gray:hover{border-color:#9070c0;color:var(--iv)}
+.bigbtn{width:100%;padding:13px;font-size:14px;font-weight:800;border:none;border-radius:13px;
+  cursor:pointer;font-family:inherit;color:#fff;margin-top:10px;transition:.14s}
+.bigbtn:hover{transform:translateY(-1px);opacity:.92}
+.bigbtn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.bigbtn-el{background:linear-gradient(135deg,var(--el),var(--el2));box-shadow:0 6px 16px rgba(26,58,138,.2)}
+.bigbtn-iv{background:linear-gradient(135deg,var(--iv),var(--iv2));box-shadow:0 6px 16px rgba(90,26,154,.2)}
+
+/* 오디오 */
+.audio-dark{background:#0A0A1E;border-radius:14px;padding:12px 14px;margin-top:8px}
+.audio-dark-title{font-size:11px;font-weight:800;color:rgba(255,255,255,.6);margin-bottom:8px;letter-spacing:.04em}
+.seg-item{display:flex;align-items:center;gap:8px;padding:7px 9px;
+  background:rgba(255,255,255,.06);border-radius:9px;margin-bottom:5px;transition:.12s}
+.seg-item:hover{background:rgba(255,255,255,.09)}
+.seg-item.playing{background:rgba(90,26,154,.3);border:1px solid rgba(130,60,210,.4)}
+.seg-item.done{background:rgba(26,100,26,.2)}
+.seg-item.err{background:rgba(170,32,0,.2)}
+.seg-sp-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:13px;flex-shrink:0;color:#fff;font-weight:800}
+.seg-sp-name{font-size:9px;color:rgba(255,255,255,.5);margin-bottom:2px}
+.seg-text{flex:1;font-size:11px;color:#E0D8FF;line-height:1.45;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.seg-stat{font-size:10px;color:rgba(255,255,255,.45);flex-shrink:0;min-width:52px;text-align:right}
+.seg-play-btn{padding:4px 9px;border:none;border-radius:7px;background:rgba(255,255,255,.1);
+  color:#fff;cursor:pointer;font-size:10px;font-weight:800;flex-shrink:0;transition:.12s}
+.seg-play-btn:hover{background:rgba(255,255,255,.2)}
+.seg-play-btn:disabled{opacity:.4}
+.pbar{background:rgba(255,255,255,.1);border-radius:999px;height:5px;margin:7px 0;overflow:hidden}
+.pbar-fill{height:5px;border-radius:999px;background:linear-gradient(90deg,var(--iv),var(--iv2));transition:width .3s;width:0%}
+.pbar-text{font-size:10px;color:rgba(255,255,255,.6);text-align:center;margin-top:4px}
+.audio-btns{display:flex;gap:6px;margin-top:8px}
+.play-all-btn{flex:1;padding:9px;border:none;border-radius:10px;cursor:pointer;
+  font-size:13px;font-weight:800;font-family:inherit;color:#fff;
+  background:linear-gradient(135deg,var(--iv),var(--iv2));transition:.13s}
+.play-all-btn:hover{transform:translateY(-1px)}
+.play-all-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.dl-all-btn{padding:9px 13px;border:none;border-radius:10px;cursor:pointer;
+  font-size:12px;font-weight:800;font-family:inherit;color:#fff;
+  background:linear-gradient(135deg,#1A6A1A,#2A9A2A)}
+
+/* InVideo 장면 */
+.scene-card{background:#fff;border:1px solid var(--iv-line);border-radius:11px;padding:10px 12px;margin-bottom:7px}
+.scene-hd{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap}
+.scene-num{background:var(--iv);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px}
+.scene-tag{font-size:9px;padding:2px 7px;border-radius:5px;font-weight:700}
+.scene-visual{background:#f5f0ff;border:1px dashed var(--iv-line);border-radius:8px;
+  padding:6px 9px;font-size:10px;color:#5A1A9A;line-height:1.6;margin-bottom:6px}
+.scene-sub{font-size:12px;font-weight:700;border-left:3px solid var(--iv);padding-left:8px;line-height:1.6}
+
+/* 코드박스 */
+.code-box{background:#0A0A1E;border-radius:12px;padding:12px 14px;margin-top:8px}
+.code-label{font-size:10px;font-weight:800;color:rgba(255,255,255,.5);margin-bottom:7px;letter-spacing:.05em}
+.code-text{font-size:10.5px;color:#C8C8FF;line-height:1.7;white-space:pre-wrap;
+  font-family:'Courier New',monospace;max-height:320px;overflow-y:auto}
+
+/* 에러/스피너 */
+.errbox{display:none;background:#fff1f6;border:1px solid #e8c0d0;border-radius:10px;
+  padding:8px 12px;font-size:12px;color:#aa1040;margin-top:7px}
+.errbox.on{display:block}
+.spin-wrap{display:none;text-align:center;padding:6px;font-size:12px;color:var(--muted);margin-top:5px}
+.spin-wrap.on{display:block}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid #e0d4ea;
+  border-top-color:var(--iv);border-radius:50%;animation:sp .6s linear infinite;
+  margin-right:4px;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* 자동감지 배지 */
+.auto-tag{display:inline-flex;align-items:center;gap:4px;background:#e8ffee;border:1px solid #90c890;
+  color:#1A5A1A;font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;margin-top:5px}
+
+/* 반응형 */
+@media(max-width:680px){
+  .cat-grid{grid-template-columns:repeat(2,1fr)}
+  .voice-grid{grid-template-columns:1fr 1fr}
+  .r2,.r3{grid-template-columns:1fr}
+  .sp-controls{grid-template-columns:1fr}
+  .main-tabs{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- 상단 -->
+<header class="top">
+  <div class="logo">🎙</div>
+  <div class="top-text">
+    <h1>음성·영상 생성기 <span class="badge">v2</span></h1>
+    <p>대본생성기 카테고리 자동 매칭 · ElevenLabs 다화자 API · InVideo 장면 자동화</p>
+  </div>
+</header>
+
+<!-- 탭 -->
+<div class="main-tabs">
+  <button class="main-tab on-el" id="tab-el" onclick="switchMainTab('el')">🎤 ElevenLabs 다화자 음성<br><small style="font-weight:400;font-size:10px">카테고리 자동 매칭 · API 직접 연결</small></button>
+  <button class="main-tab" id="tab-iv" onclick="switchMainTab('iv')">🎬 InVideo 영상 장면<br><small style="font-weight:400;font-size:10px">카테고리별 장면 구조 자동 생성</small></button>
+</div>
+
+<!-- API 키 (공통) -->
+<div class="api-bar">
+  <div class="api-head" onclick="toggleApiBar()">
+    <span>🔑 API 키 설정 <span id="api-ok" style="font-size:11px;color:var(--green);font-weight:400"></span></span>
+    <span id="api-arrow" style="font-size:10px;color:var(--muted)">▼</span>
+  </div>
+  <div class="api-body" id="api-body">
+    <div class="r2" style="margin-top:8px">
+      <div>
+        <label>ElevenLabs API 키</label>
+        <div class="apirow">
+          <input type="password" id="el-key" placeholder="sk_... (ElevenLabs 대시보드 → Profile → API Key)">
+          <button class="apisave" onclick="saveElKey()">저장</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">
+          <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" style="color:var(--el)">👉 ElevenLabs API 키 발급</a>
+        </div>
+      </div>
+      <div>
+        <label>Claude API 키 (장면 AI 분석용)</label>
+        <div class="apirow">
+          <input type="password" id="claude-key" placeholder="sk-ant-...">
+          <button class="apisave" onclick="saveClaudeKey()">저장</button>
+        </div>
+      </div>
+    </div>
+    <div class="r2" style="margin-top:8px">
+      <div>
+        <label>ElevenLabs 모델</label>
+        <select id="el-model">
+          <option value="eleven_multilingual_v2">eleven_multilingual_v2 (한국어·일본어 — 권장)</option>
+          <option value="eleven_flash_v2_5">eleven_flash_v2_5 (빠름·저비용)</option>
+          <option value="eleven_turbo_v2_5">eleven_turbo_v2_5 (균형)</option>
+        </select>
+      </div>
+      <div>
+        <label>출력 포맷</label>
+        <select id="el-format">
+          <option value="mp3_44100_128">MP3 128kbps (권장)</option>
+          <option value="mp3_44100_64">MP3 64kbps (소용량)</option>
+          <option value="pcm_22050">PCM 22050Hz (원본)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ ElevenLabs 탭 ████ -->
+<div id="pg-el">
+
+  <!-- Step 1: 카테고리 선택 -->
+  <div class="box cat">
+    <div class="sec">① 대본 카테고리 선택 — 자동으로 화자·감정·속도가 설정됩니다</div>
+    <div class="cat-grid" id="cat-grid">
+      <!-- JS로 렌더 -->
+    </div>
+    <div id="auto-detect-result" style="margin-top:7px;display:none">
+      <span class="auto-tag" id="auto-detect-badge">🤖 자동 감지됨</span>
+    </div>
+  </div>
+
+  <!-- Step 2: 대본 입력 -->
+  <div class="box el">
+    <div class="sec">② 대본 입력</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn btn-gray" onclick="document.getElementById('file-inp').click()">📂 파일 불러오기</button>
+      <input type="file" id="file-inp" accept=".txt,.html,.doc" style="display:none" onchange="loadFile(event)">
+      <button class="btn btn-el" onclick="autoDetectAndApply()">🤖 자동 분석 & 캐릭터 세팅</button>
+      <button class="btn btn-gray" onclick="clearAll()">🗑 초기화</button>
+    </div>
+    <textarea id="script-input" rows="7"
+      placeholder="대본을 붙여넣거나 파일을 불러오세요.
+
+카테고리 선택 후 '자동 분석 & 캐릭터 세팅' 버튼을 누르면
+→ 화자 자동 감지
+→ 카테고리에 맞는 보이스·감정·속도 자동 설정
+→ 캐릭터 일관성 자동 적용
+
+[나레이터] 오늘은 충격적인 사실을 알려드립니다.
+[남성A] 정말요?
+[여성B] 저도 궁금해요!"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
+      <span style="font-size:10px;color:var(--muted)" id="script-stat"></span>
+      <span style="font-size:10px;color:var(--muted)" id="parse-preview"></span>
+    </div>
+  </div>
+
+  <!-- Step 3: 화자 설정 -->
+  <div class="box el" id="speakers-box">
+    <div class="sec" style="display:flex;align-items:center;justify-content:space-between">
+      <span>③ 화자 & 보이스 설정 <span id="cat-preset-label" style="font-size:10px;font-weight:400;color:var(--green)"></span></span>
+      <button class="btn btn-gray" style="font-size:10px;padding:4px 9px" onclick="addSpeaker()">➕ 화자 추가</button>
+    </div>
+    <div class="speaker-wrap" id="speaker-list"></div>
+
+    <!-- 글로벌 음성 설정 -->
+    <div style="margin-top:10px;background:#fff;border:1px solid var(--el-line);border-radius:11px;padding:10px 12px">
+      <div style="font-size:11px;font-weight:800;color:var(--el);margin-bottom:8px">⚙️ 전체 음성 설정</div>
+      <div class="r3">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">화자 간 간격</div>
+          <select id="el-pause" style="font-size:11px;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fafafa;width:100%">
+            <option value="200">200ms (빠름)</option>
+            <option value="400" selected>400ms (표준)</option>
+            <option value="700">700ms (여유)</option>
+            <option value="1200">1200ms (드라마틱)</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">Stability (전체)</div>
+          <div class="sl-row">
+            <input type="range" id="g-stability" min="0" max="100" value="55" oninput="document.getElementById('gst-v').textContent=this.value+'%'">
+            <span class="sl-val" id="gst-v">55%</span>
+          </div>
+          <div style="font-size:9px;color:var(--muted)">높을수록 일관성↑</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">Similarity (전체)</div>
+          <div class="sl-row">
+            <input type="range" id="g-similarity" min="0" max="100" value="78" oninput="document.getElementById('gsi-v').textContent=this.value+'%'">
+            <span class="sl-val" id="gsi-v">78%</span>
+          </div>
+          <div style="font-size:9px;color:var(--muted)">높을수록 보이스 충실도↑</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 보이스 라이브러리 -->
+    <div class="voice-lib">
+      <div class="voice-lib-title">⚡ 추천 보이스 라이브러리 — <span id="lib-cat-label">카테고리를 선택하면 최적 보이스를 추천합니다</span></div>
+      <div class="voice-grid" id="voice-lib-grid"></div>
+    </div>
+  </div>
+
+  <!-- 에러 -->
+  <div class="errbox" id="el-err"></div>
+
+  <!-- 생성 버튼 -->
+  <button class="bigbtn bigbtn-el" id="el-genbtn" onclick="generateVoices()">
+    🎤 다화자 음성 생성 시작 — ElevenLabs API 직접 연결
+  </button>
+  <div class="spin-wrap" id="el-spin"><span class="spin" style="border-top-color:var(--el)"></span><span id="el-spin-msg">음성 생성 중...</span></div>
+
+  <!-- 결과 -->
+  <div id="el-result" style="display:none;margin-top:12px">
+    <div class="audio-dark">
+      <div class="audio-dark-title">🎙 다화자 음성 큐 — 생성 순서대로 재생</div>
+      <div class="pbar"><div class="pbar-fill" id="el-pbar"></div></div>
+      <div class="pbar-text" id="el-pbar-text"></div>
+      <div id="audio-segs"></div>
+      <div class="audio-btns">
+        <button class="play-all-btn" id="play-all-btn" onclick="playAll()" disabled>▶ 전체 순서 재생</button>
+        <button class="dl-all-btn" onclick="downloadAll()">💾 전체 다운로드</button>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--muted);background:#fff8ec;border:1px solid #e8d8a0;border-radius:10px;padding:9px 12px;line-height:1.7">
+      💡 <b>활용:</b> 각 mp3 파일을 영상 편집 툴에 순서대로 배치 → 완성!<br>
+      InVideo 탭으로 이동 → 영상 장면 구조 자동 생성 → 연동 완성
+    </div>
+  </div>
+
+</div><!-- /pg-el -->
+
+<!-- ████ InVideo 탭 ████ -->
+<div id="pg-iv" style="display:none">
+
+  <!-- 카테고리 선택 (공유) -->
+  <div class="box cat">
+    <div class="sec">① 카테고리 선택 — 영상 스타일이 자동으로 설정됩니다</div>
+    <div class="cat-grid" id="iv-cat-grid"></div>
+  </div>
+
+  <!-- 대본 입력 -->
+  <div class="box iv">
+    <div class="sec">② 대본 입력</div>
+    <div style="display:flex;gap:6px;margin-bottom:7px;flex-wrap:wrap">
+      <button class="btn btn-gray" onclick="document.getElementById('iv-file').click()">📂 파일</button>
+      <input type="file" id="iv-file" accept=".txt,.html" style="display:none" onchange="loadIVFile(event)">
+      <button class="btn btn-gray" onclick="syncFromEL()">🎤 EL탭에서 가져오기</button>
+      <button class="btn btn-iv" onclick="generateScenes()">🎬 장면 자동 생성</button>
+    </div>
+    <textarea id="iv-script" rows="6" placeholder="대본을 붙여넣거나 EL탭에서 가져오세요."></textarea>
+  </div>
+
+  <!-- InVideo 세부 설정 (카테고리별 자동 적용) -->
+  <div class="box iv" id="iv-settings-box">
+    <div class="sec">③ 영상 세부 설정 <span id="iv-auto-label" style="font-size:10px;font-weight:400;color:var(--green)"></span></div>
+    <div class="r3">
+      <div>
+        <label>배경 스타일</label>
+        <select id="iv-bg">
+          <option value="realistic">실사 영상 (Stock footage)</option>
+          <option value="ai_video">AI 생성 영상</option>
+          <option value="animation">일러스트·애니메이션</option>
+          <option value="doc_style">다큐 스타일 혼합</option>
+        </select>
+      </div>
+      <div>
+        <label>자막 스타일</label>
+        <select id="iv-sub">
+          <option value="bold_bottom">큰 글씨 하단 (숏츠 표준)</option>
+          <option value="center_highlight">중앙 강조형</option>
+          <option value="minimal">미니멀 하단</option>
+          <option value="none">자막 없음</option>
+        </select>
+      </div>
+      <div>
+        <label>전환 효과</label>
+        <select id="iv-transition">
+          <option value="fade">페이드 (감성·다큐)</option>
+          <option value="hard_cut">하드 컷 (드라마·티키타카)</option>
+          <option value="slide">슬라이드 (지식·설명)</option>
+          <option value="dissolve">디졸브 (감성·명언)</option>
+          <option value="wipe">와이프 (코미디·잡학)</option>
+        </select>
+      </div>
+    </div>
+    <div class="r2" style="margin-top:8px">
+      <div>
+        <label>장면당 길이</label>
+        <select id="iv-dur">
+          <option value="3">3초 (빠른 컷)</option>
+          <option value="5" selected>5초 (표준)</option>
+          <option value="7">7초 (여유)</option>
+          <option value="auto">자동 (텍스트 길이 기준)</option>
+        </select>
+      </div>
+      <div>
+        <label>텍스트 오버레이</label>
+        <select id="iv-overlay">
+          <option value="key_phrase">핵심 문구 강조형</option>
+          <option value="full_sub">전체 자막형</option>
+          <option value="minimal">핵심 단어만</option>
+          <option value="none">없음</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="errbox" id="iv-err"></div>
+  <button class="bigbtn bigbtn-iv" id="iv-genbtn" onclick="generateScenes()">🎬 InVideo 장면 구조 생성</button>
+  <div class="spin-wrap" id="iv-spin"><span class="spin" style="border-top-color:var(--iv)"></span><span id="iv-spin-msg">AI가 장면을 구성 중...</span></div>
+
+  <!-- 결과 -->
+  <div id="iv-result" style="display:none;margin-top:12px">
+    <div class="box iv">
+      <div class="sec">🎬 장면 구조 미리보기</div>
+      <div id="iv-scenes-preview"></div>
+    </div>
+    <div class="code-box">
+      <div class="code-label">📋 INVIDEO SCENE JSON — 전체 복사 후 InVideo에 붙여넣기</div>
+      <div class="code-text" id="iv-json-output"></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn btn-iv" onclick="copyIVJson()" style="flex:2">📋 JSON 전체 복사</button>
+      <button class="btn btn-green" onclick="dlIVJson()">💾 저장</button>
+      <button class="btn btn-gray" onclick="copyVisualPrompts()">🖼 비주얼 프롬프트만</button>
+    </div>
+    <div style="margin-top:8px;font-size:11px;background:#fff8f0;border:1px solid #f0d8b0;border-radius:10px;padding:9px 12px;line-height:1.7;color:var(--muted)">
+      💡 <b>InVideo AI 사용법:</b> JSON 복사 → InVideo AI → Script → Custom Script → 붙여넣기 → 생성<br>
+      visual_prompt = 영상 검색어 / subtitle = 자막 / stock_keyword = Getty/Pexels 검색어
+    </div>
+  </div>
+
+</div><!-- /pg-iv -->
+
+</div><!-- /wrap -->
+<script>
+// ═══════════════════════════════════════════════════════
+// 음성·영상 생성기 v2 — 카테고리 자동 매칭
+// ═══════════════════════════════════════════════════════
+
+// ── 대본생성기 카테고리 정의 ──
+var CATEGORIES = [
+  {
+    id: 'senior_health', name: '시니어 건강·치매', icon: '🧠',
+    color: '#2A5AC0', desc: '치매·혈압·혈당·라이프 채널',
+    detect: /치매|뇌|혈압|혈당|시니어|건강|기억|노년|60대|인지/,
+    ivStyle: 'documentary', ivBg: 'realistic', ivTransition: 'fade', ivSub: 'bold_bottom',
+    speakers: [
+      { id:'narrator', name:'나레이터', icon:'🎙', color:'#2A5AC0',
+        voiceId:'EXAVITQu4vr4xnSDxMaL', voiceName:'Sarah', desc:'따뜻한 여성 60대',
+        emotion:'warm', stability:0.65, similarity:0.82, style:0.25 }
+    ],
+    voiceLib: [
+      { name:'Sarah', id:'EXAVITQu4vr4xnSDxMaL', desc:'따뜻한 여성 — 시니어 신뢰감', tag:'KR/JP 추천' },
+      { name:'Matilda', id:'XrExE9yKIg1WjnnlVkGX', desc:'성숙한 여성 — 깊은 감성', tag:'감성' },
+      { name:'Laura', id:'FGY2WhTYpPnrIDTdsKH5', desc:'밝은 여성 — 친근함', tag:'활기' },
+      { name:'Bill', id:'pqHfZKP75CvOlQylNhV4', desc:'차분한 남성 — 전문가', tag:'신뢰' },
+      { name:'Charlie', id:'IKne3meq5aSn9XLyUdCD', desc:'남성 — 진지·권위', tag:'전문' },
+    ]
+  },
+  {
+    id: 'tiki_taka', name: '티키타카·대결', icon: '⚔️',
+    color: '#9A1A1A', desc: 'A vs B 배틀·토론·비교',
+    detect: /vs|대결|배틀|티키|A측|B측|호스트|게스트|토론|비교/,
+    ivStyle: 'interview', ivBg: 'doc_style', ivTransition: 'hard_cut', ivSub: 'center_highlight',
+    speakers: [
+      { id:'host', name:'호스트', icon:'🎙', color:'#2A5AC0',
+        voiceId:'EXAVITQu4vr4xnSDxMaL', voiceName:'Sarah', desc:'진행자 — 중립적',
+        emotion:'cheerful', stability:0.50, similarity:0.75, style:0.35 },
+      { id:'a', name:'A측 (도전자)', icon:'🔵', color:'#1A4A9A',
+        voiceId:'IKne3meq5aSn9XLyUdCD', voiceName:'Charlie', desc:'주장 — 강하고 확신',
+        emotion:'urgent', stability:0.38, similarity:0.68, style:0.45 },
+      { id:'b', name:'B측 (반박)', icon:'🔴', color:'#9A1A1A',
+        voiceId:'pqHfZKP75CvOlQylNhV4', voiceName:'Bill', desc:'반박 — 다른 톤',
+        emotion:'urgent', stability:0.38, similarity:0.68, style:0.45 }
+    ],
+    voiceLib: [
+      { name:'Charlie', id:'IKne3meq5aSn9XLyUdCD', desc:'남성 — 강한 주장', tag:'A측 추천' },
+      { name:'Bill', id:'pqHfZKP75CvOlQylNhV4', desc:'남성 — 다른 톤 반박', tag:'B측 추천' },
+      { name:'Sarah', id:'EXAVITQu4vr4xnSDxMaL', desc:'여성 — 중립 진행', tag:'호스트' },
+      { name:'Adam', id:'pNInz6obpgDQGcFmaJgB', desc:'남성 — 깊고 권위적', tag:'전문가' },
+    ]
+  },
+  {
+    id: 'saying', name: '사자성어·명언', icon: '📜',
+    color: '#5A3A00', desc: '인생 지혜·고사성어·세계 명언',
+    detect: /사자성어|명언|고사|지혜|인생|人生|故事|一期一会/,
+    ivStyle: 'documentary', ivBg: 'animation', ivTransition: 'dissolve', ivSub: 'minimal',
+    speakers: [
+      { id:'sage', name:'현인', icon:'📜', color:'#5A3A00',
+        voiceId:'XrExE9yKIg1WjnnlVkGX', voiceName:'Matilda', desc:'깊고 성숙한 음성',
+        emotion:'calm', stability:0.78, similarity:0.88, style:0.15 }
+    ],
+    voiceLib: [
+      { name:'Matilda', id:'XrExE9yKIg1WjnnlVkGX', desc:'성숙·깊은 여성 — 명언에 최적', tag:'추천' },
+      { name:'Adam', id:'pNInz6obpgDQGcFmaJgB', desc:'깊은 남성 — 권위', tag:'남성 추천' },
+      { name:'Bill', id:'pqHfZKP75CvOlQylNhV4', desc:'차분한 남성', tag:'차분' },
+    ]
+  },
+  {
+    id: 'humor', name: '코믹·유머', icon: '😄',
+    color: '#CC3300', desc: '시니어 공감 개그·19금 포함',
+    detect: /유머|개그|웃|코미디|펀치라인|반전|일상 공감|말장난/,
+    ivStyle: 'comedy', ivBg: 'animation', ivTransition: 'wipe', ivSub: 'bold_bottom',
+    speakers: [
+      { id:'comedian', name:'개그맨', icon:'😄', color:'#CC3300',
+        voiceId:'FGY2WhTYpPnrIDTdsKH5', voiceName:'Laura', desc:'밝고 에너지 — 웃음 유발',
+        emotion:'cheerful', stability:0.32, similarity:0.62, style:0.55 },
+      { id:'stooge', name:'조연', icon:'😅', color:'#B87800',
+        voiceId:'ErXwobaYiN019PkySvjV', voiceName:'Antoni', desc:'젊고 유쾌한 조연',
+        emotion:'cheerful', stability:0.38, similarity:0.65, style:0.50 }
+    ],
+    voiceLib: [
+      { name:'Laura', id:'FGY2WhTYpPnrIDTdsKH5', desc:'밝고 에너지 넘침', tag:'개그맨 추천' },
+      { name:'Antoni', id:'ErXwobaYiN019PkySvjV', desc:'젊고 유쾌', tag:'조연 추천' },
+      { name:'Freya', id:'jsCqWAovK2LkecY7zXl4', desc:'활기찬 여성', tag:'활기' },
+    ]
+  },
+  {
+    id: 'knowledge', name: '전문지식', icon: '🔬',
+    color: '#1A5A8A', desc: '과학·역사·기술 다큐 설명',
+    detect: /원리|과학|역사|기술|메커니즘|전문|연구|발견|발명/,
+    ivStyle: 'knowledge', ivBg: 'realistic', ivTransition: 'slide', ivSub: 'full_sub',
+    speakers: [
+      { id:'narrator', name:'나레이터', icon:'🎙', color:'#2A5AC0',
+        voiceId:'EXAVITQu4vr4xnSDxMaL', voiceName:'Sarah', desc:'안내 — 따뜻한 설명',
+        emotion:'warm', stability:0.62, similarity:0.80, style:0.22 },
+      { id:'expert', name:'전문가', icon:'🔬', color:'#1A5A8A',
+        voiceId:'IKne3meq5aSn9XLyUdCD', voiceName:'Charlie', desc:'전문가 설명 — 권위',
+        emotion:'calm', stability:0.72, similarity:0.82, style:0.18 }
+    ],
+    voiceLib: [
+      { name:'Charlie', id:'IKne3meq5aSn9XLyUdCD', desc:'전문가 권위감', tag:'전문가 추천' },
+      { name:'Sarah', id:'EXAVITQu4vr4xnSDxMaL', desc:'따뜻한 안내', tag:'나레이터' },
+      { name:'Adam', id:'pNInz6obpgDQGcFmaJgB', desc:'깊은 다큐 목소리', tag:'다큐' },
+    ]
+  },
+  {
+    id: 'trivia', name: '잡학·트리비아', icon: '🧩',
+    color: '#B05010', desc: '퀴즈·잡학·의외의 사실',
+    detect: /잡학|트리비아|퀴즈|몰랐|놀라|사실은|알고 보면/,
+    ivStyle: 'knowledge', ivBg: 'animation', ivTransition: 'slide', ivSub: 'center_highlight',
+    speakers: [
+      { id:'host', name:'퀴즈 호스트', icon:'🧩', color:'#B05010',
+        voiceId:'FGY2WhTYpPnrIDTdsKH5', voiceName:'Laura', desc:'에너지 넘치는 진행',
+        emotion:'cheerful', stability:0.40, similarity:0.70, style:0.45 },
+      { id:'reveal', name:'정답 해설', icon:'💡', color:'#5A3A00',
+        voiceId:'pqHfZKP75CvOlQylNhV4', voiceName:'Bill', desc:'정답 해설 — 차분',
+        emotion:'calm', stability:0.62, similarity:0.78, style:0.20 }
+    ],
+    voiceLib: [
+      { name:'Laura', id:'FGY2WhTYpPnrIDTdsKH5', desc:'퀴즈 에너지', tag:'호스트 추천' },
+      { name:'Bill', id:'pqHfZKP75CvOlQylNhV4', desc:'정답 해설 차분', tag:'해설 추천' },
+      { name:'Freya', id:'jsCqWAovK2LkecY7zXl4', desc:'활기찬 여성', tag:'활기' },
+    ]
+  },
+  {
+    id: 'drama', name: '숏드라마', icon: '🎭',
+    color: '#6A1A9A', desc: '감정 연기·다인물 드라마',
+    detect: /드라마|씬|scene|주인공|갈등|대사|감정|눈물|사랑/,
+    ivStyle: 'drama', ivBg: 'realistic', ivTransition: 'hard_cut', ivSub: 'bold_bottom',
+    speakers: [
+      { id:'narrator', name:'나레이터', icon:'🎙', color:'#2A5AC0',
+        voiceId:'EXAVITQu4vr4xnSDxMaL', voiceName:'Sarah', desc:'드라마 내레이션',
+        emotion:'calm', stability:0.58, similarity:0.80, style:0.28 },
+      { id:'male1', name:'남성 주인공', icon:'👨', color:'#AA2000',
+        voiceId:'pqHfZKP75CvOlQylNhV4', voiceName:'Bill', desc:'감정 연기 — 남성',
+        emotion:'urgent', stability:0.35, similarity:0.65, style:0.50 },
+      { id:'female1', name:'여성 주인공', icon:'👩', color:'#9A1A8A',
+        voiceId:'FGY2WhTYpPnrIDTdsKH5', voiceName:'Laura', desc:'감정 연기 — 여성',
+        emotion:'warm', stability:0.40, similarity:0.70, style:0.45 }
+    ],
+    voiceLib: [
+      { name:'Bill', id:'pqHfZKP75CvOlQylNhV4', desc:'남성 감정 연기', tag:'남성 주인공' },
+      { name:'Laura', id:'FGY2WhTYpPnrIDTdsKH5', desc:'여성 감정 연기', tag:'여성 주인공' },
+      { name:'Sarah', id:'EXAVITQu4vr4xnSDxMaL', desc:'내레이션', tag:'나레이터' },
+      { name:'Matilda', id:'XrExE9yKIg1WjnnlVkGX', desc:'중년 여성 — 깊은 감정', tag:'성숙' },
+    ]
+  },
+  {
+    id: 'lyric', name: '가사·음원', icon: '🎵',
+    color: '#5A1A8A', desc: '트로트·발라드·엔카 가사',
+    detect: /가사|[Vv]erse|[Cc]horus|후렴|브릿지|아웃트로|[Ii]ntro|\[절/,
+    ivStyle: 'documentary', ivBg: 'animation', ivTransition: 'dissolve', ivSub: 'center_highlight',
+    speakers: [
+      { id:'vocalist', name:'보컬', icon:'🎵', color:'#5A1A8A',
+        voiceId:'XrExE9yKIg1WjnnlVkGX', voiceName:'Matilda', desc:'감성 보컬 — 트로트·발라드',
+        emotion:'sad', stability:0.70, similarity:0.88, style:0.30 }
+    ],
+    voiceLib: [
+      { name:'Matilda', id:'XrExE9yKIg1WjnnlVkGX', desc:'성숙·감성 보컬', tag:'KR 보컬 추천' },
+      { name:'Sarah', id:'EXAVITQu4vr4xnSDxMaL', desc:'따뜻한 여성 보컬', tag:'부드러운' },
+      { name:'Freya', id:'jsCqWAovK2LkecY7zXl4', desc:'밝은 팝 보컬', tag:'활기' },
+    ]
+  }
+];
+
+// ── 상태 ──
+var CURRENT_CAT = null;
+var SPEAKERS = [];
+var AUDIO_BLOBS = [];
+var SEGMENTS = [];
+var IS_PLAYING = false;
+var IV_SCENES = [];
+var MAIN_TAB = 'el';
+
+// ── 초기화 ──
+(function init() {
+  renderCatGrid('cat-grid', true);
+  renderCatGrid('iv-cat-grid', false);
+  renderSpeakers();
+  renderVoiceLib();
+  loadSavedKeys();
+  document.getElementById('script-input').addEventListener('input', function() {
+    var lines = this.value.split('\n').filter(function(l){return l.trim();});
+    document.getElementById('script-stat').textContent = lines.length + '줄 입력됨';
+  });
+})();
+
+function loadSavedKeys() {
+  var ek = localStorage.getItem('v2_el_key');
+  var ck = localStorage.getItem('v2_claude_key');
+  if (ek) { document.getElementById('el-key').value = ek; document.getElementById('api-ok').textContent = '✓ 저장됨'; }
+  if (ck) { document.getElementById('claude-key').value = ck; }
+}
+
+// ── 탭 전환 ──
+function switchMainTab(tab) {
+  MAIN_TAB = tab;
+  document.getElementById('pg-el').style.display = tab === 'el' ? '' : 'none';
+  document.getElementById('pg-iv').style.display = tab === 'iv' ? '' : 'none';
+  document.getElementById('tab-el').className = 'main-tab' + (tab === 'el' ? ' on-el' : '');
+  document.getElementById('tab-iv').className = 'main-tab' + (tab === 'iv' ? ' on-iv' : '');
+}
+
+// ── API 바 ──
+function toggleApiBar() {
+  var b = document.getElementById('api-body');
+  var a = document.getElementById('api-arrow');
+  b.classList.toggle('on');
+  a.textContent = b.classList.contains('on') ? '▲' : '▼';
+}
+function saveElKey() {
+  var k = document.getElementById('el-key').value.trim();
+  if (!k) return;
+  localStorage.setItem('v2_el_key', k);
+  document.getElementById('api-ok').textContent = '✓ 저장됨';
+  alert('ElevenLabs API 키가 저장됐습니다.');
+}
+function saveClaudeKey() {
+  var k = document.getElementById('claude-key').value.trim();
+  if (!k) return;
+  localStorage.setItem('v2_claude_key', k);
+  alert('Claude API 키가 저장됐습니다.');
+}
+
+// ── 카테고리 그리드 렌더 ──
+function renderCatGrid(gridId, isEL) {
+  var grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = CATEGORIES.map(function(cat) {
+    return '<div class="cat-card" id="' + gridId + '-' + cat.id + '" onclick="selectCategory(\'' + cat.id + '\',\'' + gridId + '\')">' +
+      '<div class="cat-icon">' + cat.icon + '</div>' +
+      '<div class="cat-name">' + cat.name + '</div>' +
+      '<div class="cat-desc">' + cat.desc + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function selectCategory(catId, gridId) {
+  CURRENT_CAT = CATEGORIES.find(function(c) { return c.id === catId; });
+  if (!CURRENT_CAT) return;
+
+  // Update card styles
+  var prefix = gridId || 'cat-grid';
+  CATEGORIES.forEach(function(cat) {
+    var el = document.getElementById(prefix + '-' + cat.id);
+    if (!el) return;
+    el.classList.remove('on');
+    el.style.borderColor = '';
+    el.style.background = '#fff';
+  });
+  var selected = document.getElementById(prefix + '-' + catId);
+  if (selected) {
+    selected.classList.add('on');
+    selected.style.borderColor = CURRENT_CAT.color;
+    selected.style.background = CURRENT_CAT.color + '18';
+  }
+
+  // Apply category presets
+  if (prefix === 'cat-grid') {
+    applyElPresets();
+  } else {
+    applyIVPresets();
+  }
+}
+
+function applyElPresets() {
+  if (!CURRENT_CAT) return;
+  // Set speakers from category
+  SPEAKERS = JSON.parse(JSON.stringify(CURRENT_CAT.speakers));
+  renderSpeakers();
+  renderVoiceLib();
+
+  // Update label
+  var label = document.getElementById('cat-preset-label');
+  if (label) label.textContent = '— ' + CURRENT_CAT.icon + ' ' + CURRENT_CAT.name + ' 프리셋 적용됨';
+
+  // Update global sliders
+  if (CURRENT_CAT.speakers.length) {
+    var sp1 = CURRENT_CAT.speakers[0];
+    var stabEl = document.getElementById('g-stability');
+    var simEl = document.getElementById('g-similarity');
+    if (stabEl) { stabEl.value = Math.round(sp1.stability * 100); document.getElementById('gst-v').textContent = Math.round(sp1.stability*100)+'%'; }
+    if (simEl) { simEl.value = Math.round(sp1.similarity * 100); document.getElementById('gsi-v').textContent = Math.round(sp1.similarity*100)+'%'; }
+  }
+}
+
+function applyIVPresets() {
+  if (!CURRENT_CAT) return;
+  // Apply InVideo settings
+  var bgEl = document.getElementById('iv-bg');
+  var transEl = document.getElementById('iv-transition');
+  var subEl = document.getElementById('iv-sub');
+  if (bgEl && CURRENT_CAT.ivBg) bgEl.value = CURRENT_CAT.ivBg;
+  if (transEl && CURRENT_CAT.ivTransition) transEl.value = CURRENT_CAT.ivTransition;
+  if (subEl && CURRENT_CAT.ivSub) subEl.value = CURRENT_CAT.ivSub;
+
+  var label = document.getElementById('iv-auto-label');
+  if (label) label.textContent = '— ' + CURRENT_CAT.icon + ' ' + CURRENT_CAT.name + ' 설정 적용됨';
+}
+
+// ── 보이스 라이브러리 렌더 ──
+function renderVoiceLib() {
+  var grid = document.getElementById('voice-lib-grid');
+  var libLabel = document.getElementById('lib-cat-label');
+  if (!grid) return;
+
+  var voices = CURRENT_CAT ? CURRENT_CAT.voiceLib : [
+    { name:'Sarah', id:'EXAVITQu4vr4xnSDxMaL', desc:'따뜻한 여성', tag:'기본' },
+    { name:'Bill', id:'pqHfZKP75CvOlQylNhV4', desc:'차분한 남성', tag:'기본' },
+    { name:'Laura', id:'FGY2WhTYpPnrIDTdsKH5', desc:'밝은 여성', tag:'기본' },
+    { name:'Charlie', id:'IKne3meq5aSn9XLyUdCD', desc:'전문가 남성', tag:'기본' },
+    { name:'Matilda', id:'XrExE9yKIg1WjnnlVkGX', desc:'성숙한 여성', tag:'기본' },
+    { name:'Adam', id:'pNInz6obpgDQGcFmaJgB', desc:'깊은 남성', tag:'기본' },
+  ];
+
+  if (libLabel) libLabel.textContent = CURRENT_CAT ? CURRENT_CAT.icon + ' ' + CURRENT_CAT.name + ' 최적 보이스' : '카테고리 선택 후 최적 보이스 추천';
+
+  grid.innerHTML = voices.map(function(v) {
+    return '<div class="voice-item" onclick="copyVoiceId(\'' + v.id + '\',\'' + v.name + '\')" title="클릭 → Voice ID 복사">' +
+      '<div class="vname">' + v.name + (v.tag ? ' <span style="background:#efe8ff;color:var(--iv);font-size:8px;padding:1px 5px;border-radius:4px;font-weight:800">' + v.tag + '</span>' : '') + '</div>' +
+      '<div class="vdesc">' + v.desc + '</div>' +
+      '<div class="vid">' + v.id + '</div></div>';
+  }).join('');
+}
+
+function copyVoiceId(id, name) {
+  navigator.clipboard.writeText(id).then(function() {
+    alert('✅ "' + name + '" Voice ID 복사!\n\n화자 설정의 Voice ID 입력란에 붙여넣기 하세요.\n\nID: ' + id);
+  }).catch(function() {
+    var ta = document.createElement('textarea'); ta.value = id;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('복사됐습니다: ' + name);
+  });
+}
+
+// ── 화자 렌더 ──
+function renderSpeakers() {
+  var list = document.getElementById('speaker-list');
+  if (!list) return;
+  if (!SPEAKERS.length) {
+    list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">① 카테고리를 선택하면 화자가 자동으로 설정됩니다</div>';
+    return;
+  }
+  list.innerHTML = SPEAKERS.map(function(sp, i) {
+    return '<div class="speaker-card" id="spc-'+i+'">' +
+      '<div class="sp-icon" style="background:'+sp.color+'">'+sp.icon+'</div>' +
+      '<div class="sp-info">' +
+        '<div class="sp-name">'+sp.name+'</div>' +
+        '<div class="sp-voice">🔊 '+sp.voiceName+' — '+sp.desc+'</div>' +
+        '<div class="sp-controls">' +
+          '<input class="sp-voice-inp" id="vid-'+i+'" value="'+sp.voiceId+'" placeholder="Voice ID 입력 (보이스 라이브러리에서 복사)" oninput="updateSp('+i+',\'voiceId\',this.value)">' +
+          '<div style="display:flex;gap:5px;align-items:center">' +
+            '<button class="test-btn" id="test-'+i+'" onclick="testVoice('+i+')">🔊 테스트</button>' +
+            (SPEAKERS.length > 1 ? '<button class="sp-delete" onclick="deleteSp('+i+')" title="화자 삭제">✕</button>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:6px">' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:10px;font-weight:700;color:var(--muted);min-width:40px">감정</span>' +
+            '<select class="emotion-sel" id="emo-'+i+'" onchange="updateSp('+i+',\'emotion\',this.value)">' +
+              ['warm','calm','urgent','cheerful','sad'].map(function(e){ return '<option value="'+e+'"'+(sp.emotion===e?' selected':'')+'>'+{warm:'따뜻 (warm)',calm:'차분 (calm)',urgent:'긴박 (urgent)',cheerful:'밝음 (cheerful)',sad:'애수 (sad)'}[e]+'</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div class="sl-row" style="margin-top:5px">' +
+            '<span class="sl-label">Stability</span>' +
+            '<input type="range" id="stab-'+i+'" min="0" max="100" value="'+Math.round((sp.stability||0.5)*100)+'" oninput="updateSpSlider('+i+',\'stability\',this.value/100,\'stab-v-'+i+'\',\'%\')">' +
+            '<span class="sl-val" id="stab-v-'+i+'">'+Math.round((sp.stability||0.5)*100)+'%</span>' +
+          '</div>' +
+          '<div class="sl-row">' +
+            '<span class="sl-label">Similarity</span>' +
+            '<input type="range" id="sim-'+i+'" min="0" max="100" value="'+Math.round((sp.similarity||0.75)*100)+'" oninput="updateSpSlider('+i+',\'similarity\',this.value/100,\'sim-v-'+i+'\',\'%\')">' +
+            '<span class="sl-val" id="sim-v-'+i+'">'+Math.round((sp.similarity||0.75)*100)+'%</span>' +
+          '</div>' +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+function updateSp(i, key, val) { SPEAKERS[i][key] = val; }
+function updateSpSlider(i, key, val, labelId, suffix) {
+  SPEAKERS[i][key] = parseFloat(val);
+  var el = document.getElementById(labelId);
+  if (el) el.textContent = Math.round(val*100) + suffix;
+}
+function deleteSp(i) { SPEAKERS.splice(i,1); renderSpeakers(); }
+function addSpeaker() {
+  SPEAKERS.push({ id:'sp_'+SPEAKERS.length, name:'화자 '+(SPEAKERS.length+1),
+    icon:'🎙', color:'#5A3A9A', voiceId:'', voiceName:'미설정', desc:'Voice ID를 입력해주세요',
+    emotion:'calm', stability:0.55, similarity:0.75, style:0.3 });
+  renderSpeakers();
+}
+
+// ── 자동 분석 ──
+function autoDetectAndApply() {
+  var script = document.getElementById('script-input').value.trim();
+  if (!script) { alert('대본을 먼저 입력해주세요.'); return; }
+
+  // 1. 카테고리 자동 감지
+  var detected = null;
+  CATEGORIES.forEach(function(cat) {
+    if (!detected && cat.detect && cat.detect.test(script)) detected = cat;
+  });
+
+  if (detected) {
+    CURRENT_CAT = detected;
+    selectCategory(detected.id, 'cat-grid');
+    var badge = document.getElementById('auto-detect-result');
+    var badgeText = document.getElementById('auto-detect-badge');
+    if (badge) badge.style.display = '';
+    if (badgeText) badgeText.textContent = '🤖 자동 감지: ' + detected.icon + ' ' + detected.name;
+  }
+
+  // 2. 화자 자동 감지 (대본에서 [화자명] 패턴 검색)
+  var found = {};
+  var re = /\[([^\]]{1,12})\]/g;
+  var m;
+  while ((m = re.exec(script)) !== null) {
+    var name = m[1].trim();
+    if (!/http|verse|chorus/i.test(name)) found[name] = true;
+  }
+  var re2 = /^([\w\s가-힣ぁ-ん一-龥]{1,10})\s*[:：]/gm;
+  while ((m = re2.exec(script)) !== null) {
+    var n2 = m[1].trim();
+    if (n2.length > 0 && !/http|www/.test(n2)) found[n2] = true;
+  }
+
+  var detectedNames = Object.keys(found);
+  if (detectedNames.length > 0 && CURRENT_CAT) {
+    // Try to map detected names to category speakers
+    var catSpeakers = CURRENT_CAT.speakers;
+    SPEAKERS = detectedNames.map(function(name, i) {
+      var catSp = catSpeakers[i] || catSpeakers[catSpeakers.length-1] || {};
+      return {
+        id: 'sp_' + i, name: name,
+        icon: catSp.icon || '🎙', color: catSp.color || '#2A5AC0',
+        voiceId: catSp.voiceId || '', voiceName: catSp.voiceName || '미설정',
+        desc: catSp.desc || '',
+        emotion: catSp.emotion || 'calm',
+        stability: catSp.stability || 0.55,
+        similarity: catSp.similarity || 0.75,
+        style: catSp.style || 0.3
+      };
+    });
+    renderSpeakers();
+  }
+
+  var previewEl = document.getElementById('parse-preview');
+  if (previewEl) {
+    var seg = parseScript(script);
+    previewEl.textContent = '→ ' + seg.length + '개 세그먼트, 화자 ' + (detectedNames.length || 1) + '명 감지';
+  }
+}
+
+// ── 파일 불러오기 ──
+function loadFile(event) {
+  var file = event.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var t = e.target.result;
+    if (file.name.endsWith('.html')) { var d=document.createElement('div'); d.innerHTML=t; t=d.textContent||d.innerText||''; }
+    document.getElementById('script-input').value = t;
+    document.getElementById('script-input').dispatchEvent(new Event('input'));
+  };
+  reader.readAsText(file,'utf-8');
+}
+function loadIVFile(e) {
+  var file = e.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) { document.getElementById('iv-script').value = ev.target.result; };
+  reader.readAsText(file,'utf-8');
+}
+function clearAll() { document.getElementById('script-input').value=''; AUDIO_BLOBS=[]; SEGMENTS=[]; document.getElementById('el-result').style.display='none'; }
+function syncFromEL() { var s=document.getElementById('script-input').value; if(s) document.getElementById('iv-script').value=s; else alert('EL 탭에서 대본을 입력해주세요.'); }
+
+// ── 대본 파싱 ──
+function parseScript(text) {
+  var segs=[]; var lines=text.split('\n'); var curSp='나레이터'; var buf=[];
+  lines.forEach(function(line){
+    var t=line.trim(); if(!t){if(buf.length){segs.push({speaker:curSp,text:buf.join(' ')});buf=[];}return;}
+    var bm=t.match(/^\[([^\]]+)\]\s*(.*)/);
+    if(bm){if(buf.length){segs.push({speaker:curSp,text:buf.join(' ')});buf=[];}curSp=bm[1].trim();if(bm[2].trim())buf.push(bm[2].trim());return;}
+    var cm=t.match(/^([\w\s가-힣ぁ-ん一-龥]{1,10})\s*[:：]\s*(.*)/);
+    if(cm&&cm[1].length<12){var sn=cm[1].trim();var sf=SPEAKERS.find(function(s){return s.name===sn;});
+      if(sf){if(buf.length){segs.push({speaker:curSp,text:buf.join(' ')});buf=[];}curSp=sn;if(cm[2].trim())buf.push(cm[2].trim());return;}}
+    buf.push(t);
+  });
+  if(buf.length)segs.push({speaker:curSp,text:buf.join(' ')});
+  var res=[];
+  segs.forEach(function(seg){
+    var max=150;
+    if(seg.text.length<=max){res.push(seg);return;}
+    var sents=seg.text.split(/(?<=[.!?。！？다요])\s*/);
+    var cur='';
+    sents.forEach(function(s){if((cur+s).length>max&&cur){res.push({speaker:seg.speaker,text:cur.trim()});cur=s+' ';}else cur+=s+' ';});
+    if(cur.trim())res.push({speaker:seg.speaker,text:cur.trim()});
+  });
+  return res.filter(function(s){return s.text.trim().length>0;});
+}
+
+// ── ElevenLabs API ──
+async function callElevenLabs(text, voiceId, sp) {
+  var key = localStorage.getItem('v2_el_key') || document.getElementById('el-key').value.trim();
+  if (!key) throw new Error('ElevenLabs API 키를 저장해주세요.');
+  var model = document.getElementById('el-model').value;
+  var fmt = document.getElementById('el-format').value;
+  var gStab = parseInt(document.getElementById('g-stability').value) / 100;
+  var gSim = parseInt(document.getElementById('g-similarity').value) / 100;
+  var res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json','xi-api-key':key,'Accept':'audio/mpeg' },
+    body: JSON.stringify({
+      text: text, model_id: model, output_format: fmt,
+      voice_settings: {
+        stability: sp ? sp.stability : gStab,
+        similarity_boost: sp ? sp.similarity : gSim,
+        style: sp ? (sp.style||0.3) : 0.3,
+        use_speaker_boost: true
+      }
+    })
+  });
+  if (!res.ok) { var e=await res.json().catch(function(){return{};});throw new Error(e.detail?JSON.stringify(e.detail):'HTTP '+res.status); }
+  return URL.createObjectURL(await res.blob());
+}
+
+// ── 테스트 ──
+async function testVoice(i) {
+  var sp = SPEAKERS[i]; if (!sp) return;
+  var vid = document.getElementById('vid-'+i); if (vid) sp.voiceId=vid.value.trim();
+  if (!sp.voiceId) { alert('Voice ID를 입력해주세요.'); return; }
+  var btn = document.getElementById('test-'+i);
+  if (btn) { btn.disabled=true; btn.textContent='⏳'; }
+  try {
+    var url = await callElevenLabs('안녕하세요. 저는 '+sp.name+'입니다. 목소리 테스트 중입니다.', sp.voiceId, sp);
+    new Audio(url).play();
+    if (btn) { btn.textContent='🔊 재생 중'; setTimeout(function(){if(btn){btn.disabled=false;btn.textContent='🔊 테스트';}},3000); }
+  } catch(e) { alert('테스트 실패: '+e.message); if(btn){btn.disabled=false;btn.textContent='🔊 테스트';} }
+}
+
+// ── 다화자 생성 메인 ──
+async function generateVoices() {
+  var script = document.getElementById('script-input').value;
+  if (!script) { showErr('el-err','대본을 입력해주세요.'); return; }
+  var key = localStorage.getItem('v2_el_key') || document.getElementById('el-key').value.trim();
+  if (!key) { showErr('el-err','ElevenLabs API 키를 먼저 저장해주세요.'); return; }
+  hideErr('el-err');
+
+  if (!CURRENT_CAT) { if (!confirm('카테고리를 선택하지 않았습니다. 기본 설정으로 진행할까요?')) return; }
+
+  SEGMENTS = parseScript(script);
+  if (!SEGMENTS.length) { showErr('el-err','대본 파싱 실패. 내용을 확인해주세요.'); return; }
+
+  AUDIO_BLOBS = new Array(SEGMENTS.length).fill(null);
+  document.getElementById('el-genbtn').disabled = true;
+  document.getElementById('el-spin').classList.add('on');
+  document.getElementById('el-result').style.display = 'block';
+  document.getElementById('play-all-btn').disabled = true;
+  renderSegments();
+
+  var total = SEGMENTS.length, done = 0;
+  var pause = parseInt(document.getElementById('el-pause').value);
+
+  for (var i=0; i<SEGMENTS.length; i++) {
+    var seg = SEGMENTS[i];
+    updateSeg(i, 'playing', '생성 중...');
+    document.getElementById('el-spin-msg').textContent = '('+(i+1)+'/'+total+') '+seg.speaker+' 음성 생성 중...';
+    updatePbar((i/total)*100);
+    try {
+      var sp = SPEAKERS.find(function(s){return s.name===seg.speaker;}) || SPEAKERS[0];
+      var vid2 = sp ? sp.voiceId : '';
+      if (!vid2) { updateSeg(i,'err','Voice ID 없음'); done++; continue; }
+      var url = await callElevenLabs(seg.text, vid2, sp);
+      AUDIO_BLOBS[i] = url;
+      updateSeg(i,'done','완료 ✓');
+    } catch(e) { updateSeg(i,'err','오류: '+e.message.slice(0,25)); }
+    done++;
+    updatePbar((done/total)*100);
+    if (i<SEGMENTS.length-1) await sleep(300);
+  }
+
+  document.getElementById('el-spin-msg').textContent = '완료';
+  document.getElementById('el-spin').classList.remove('on');
+  document.getElementById('el-genbtn').disabled = false;
+  document.getElementById('play-all-btn').disabled = false;
+  document.getElementById('el-pbar-text').textContent = '✅ '+ AUDIO_BLOBS.filter(Boolean).length+'/'+total+'개 생성됨';
+}
+
+function renderSegments() {
+  var c = document.getElementById('audio-segs');
+  c.innerHTML = SEGMENTS.map(function(seg,i) {
+    var sp = SPEAKERS.find(function(s){return s.name===seg.speaker;}) || {icon:'🎙',color:'#2A5AC0',name:seg.speaker};
+    var st = seg.text.length>58?seg.text.slice(0,56)+'...':seg.text;
+    return '<div class="seg-item" id="seg-'+i+'">' +
+      '<div class="seg-sp-icon" style="background:'+sp.color+'">'+sp.icon+'</div>' +
+      '<div style="flex:1;min-width:0"><div class="seg-sp-name">'+sp.name+'</div><div class="seg-text">'+escHtml(st)+'</div></div>' +
+      '<span class="seg-stat" id="seg-s-'+i+'">⏳ 대기</span>' +
+      '<button class="seg-play-btn" id="seg-p-'+i+'" onclick="playSeg('+i+')" disabled>▶</button></div>';
+  }).join('');
+}
+function updateSeg(i,state,text) {
+  var el=document.getElementById('seg-'+i);var st=document.getElementById('seg-s-'+i);var pb=document.getElementById('seg-p-'+i);
+  if(!el)return;
+  el.className='seg-item'+(state==='playing'?' playing':state==='done'?' done':state==='err'?' err':'');
+  if(st)st.textContent=text;
+  if(pb&&state==='done')pb.disabled=false;
+}
+function updatePbar(pct) {
+  var b=document.getElementById('el-pbar');if(b)b.style.width=Math.round(pct)+'%';
+  var t=document.getElementById('el-pbar-text');if(t&&pct<100)t.textContent=Math.round(pct)+'%...';
+}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);})}
+
+async function playSeg(i) {
+  if(!AUDIO_BLOBS[i])return;
+  var btn=document.getElementById('seg-p-'+i);if(btn)btn.textContent='⏸';
+  var audio=new Audio(AUDIO_BLOBS[i]);
+  audio.onended=function(){if(btn)btn.textContent='▶';};
+  audio.play();
+}
+async function playAll() {
+  if(IS_PLAYING)return; IS_PLAYING=true;
+  var btn=document.getElementById('play-all-btn');if(btn){btn.disabled=true;btn.textContent='⏸ 재생 중...';}
+  var pause=parseInt(document.getElementById('el-pause').value);
+  for(var i=0;i<AUDIO_BLOBS.length;i++){
+    if(!AUDIO_BLOBS[i])continue;
+    var seg=document.getElementById('seg-'+i);if(seg)seg.classList.add('playing');
+    await new Promise(function(res){var a=new Audio(AUDIO_BLOBS[i]);a.onended=res;a.onerror=res;a.play().catch(res);});
+    if(seg)seg.classList.remove('playing');
+    if(i<AUDIO_BLOBS.length-1)await sleep(pause);
+  }
+  IS_PLAYING=false;if(btn){btn.disabled=false;btn.textContent='▶ 전체 순서 재생';}
+}
+function downloadAll() {
+  AUDIO_BLOBS.forEach(function(url,i){
+    if(!url)return;
+    var sp=SEGMENTS[i]?SEGMENTS[i].speaker:'화자';
+    var a=document.createElement('a');a.href=url;
+    a.download=(String(i+1).padStart(2,'0'))+'_'+sp+'.mp3';
+    setTimeout(function(){a.click();},i*500);
+  });
+}
+
+// ── InVideo 장면 생성 ──
+async function generateScenes() {
+  var script = document.getElementById('iv-script').value.trim();
+  if (!script) { showErr('iv-err','대본을 입력해주세요.'); return; }
+  hideErr('iv-err');
+  document.getElementById('iv-genbtn').disabled=true;
+  document.getElementById('iv-spin').classList.add('on');
+
+  var cat = CURRENT_CAT;
+  var style = cat ? cat.ivStyle : 'documentary';
+  var bg = document.getElementById('iv-bg').value;
+  var trans = document.getElementById('iv-transition').value;
+  var sub = document.getElementById('iv-sub').value;
+  var durMode = document.getElementById('iv-dur').value;
+  var overlay = document.getElementById('iv-overlay').value;
+
+  var clKey = localStorage.getItem('v2_claude_key') || document.getElementById('claude-key').value.trim();
+  var scenes = [];
+
+  if (clKey) {
+    try {
+      document.getElementById('iv-spin-msg').textContent = 'AI가 장면을 분석 중 (Claude)...';
+      var catContext = cat ? cat.icon + ' ' + cat.name + ' (' + cat.desc + ')' : '일반';
+      var sysPrompt = '당신은 InVideo 영상 기획 전문가입니다.\n카테고리: ' + catContext + '\n영상 스타일: ' + style + ' | 배경: ' + bg + ' | 전환: ' + trans + '\n\n다음 대본을 장면별 JSON 배열로 변환해주세요. 형식:\n[{"scene_number":1,"duration_seconds":5,"dialogue":"대사","subtitle":"자막30자이내","visual_prompt":"영어비주얼프롬프트","camera_direction":"카메라방향","stock_keyword":"영어검색어","text_overlay":"강조텍스트또는빈문자열","transition":"' + trans + '","speaker":"화자명"}]\n\n순수 JSON 배열만 출력. 설명 없이.';
+      var r = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json','x-api-key':clKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:3000,system:sysPrompt,messages:[{role:'user',content:'대본:\n\n'+script.slice(0,2000)}]})
+      });
+      var d = await r.json();
+      if (d.content&&d.content[0]) {
+        var raw = d.content[0].text.replace(/```json|```/g,'').trim();
+        scenes = JSON.parse(raw);
+      }
+    } catch(e) { console.log('Claude fallback:', e.message); }
+  }
+
+  if (!scenes.length) {
+    document.getElementById('iv-spin-msg').textContent = '규칙 기반 장면 생성 중...';
+    scenes = buildScenesRule(script, style, bg, trans, sub, durMode, cat);
+  }
+
+  IV_SCENES = scenes;
+  renderScenesPreview(scenes);
+  document.getElementById('iv-json-output').textContent = JSON.stringify({category:cat?cat.name:'일반',style:style,scenes:scenes},null,2);
+  document.getElementById('iv-result').style.display='block';
+  document.getElementById('iv-genbtn').disabled=false;
+  document.getElementById('iv-spin').classList.remove('on');
+}
+
+function buildScenesRule(script, style, bg, trans, sub, durMode, cat) {
+  var lines = script.split('\n').filter(function(l){return l.trim();});
+  var scenes = []; var N = 2;
+  for (var i=0;i<lines.length;i+=N) {
+    var sl = lines.slice(i,i+N).map(function(l){return l.replace(/\[[^\]]+\]\s*/g,'').trim();}).filter(Boolean);
+    var dialogue = sl.join(' ');
+    if (!dialogue) continue;
+    var sn = scenes.length+1; var isHook=sn<=2; var isOutro=i+N>=lines.length;
+    var dur = durMode==='auto' ? Math.max(3,Math.min(8,Math.ceil(dialogue.length/5))) : parseInt(durMode);
+    var sub2 = dialogue.length>30 ? dialogue.slice(0,28)+'...' : dialogue;
+    var vis = buildVisual(dialogue, style, isHook, isOutro, cat);
+    var cam = isHook ? 'extreme_close_up' : isOutro ? 'wide_shot' : (style==='interview'?'talking_head':style==='drama'?'dynamic_cut':'medium_shot');
+    scenes.push({scene_number:sn,duration_seconds:dur,dialogue:dialogue,subtitle:sub2,
+      visual_prompt:vis,camera_direction:cam,stock_keyword:buildStock(dialogue,cat),
+      text_overlay:isHook&&dialogue.length<30?dialogue:'',transition:trans});
+  }
+  return scenes;
+}
+function buildVisual(text, style, isHook, isOutro, cat) {
+  var base = '';
+  if (!cat) base = 'korean elderly lifestyle, warm lighting';
+  else if (cat.id==='senior_health') {
+    if(/뇌|치매|인지|기억/.test(text)) base='human brain glowing neurons medical visualization, warm blue light, 4K';
+    else if(/혈압|혈당/.test(text)) base='healthy blood vessels heart medical illustration, clean medical style';
+    else base='cheerful korean elderly person, healthy lifestyle, warm golden hour, documentary style';
+  } else if (cat.id==='tiki_taka') base='two people debate discussion, dynamic split screen, studio lighting, modern set';
+  else if (cat.id==='saying') base='ancient east asian calligraphy scroll, ink brush, temple garden, zen atmosphere, 4K';
+  else if (cat.id==='humor') base='funny cartoon style illustration, bright colors, comic moment, playful atmosphere';
+  else if (cat.id==='knowledge') base='scientific infographic, clean white background, educational visualization, modern design';
+  else if (cat.id==='trivia') base='quiz show set, glowing light bulb, knowledge explosion concept, vibrant colors';
+  else if (cat.id==='drama') base='cinematic korean drama scene, emotional lighting, film look, anamorphic lens';
+  else if (cat.id==='lyric') base='vintage korean countryside, nostalgic watercolor style, golden hour, 1970s aesthetic';
+  else base='cinematic scene, professional lighting, 4K';
+  var prefix = isHook ? 'cinematic dramatic shot, extreme close-up, ' : isOutro ? 'beautiful wide establishing shot, peaceful, ' : '';
+  return prefix + base + ', no text, no logo, photorealistic';
+}
+function buildStock(text, cat) {
+  if (!cat) return 'korean lifestyle elderly';
+  var m = {senior_health:'brain health elderly korean',tiki_taka:'debate discussion meeting',saying:'chinese calligraphy wisdom ancient',humor:'funny comedy laughing',knowledge:'education science visualization',trivia:'quiz knowledge discovery',drama:'cinematic drama emotional',lyric:'korean countryside nostalgic vintage'};
+  return m[cat.id] || 'korean lifestyle';
+}
+function renderScenesPreview(scenes) {
+  var c = document.getElementById('iv-scenes-preview');
+  c.innerHTML = scenes.slice(0,6).map(function(s) {
+    return '<div class="scene-card"><div class="scene-hd"><span class="scene-num">Scene '+s.scene_number+'</span><span class="scene-tag" style="background:#f0e8ff;color:var(--iv);border:1px solid var(--iv-line)">⏱ '+s.duration_seconds+'초</span><span class="scene-tag" style="background:#e8f0ff;color:var(--el);border:1px solid var(--el-line)">📷 '+s.camera_direction+'</span></div><div class="scene-visual">🖼 '+escHtml(s.visual_prompt)+'</div><div class="scene-sub">'+escHtml(s.subtitle)+'</div></div>';
+  }).join('') + (scenes.length>6?'<div style="text-align:center;padding:10px;color:var(--muted);font-size:11px">외 '+(scenes.length-6)+'개 장면 (JSON에 포함됨)</div>':'');
+}
+function copyIVJson(){var t=document.getElementById('iv-json-output').textContent;navigator.clipboard.writeText(t).then(function(){alert('✅ InVideo JSON 복사!\nInVideo AI → Script → Custom Script에 붙여넣기 하세요.');});}
+function dlIVJson(){var t=document.getElementById('iv-json-output').textContent;var b=new Blob([t],{type:'application/json;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='invideo_'+(CURRENT_CAT?CURRENT_CAT.id:'scene')+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
+function copyVisualPrompts(){var p=IV_SCENES.map(function(s){return 'Scene '+s.scene_number+': '+s.visual_prompt;}).join('\n');navigator.clipboard.writeText(p).then(function(){alert('비주얼 프롬프트 '+IV_SCENES.length+'개 복사!');});}
+
+// ── 유틸 ──
+function showErr(id,msg){var e=document.getElementById(id);if(e){e.textContent=msg;e.classList.add('on');}}
+function hideErr(id){var e=document.getElementById(id);if(e)e.classList.remove('on');}
+function escHtml(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>

@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>☕ MOCA 자동숏츠 — 주제만 입력, 업로드까지 자동</title>
+<link rel="stylesheet" href="../../assets/common.css">
+<style>
+:root{
+  --bg:#fff9fc; --line:#f1dce7; --line-strong:#e8a6c6;
+  --pink:#ef6fab; --pink-deep:#b14d82; --pink-soft:#fff0f8;
+  --purple:#9181ff; --purple-soft:#f4eaff;
+  --muted:#9a8e94; --sub:#7b7077; --text:#2b2430;
+  --green:#eefbf7; --peach:#fff7ee;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);margin:0;font-family:'Pretendard Variable','Noto Sans JP',Pretendard,Inter,sans-serif;color:var(--text)}
+button,input,select,textarea{font:inherit}
+.container{max-width:1200px;margin:0 auto;padding:16px 14px 120px}
+.hide{display:none !important}
+
+/* ─── 상단바 ─── */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  background:#fff;border:1px solid var(--line);border-radius:22px;padding:12px 18px;
+  box-shadow:0 6px 18px rgba(126,87,110,.06);margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#ffc0de,var(--pink) 52%,var(--purple));color:#fff;font-weight:900;font-size:22px}
+.brand h1{margin:0;font-size:19px;font-weight:900}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.tb-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb-btn{padding:10px 16px;border-radius:999px;border:1px solid var(--line);background:#fff;
+  font-weight:800;font-size:12px;cursor:pointer;transition:.15s}
+.tb-btn:hover{border-color:var(--line-strong)}
+.tb-btn.pri{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border-color:transparent}
+
+/* ─── 채널 선택 ─── */
+.ch-sel{display:inline-flex;gap:4px;background:var(--pink-soft);border:1px solid var(--line);
+  border-radius:999px;padding:3px}
+.ch-sel button{padding:7px 13px;border:none;border-radius:999px;background:transparent;
+  font-size:12px;font-weight:800;color:var(--sub);cursor:pointer}
+.ch-sel button.on{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;
+  box-shadow:0 4px 10px rgba(145,129,255,.25)}
+
+/* ─── 대시보드 현황바 ─── */
+.status-bar{display:flex;gap:10px;flex-wrap:wrap;padding:12px 18px;margin-bottom:14px;
+  background:linear-gradient(135deg,#fff7ee,#fff0f8);border:1px solid #f0d6a0;border-radius:18px;
+  font-size:13px;color:#6a4a20;font-weight:700}
+.status-bar .item{display:flex;align-items:center;gap:6px;flex:1;min-width:120px}
+.status-bar .item strong{color:#b14d82}
+
+/* ─── 모드 카드 (4개 크게) ─── */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.mode-card{padding:28px 24px;background:#fff;border:2px solid var(--line);border-radius:24px;
+  cursor:pointer;text-align:left;transition:.2s;display:flex;flex-direction:column;gap:8px;
+  box-shadow:0 4px 14px rgba(126,87,110,.05);position:relative;overflow:hidden}
+.mode-card:hover{transform:translateY(-3px);border-color:var(--line-strong);
+  box-shadow:0 14px 32px rgba(232,166,198,.22)}
+.mode-card .emoji{font-size:48px}
+.mode-card h3{margin:0;font-size:22px;color:var(--text);font-weight:900}
+.mode-card p{margin:0;font-size:13px;color:var(--sub);line-height:1.75}
+.mode-card .go{margin-top:10px;align-self:flex-start;padding:10px 20px;border-radius:999px;
+  background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;
+  font-size:13px;font-weight:900;border:none;cursor:pointer}
+.mode-card.featured{background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft));border-color:var(--line-strong)}
+.mode-card.featured::before{content:'⭐ 인기';position:absolute;top:14px;right:14px;
+  padding:4px 11px;border-radius:999px;font-size:10px;font-weight:900;
+  background:linear-gradient(135deg,#ffd700,#ffa500);color:#fff}
+
+/* 하단 2개 카드 */
+.helper-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.helper-card{padding:18px 22px;background:#fff;border:1px solid var(--line);border-radius:18px;
+  cursor:pointer;display:flex;align-items:center;gap:14px;transition:.15s}
+.helper-card:hover{border-color:var(--line-strong);background:var(--pink-soft)}
+.helper-card .emoji{font-size:28px}
+.helper-card .info{flex:1}
+.helper-card .info strong{display:block;font-size:15px;font-weight:900}
+.helper-card .info span{font-size:12px;color:var(--sub)}
+.helper-card .go{padding:7px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);
+  font-size:11px;font-weight:800;color:var(--pink-deep)}
+
+/* ─── 6단계 진행바 (상단 고정) ─── */
+.stepbar-wrap{position:sticky;top:10px;z-index:50;background:transparent;margin-bottom:14px}
+.stepbar{display:flex;gap:5px;padding:10px;background:#fff;border:1px solid var(--line);
+  border-radius:18px;box-shadow:0 8px 22px rgba(126,87,110,.1);overflow-x:auto}
+.stepbox{flex:1;min-width:120px;padding:11px 8px;border-radius:12px;text-align:center;
+  font-weight:800;font-size:11px;background:#fff;border:2px solid transparent;color:var(--sub);
+  cursor:pointer;transition:.15s}
+.stepbox .num{display:block;font-size:17px;font-weight:900;margin-bottom:2px}
+.stepbox.done{background:var(--green);border-color:#a8dcc9;color:#1a7a5a}
+.stepbox.done .num::after{content:' ✓'}
+.stepbox.active{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;
+  box-shadow:0 4px 12px rgba(232,166,198,.35);transform:scale(1.02)}
+
+/* ─── 패널 / 입력 / 버튼 ─── */
+.panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 24px;
+  margin-bottom:12px;box-shadow:0 4px 14px rgba(126,87,110,.05)}
+.panel h3{margin:0 0 6px;font-size:20px;color:var(--pink-deep);font-weight:900}
+.panel .desc{margin:0 0 16px;font-size:13px;color:var(--sub);line-height:1.75}
+.panel h4{margin:14px 0 8px;font-size:14px;color:var(--text);font-weight:900}
+
+label{display:block;font-size:12px;font-weight:800;color:#5a4a56;margin-bottom:6px}
+.input, .select, .ta{width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;
+  font-size:14px;background:#fff;outline:none;transition:.15s;font-family:inherit}
+.input:focus, .select:focus, .ta:focus{border-color:var(--line-strong);box-shadow:0 0 0 3px rgba(239,111,171,.12)}
+.ta{min-height:120px;resize:vertical;line-height:1.75}
+
+.btn{padding:12px 22px;border-radius:12px;border:2px solid var(--line);background:#fff;
+  font-weight:800;font-size:13px;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--line-strong)}
+.btn.pri{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border-color:transparent}
+.btn.lg{padding:16px 32px;font-size:15px}
+.btn.full{width:100%}
+.btn.sv{background:var(--green);border-color:#a8dcc9;color:#1a7a5a}
+.btn.warn{background:#fff5f5;border-color:#f0b8b8;color:#b04040}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+/* ─── 옵션 pill row ─── */
+.opt-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.opt{padding:10px 16px;border:2px solid var(--line);background:#fff;border-radius:14px;
+  font-size:13px;font-weight:800;cursor:pointer;color:var(--sub);transition:.15s}
+.opt:hover{border-color:var(--line-strong)}
+.opt.on{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border-color:transparent}
+
+/* ─── 주제 입력 방식 탭 ─── */
+.topic-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;background:var(--pink-soft);
+  border:1px solid var(--line);border-radius:14px;padding:4px}
+.topic-tabs button{flex:1;min-width:130px;padding:10px;border:none;border-radius:11px;
+  background:transparent;color:var(--sub);font-weight:800;font-size:12px;cursor:pointer}
+.topic-tabs button.on{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff}
+
+/* ─── 화면비율 팝업 ─── */
+.aspect-overlay{position:fixed;inset:0;background:rgba(30,18,30,.6);backdrop-filter:blur(5px);
+  z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
+.aspect-overlay.on{display:flex;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.aspect-modal{background:#fff;border-radius:28px;padding:30px 26px;max-width:520px;width:100%;
+  box-shadow:0 20px 50px rgba(30,18,30,.3);text-align:center}
+.aspect-modal h2{margin:0 0 6px;font-size:24px;color:var(--pink-deep)}
+.aspect-modal p{margin:0 0 18px;color:var(--sub);font-size:13px}
+.aspect-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.aspect-card{padding:22px 16px;border:3px solid var(--line);border-radius:20px;cursor:pointer;
+  background:#fff;transition:.2s;font-family:inherit;text-align:center}
+.aspect-card:hover{border-color:var(--line-strong);transform:translateY(-3px)}
+.aspect-card .shape{margin:0 auto 12px;background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft));
+  border:2px solid var(--line-strong);border-radius:10px}
+.aspect-card .shape.l{width:130px;height:73px}
+.aspect-card .shape.p{width:73px;height:130px}
+.aspect-card strong{display:block;font-size:16px;color:var(--pink-deep);margin-bottom:2px}
+.aspect-card span{display:block;font-size:11px;color:var(--sub);line-height:1.6}
+
+/* ─── 장면 카드 (가로 스크롤) ─── */
+.scenes-wrap{overflow-x:auto;padding-bottom:10px;margin:0 -4px}
+.scenes-row{display:flex;gap:12px;padding:4px}
+.scene-card{flex:0 0 300px;background:#fff;border:2px solid var(--line);border-radius:18px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:8px;transition:.15s}
+.scene-card:hover{border-color:var(--line-strong)}
+.scene-card h5{margin:0;font-size:13px;color:var(--pink-deep);font-weight:900;
+  display:flex;align-items:center;gap:6px}
+.scene-card h5 .num{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--purple));
+  color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.scene-card .label{font-size:10px;color:var(--muted);margin-top:-4px}
+.scene-section{background:var(--pink-soft);border-radius:10px;padding:9px 11px}
+.scene-section .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.scene-section .hd b{font-size:10px;color:var(--pink-deep);font-weight:900}
+.scene-section .hd button{border:none;background:transparent;font-size:10px;color:var(--pink);cursor:pointer;font-weight:800;padding:2px 6px;border-radius:6px}
+.scene-section .hd button:hover{background:#fff}
+.scene-section textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  font-size:11.5px;line-height:1.65;font-family:inherit;background:#fff;resize:vertical;min-height:60px}
+.scene-card .img-box{min-height:100px;background:#fff;border:1px dashed var(--line);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;overflow:hidden}
+.scene-card .img-box img{width:100%;height:auto;display:block}
+
+/* ─── 스타일 카드 (4열) ─── */
+.style-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.st-card{padding:14px 10px;background:#fff;border:2px solid var(--line);border-radius:14px;
+  text-align:center;cursor:pointer;transition:.15s}
+.st-card:hover{border-color:var(--line-strong)}
+.st-card.on{background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft));
+  border-color:var(--line-strong);box-shadow:0 6px 14px rgba(232,166,198,.18)}
+.st-card .emoji{font-size:28px;display:block;margin-bottom:4px}
+.st-card strong{display:block;font-size:12px}
+.st-card span{display:block;font-size:10px;color:var(--muted)}
+
+/* ─── 목소리 메달 ─── */
+.voice-list{display:grid;gap:8px;margin-bottom:12px}
+.voice-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--line);
+  border-radius:14px;background:#fff;cursor:pointer;transition:.15s}
+.voice-row:hover{border-color:var(--line-strong)}
+.voice-row.on{box-shadow:0 0 0 3px rgba(239,111,171,.28)}
+.voice-row.gold{border-color:#f0d070;background:linear-gradient(135deg,#fffef0,#fff)}
+.voice-row.silver{border-color:#c8c8c8;background:linear-gradient(135deg,#fafafa,#fff)}
+.voice-row.bronze{border-color:#cd7f32;background:linear-gradient(135deg,#fff5ed,#fff)}
+.voice-row .medal{font-size:22px}
+.voice-row .info{flex:1}
+.voice-row .info strong{display:block;font-size:14px}
+.voice-row .info span{font-size:11px;color:var(--muted)}
+.voice-row .play{padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:999px;
+  font-size:11px;font-weight:800;cursor:pointer}
+
+/* ─── 슬라이더 ─── */
+.slider-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.slider-row label{flex:0 0 90px;margin-bottom:0;font-size:11px}
+.slider-row input[type=range]{flex:1;accent-color:var(--pink)}
+.slider-row .val{flex:0 0 44px;text-align:right;font-weight:900;color:var(--pink-deep);font-size:13px}
+
+/* ─── 체크박스 그룹 ─── */
+.chk-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--pink-soft);
+  border-radius:10px;margin-bottom:4px;font-size:13px}
+.chk-row input{accent-color:var(--pink);width:18px;height:18px}
+.chk-row.done{background:var(--green)}
+
+/* ─── 진행 리스트 ─── */
+.progress-list{display:grid;gap:6px;margin-top:10px}
+.prog-item{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fff9fc;
+  border:1px solid var(--line);border-radius:11px;font-size:13px}
+.prog-item.done{background:var(--green);border-color:#a8dcc9;color:#1a7a5a}
+.prog-item.loading{background:var(--peach);border-color:#f1e0c4;color:#9a5a1a}
+.prog-item .st{font-size:14px;width:22px;text-align:center}
+
+/* ─── 비용 박스 ─── */
+.cost-box{padding:12px 16px;background:linear-gradient(135deg,var(--peach),var(--pink-soft));
+  border:2px dashed #f1a860;border-radius:12px;margin:10px 0}
+.cost-box .line{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}
+.cost-box .total{border-top:1px solid #f1a860;padding-top:5px;margin-top:5px;font-weight:900;color:var(--pink-deep);font-size:14px}
+
+/* ─── 점수 카드 ─── */
+.score-card{padding:16px 18px;background:linear-gradient(135deg,#fff7ee,#fff0f8);border:1px solid #f0d6a0;
+  border-radius:14px;margin:10px 0}
+.score-card h4{margin:0 0 8px;font-size:14px;color:#8b5020}
+.score-card .line{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#4a3a1a}
+.score-card .stars{color:#f0b000;letter-spacing:1px}
+
+/* ─── 플랫폼 패키지 카드 ─── */
+.pkg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.pkg-card{padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.pkg-card h5{margin:0 0 8px;font-size:13px;color:var(--pink-deep);display:flex;align-items:center;gap:6px}
+.pkg-card .row{display:flex;gap:6px;align-items:center;margin:5px 0;font-size:11.5px}
+.pkg-card .row input, .pkg-card .row textarea{flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:11px;font-family:inherit;background:#fff9fc}
+.pkg-card .row button{padding:6px 10px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:10px;font-weight:800;cursor:pointer}
+.pkg-card .opt-time{font-size:10.5px;color:#b14d82;margin-top:6px;font-weight:800}
+
+/* ─── 대기열 ─── */
+.queue-list{display:grid;gap:6px;max-height:360px;overflow:auto;padding:6px;
+  background:var(--pink-soft);border-radius:12px;border:1px solid var(--line)}
+.queue-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;
+  border:1px solid var(--line);border-radius:10px;font-size:12px}
+.queue-item .num{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--purple));
+  color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:11px}
+.queue-item .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.queue-item.done{background:var(--green);border-color:#a8dcc9}
+.queue-item.working{background:var(--peach);border-color:#f1e0c4}
+.queue-item button{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:10px;cursor:pointer}
+
+/* ─── 성과 분석 / 대량 생산 ─── */
+.analytics-card{padding:16px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:10px}
+.analytics-card h5{margin:0 0 6px;font-size:13px}
+.analytics-table{width:100%;border-collapse:collapse;font-size:12px}
+.analytics-table th, .analytics-table td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line)}
+.analytics-table th{background:var(--pink-soft);color:var(--pink-deep);font-weight:900}
+
+/* ─── 캐릭터 / 시리즈 기존 카드 ─── */
+.char-card{padding:16px;border:2px solid var(--line);border-radius:16px;background:#fff;margin-bottom:10px}
+.char-card .flag{font-size:30px;margin-bottom:4px}
+.char-card h5{margin:0 0 4px;font-size:15px}
+.char-card .props{font-size:11px;line-height:1.75;color:#5a4a56}
+.char-card .props b{color:var(--pink-deep)}
+
+/* ─── 토스트 ─── */
+#shToast{position:fixed;right:20px;bottom:22px;padding:12px 18px;border-radius:14px;
+  background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-weight:800;font-size:13px;
+  box-shadow:0 10px 24px rgba(145,129,255,.3);opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:9999}
+#shToast.on{opacity:1;transform:translateY(0)}
+
+@media(max-width:900px){
+  .mode-grid, .helper-grid, .aspect-cards{grid-template-columns:1fr}
+  .style-grid{grid-template-columns:repeat(2,1fr)}
+  .pkg-grid{grid-template-columns:1fr}
+  .scene-card{flex-basis:260px}
+  .brand h1{font-size:17px}
+  .brand p{display:none}
+}
+@media(max-width:540px){
+  .style-grid{grid-template-columns:1fr 1fr}
+  .stepbox{min-width:100px;font-size:10.5px}
+  .stepbox .num{font-size:15px}
+  .mode-card{padding:22px 18px}
+  .mode-card .emoji{font-size:38px}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ═══ 상단바 ═══ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">☕</div>
+      <div>
+        <h1>MOCA 자동숏츠</h1>
+        <p>주제만 입력하면 업로드 준비까지 자동</p>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="ch-sel" id="chSel">
+        <button data-ch="kr"   onclick="setChannel('kr',this)">🇰🇷 한국</button>
+        <button data-ch="jp"   onclick="setChannel('jp',this)">🇯🇵 일본</button>
+        <button data-ch="kojp" class="on" onclick="setChannel('kojp',this)">🇰🇷🇯🇵 동시</button>
+      </div>
+      <button class="tb-btn" onclick="goDash()">🏠 대시보드</button>
+      <button class="tb-btn pri" onclick="location.href='../../index.html'">← 허브</button>
+    </div>
+  </header>
+
+  <!-- ═══ 오늘의 현황 ═══ -->
+  <div class="status-bar" id="statusBar"></div>
+
+  <!-- ══════ 대시보드 ══════ -->
+  <section id="view-dash" class="view">
+    <div class="mode-grid">
+      <button class="mode-card featured" onclick="goMode('instant')">
+        <span class="emoji">⚡</span>
+        <h3>딸깍 모드</h3>
+        <p>주제만 입력하면 AI가 자동으로<br>대본·이미지·음성·업로드 패키지까지!</p>
+        <span class="go">지금 시작 →</span>
+      </button>
+      <button class="mode-card" onclick="goMode('auto')">
+        <span class="emoji">🤖</span>
+        <h3>완전자동 모드</h3>
+        <p>여러 주제를 한번에 대기열에 넣고<br>순차 자동 처리 · 대량 생산용</p>
+        <span class="go">시작 →</span>
+      </button>
+      <button class="mode-card" onclick="goMode('tiki')">
+        <span class="emoji">🌍</span>
+        <h3>티키타카 모드</h3>
+        <p>캐릭터 대결 배틀!<br>Countryballs 스타일 · 한일 감성</p>
+        <span class="go">시작 →</span>
+      </button>
+      <button class="mode-card" onclick="goMode('resume')">
+        <span class="emoji">📂</span>
+        <h3>이어 만들기</h3>
+        <p>저장된 프로젝트 불러오기<br>중단한 지점에서 이어서 작업</p>
+        <span class="go">불러오기 →</span>
+      </button>
+    </div>
+
+    <div class="helper-grid">
+      <button class="helper-card" onclick="goMode('analytics')">
+        <span class="emoji">📊</span>
+        <div class="info"><strong>성과 분석</strong><span>영상별·채널·AI 인사이트</span></div>
+        <span class="go">보기</span>
+      </button>
+      <button class="helper-card" onclick="goMode('batch')">
+        <span class="emoji">🏭</span>
+        <div class="info"><strong>대량 생산</strong><span>배치·시리즈·월간 캘린더·재활용</span></div>
+        <span class="go">시작</span>
+      </button>
+    </div>
+
+    <!-- 보조 링크 -->
+    <div class="panel">
+      <h4 style="margin-top:0">🛠 보조 도구</h4>
+      <div class="actions">
+        <button class="btn" onclick="goMode('characters')">🎭 캐릭터 라이브러리</button>
+        <button class="btn" onclick="goMode('series')">📺 시리즈 관리</button>
+        <button class="btn sv" onclick="fillExample()">✨ 예시로 자동 체험</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 6단계 파이프라인 (딸깍/티키타카 공통) ══════ -->
+  <section id="view-pipe" class="view hide">
+    <div class="stepbar-wrap">
+      <div class="stepbar" id="stepbar"></div>
+    </div>
+    <div id="step-content"></div>
+    <div class="actions" id="step-nav"></div>
+  </section>
+
+  <!-- ══════ 완전자동 모드 ══════ -->
+  <section id="view-auto" class="view hide">
+    <div class="panel">
+      <h3>🤖 완전자동 모드</h3>
+      <p class="desc">여러 주제를 대기열에 쌓아두면 순서대로 자동으로 영상 준비물을 만들어드려요.</p>
+
+      <label>주제, URL 또는 텍스트</label>
+      <textarea class="ta" id="auto-input" placeholder="예: 치매 예방 음식 TOP5&#10;또는 유튜브 영상 URL&#10;또는 전체 대본 붙여넣기"></textarea>
+      <div class="actions">
+        <button class="btn pri" onclick="autoQueueAdd()">+ 대기열에 추가</button>
+        <button class="btn" onclick="autoQueueClear()">🗑 전체 삭제</button>
+      </div>
+
+      <h4>대기열 <span id="auto-q-count" style="font-size:11px;color:var(--sub);font-weight:400">0개</span></h4>
+      <div class="queue-list" id="auto-queue"></div>
+
+      <h4>공통 설정</h4>
+      <div class="opt-row">
+        <span style="align-self:center;font-size:11px;color:var(--sub);width:60px">스타일</span>
+        <button class="opt on" data-auto-style="emotion" onclick="autoPick('style',this)">감동</button>
+        <button class="opt" data-auto-style="knowledge" onclick="autoPick('style',this)">지식</button>
+        <button class="opt" data-auto-style="comic" onclick="autoPick('style',this)">코믹</button>
+        <button class="opt" data-auto-style="info" onclick="autoPick('style',this)">정보</button>
+      </div>
+      <div class="opt-row">
+        <span style="align-self:center;font-size:11px;color:var(--sub);width:60px">이미지</span>
+        <button class="opt on" data-auto-img="ghibli" onclick="autoPick('img',this)">지브리풍</button>
+        <button class="opt" data-auto-img="realism" onclick="autoPick('img',this)">실사</button>
+        <button class="opt" data-auto-img="oil" onclick="autoPick('img',this)">유화</button>
+        <button class="opt" data-auto-img="anime" onclick="autoPick('img',this)">일본애니</button>
+      </div>
+      <div class="opt-row">
+        <span style="align-self:center;font-size:11px;color:var(--sub);width:60px">음성</span>
+        <button class="opt on" data-auto-voice="warm" onclick="autoPick('voice',this)">따뜻한</button>
+        <button class="opt" data-auto-voice="calm" onclick="autoPick('voice',this)">차분한</button>
+        <button class="opt" data-auto-voice="bright" onclick="autoPick('voice',this)">밝은</button>
+      </div>
+
+      <button class="btn pri full lg" onclick="autoRunAll()" style="margin-top:10px">🚀 전체 자동 생성 시작!</button>
+      <div id="auto-progress" class="progress-list" style="margin-top:10px"></div>
+
+      <div class="actions">
+        <button class="btn" onclick="goDash()">← 대시보드</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 이어 만들기 ══════ -->
+  <section id="view-resume" class="view hide">
+    <div class="panel">
+      <h3>📂 이어 만들기</h3>
+      <p class="desc">저장된 프로젝트를 불러와 중단한 지점부터 이어서 작업할 수 있어요.</p>
+      <div id="resume-list"></div>
+      <div class="actions">
+        <button class="btn" onclick="goDash()">← 대시보드</button>
+        <button class="btn warn" onclick="resumeClearAll()">🗑 모든 프로젝트 삭제</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 성과 분석 ══════ -->
+  <section id="view-analytics" class="view hide">
+    <div class="panel">
+      <h3>📊 성과 분석</h3>
+      <p class="desc">업로드한 영상의 조회수·완료율을 입력하면 다음 영상 전략을 AI가 추천해드려요.</p>
+
+      <h4>+ 새 영상 성과 등록</h4>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px">
+        <input class="input" id="an-title" placeholder="영상명">
+        <input class="input" type="number" id="an-views" placeholder="조회수">
+        <input class="input" type="number" id="an-rate" placeholder="완료율 %">
+        <input class="input" id="an-style" placeholder="스타일 (예: 감동)">
+      </div>
+      <div class="actions"><button class="btn pri" onclick="analyticsAdd()">기록 추가</button></div>
+
+      <h4>영상별 성과</h4>
+      <div id="analytics-list"></div>
+
+      <h4>🤖 AI 인사이트</h4>
+      <div id="analytics-insight" class="score-card">등록된 영상이 3개 이상이면 AI가 공통점을 분석해드려요.</div>
+      <div class="actions">
+        <button class="btn pri" onclick="analyticsInsight()">🤖 AI 인사이트 생성</button>
+        <button class="btn" onclick="goDash()">← 대시보드</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 대량 생산 ══════ -->
+  <section id="view-batch" class="view hide">
+    <div class="panel">
+      <h3>🏭 대량 생산</h3>
+      <p class="desc">배치 · 시리즈 · 월간 캘린더 · 재활용까지 한 번에</p>
+
+      <h4>📦 배치 생성 — 주제 10개 동시</h4>
+      <textarea class="ta" id="batch-topics" placeholder="한 줄에 주제 하나씩 (최대 10개)&#10;치매 예방 음식 TOP5&#10;할머니가 매일 하는 습관&#10;노후에 후회하지 않는 3가지"></textarea>
+      <div class="actions"><button class="btn pri" onclick="batchRun()">📦 배치 생성</button></div>
+      <div id="batch-out" class="progress-list"></div>
+
+      <h4 style="margin-top:18px">📚 시리즈 자동 생성 — 1편·2편·3편 연속</h4>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+        <input class="input" id="series-theme" placeholder='시리즈 주제 (예: "한국 vs 일본 배틀")'>
+        <input class="input" type="number" id="series-count" placeholder="편수" value="5">
+      </div>
+      <div class="actions"><button class="btn pri" onclick="seriesRun()">📚 시리즈 자동 생성</button></div>
+      <div id="series-out"></div>
+
+      <h4 style="margin-top:18px">🗓 월간 콘텐츠 캘린더</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <input class="input" id="cal-channel" placeholder='채널 컨셉 (예: "시니어 감동 채널")'>
+        <input class="input" id="cal-target" placeholder='타깃 (예: "60대 여성")'>
+      </div>
+      <div class="actions"><button class="btn pri" onclick="calendarRun()">🗓 한달치 자동 기획</button></div>
+      <div id="cal-out"></div>
+
+      <h4 style="margin-top:18px">♻️ 재활용 — 롱폼/블로그 → 숏츠 자동 분할</h4>
+      <textarea class="ta" id="recycle-input" placeholder="롱폼 대본 또는 블로그 글을 붙여넣으세요 (300자 이상)"></textarea>
+      <div class="actions"><button class="btn pri" onclick="recycleRun()">♻️ 숏츠로 자동 변환</button></div>
+      <div id="recycle-out"></div>
+
+      <div class="actions"><button class="btn" onclick="goDash()">← 대시보드</button></div>
+    </div>
+  </section>
+
+  <!-- ══════ 캐릭터 라이브러리 ══════ -->
+  <section id="view-characters" class="view hide">
+    <div class="panel">
+      <h3>🎭 캐릭터 라이브러리</h3>
+      <p class="desc">자주 쓰는 캐릭터를 저장하면 티키타카 대본에 바로 불러서 쓸 수 있어요.</p>
+      <div id="char-list"></div>
+      <h4>+ 새 캐릭터 추가</h4>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+        <input class="input" id="char-name" placeholder="예: 코리아볼 / 재팬볼">
+        <input class="input" id="char-flag" placeholder="🇰🇷">
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+        <input class="input" id="char-personality" placeholder="성격 (예: 자존심강함)">
+        <input class="input" id="char-speech" placeholder="말투 (예: 반말)">
+        <input class="input" id="char-appearance" placeholder="외모 (예: 태극기 공)">
+      </div>
+      <div style="margin-top:8px">
+        <label>대표 이미지 프롬프트</label>
+        <textarea class="ta" id="char-prompt" placeholder="countryball with Korean flag pattern, round ball shape, cute eyes, comic style" style="min-height:70px"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn pri" onclick="saveCharacter()">💾 저장</button>
+        <button class="btn" onclick="goDash()">← 대시보드</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 시리즈 관리 ══════ -->
+  <section id="view-series" class="view hide">
+    <div class="panel">
+      <h3>📺 시리즈 관리</h3>
+      <p class="desc">시리즈물을 저장해두면 '다음 편' 아이디어를 AI가 이어서 생성해드려요.</p>
+      <div id="series-list"></div>
+
+      <h4>+ 새 시리즈</h4>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+        <input class="input" id="sr-name" placeholder='예: "한국 vs 일본 배틀"'>
+        <input class="input" type="number" id="sr-total" placeholder="총 편수" value="10">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <input class="input" id="sr-charA" placeholder="캐릭터 A">
+        <input class="input" id="sr-charB" placeholder="캐릭터 B">
+      </div>
+      <div style="margin-top:8px">
+        <label>에피소드 주제 목록 (쉼표 구분)</label>
+        <textarea class="ta" id="sr-episodes" placeholder="1. 치킨 배틀, 2. 라면 배틀, 3. 회 배틀..." style="min-height:70px"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn pri" onclick="saveSeries()">💾 저장</button>
+        <button class="btn" onclick="goDash()">← 대시보드</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ═══ 화면비율 팝업 ═══ -->
+<div class="aspect-overlay" id="aspectOverlay">
+  <div class="aspect-modal">
+    <h2>어떤 비율로 만들까요?</h2>
+    <p>선택에 따라 대본 구조가 자동 조정돼요</p>
+    <div class="aspect-cards">
+      <button class="aspect-card" onclick="pickAspect('16:9')">
+        <div class="shape l"></div>
+        <strong>16:9 가로</strong>
+        <span>롱폼 · YouTube · 강의</span>
+      </button>
+      <button class="aspect-card" onclick="pickAspect('9:16')">
+        <div class="shape p"></div>
+        <strong>9:16 세로</strong>
+        <span>숏츠 · Reels · TikTok</span>
+      </button>
+    </div>
+    <button class="btn" style="margin-top:18px" onclick="closeAspect()">취소</button>
+  </div>
+</div>
+
+<div id="shToast"></div>
+
+<!-- 공통 모듈 -->
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+
+<script>
+// 상단 AI 선택바 (공통 위젯)
+document.addEventListener('DOMContentLoaded', function(){
+  if (typeof APIAdapter !== 'undefined' && APIAdapter.mountAiBar){
+    var holder = document.createElement('div');
+    holder.id = 'engineAiBar';
+    document.body.insertBefore(holder, document.body.firstChild);
+    APIAdapter.mountAiBar(holder, { hint:'← 설정의 기본값 자동 적용 / 클릭으로 변경' });
+  }
+});
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════
+   상태 & 저장소
+═══════════════════════════════════════════════ */
+const LS_PROJECTS = 'uc_shorts_projects_v2';
+const LS_ANALYTICS= 'uc_shorts_analytics_v1';
+const LS_CHANNEL  = 'uc_shorts_channel';
+// 기존 키 유지
+const LS_CHARS    = 'uc_shorts_characters';
+const LS_SERIES   = 'uc_shorts_series';
+
+let view = 'dash';
+let channel = localStorage.getItem(LS_CHANNEL) || 'kojp'; // kr/jp/kojp
+
+let pipe = null; // 현재 파이프라인 상태 (딸깍/티키타카)
+let aspectResolver = null;
+
+/* ═══ 유틸 ═══ */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = $('shToast'); t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('on'), 2400);
+}
+function read(k,d){ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(d)); }catch(_){ return d; } }
+function write(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){} }
+function fmtDate(ts){ const d=new Date(ts); const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}.${p(d.getMonth()+1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+/* ═══ APIAdapter ═══ */
+function ensureAdapter(){
+  if(typeof APIAdapter === 'undefined') throw new Error('api-adapter.js 로드 필요');
+  if(typeof AI_PROVIDER !== 'undefined') APIAdapter.setProvider(AI_PROVIDER);
+  ['v10_key','uc_claude_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('claude',v);});
+  ['v30_openai_key','uc_openai_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('openai',v);});
+  ['v30_gemini_key','uc_gemini_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('gemini',v);});
+  return APIAdapter;
+}
+async function callAI(sys, user, maxTokens, feature){
+  const A = ensureAdapter();
+  return A.callAI(sys, user, {maxTokens: maxTokens||1800, featureId: feature||'shorts'});
+}
+
+/* ═══ View 전환 ═══ */
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.add('hide'));
+  const el = document.getElementById('view-'+id);
+  if(el) el.classList.remove('hide');
+  view = id;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function goDash(){ showView('dash'); renderStatusBar(); }
+function setChannel(ch, btn){
+  channel = ch; localStorage.setItem(LS_CHANNEL, ch);
+  document.querySelectorAll('#chSel button').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  renderStatusBar();
+}
+function renderStatusBar(){
+  const projs = read(LS_PROJECTS, []);
+  const an = read(LS_ANALYTICS, []);
+  const thisMonth = new Date(); const m0 = new Date(thisMonth.getFullYear(),thisMonth.getMonth(),1).getTime();
+  const monthCount = projs.filter(p=>(p.createdAt||0) >= m0).length;
+  const cost = monthCount * 500;
+  const trend = ['치매예방','노후준비','할머니 레시피','추억의 노래','昭和の思い出'][monthCount%5];
+  $('statusBar').innerHTML = `
+    <div class="item">📹 이번달: <strong>${monthCount}개</strong></div>
+    <div class="item">💰 예상비용: <strong>${cost.toLocaleString()}원</strong></div>
+    <div class="item">🔥 추천주제: <strong>${esc(trend)}</strong></div>
+    <div class="item">📡 채널: <strong>${channel==='kr'?'🇰🇷 한국':channel==='jp'?'🇯🇵 일본':'🇰🇷🇯🇵 동시'}</strong></div>`;
+}
+
+/* ═══ 화면비율 팝업 ═══ */
+function openAspect(){ return new Promise(res=>{ aspectResolver = res; $('aspectOverlay').classList.add('on'); }); }
+function pickAspect(v){ $('aspectOverlay').classList.remove('on'); if(aspectResolver){ aspectResolver(v); aspectResolver=null; } }
+function closeAspect(){ $('aspectOverlay').classList.remove('on'); if(aspectResolver){ aspectResolver(null); aspectResolver=null; } }
+
+/* ═══ 모드 진입 ═══ */
+async function goMode(m){
+  if(m==='instant'){
+    const a = await openAspect(); if(!a) return;
+    startPipeline('instant', {aspect:a});
+  } else if(m==='tiki'){
+    const a = await openAspect(); if(!a) return;
+    startPipeline('tiki', {aspect:a});
+  } else if(m==='auto'){
+    showView('auto'); renderAutoQueue();
+  } else if(m==='resume'){
+    showView('resume'); renderResumeList();
+  } else if(m==='analytics'){
+    showView('analytics'); renderAnalytics();
+  } else if(m==='batch'){
+    showView('batch');
+  } else if(m==='characters'){
+    showView('characters'); renderCharList();
+  } else if(m==='series'){
+    showView('series'); renderSeriesList();
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   딸깍/티키타카 파이프라인 (6단계)
+═══════════════════════════════════════════════ */
+const STEPS = [
+  {i:1, name:'주제 선택',   emoji:'⚡'},
+  {i:2, name:'대본 검토',   emoji:'✏️'},
+  {i:3, name:'스타일 설정', emoji:'🎨'},
+  {i:4, name:'1차 검증',    emoji:'✅'},
+  {i:5, name:'미디어 생성', emoji:'🎬'},
+  {i:6, name:'최종 검증',   emoji:'🔍'}
+];
+
+function newPipe(mode, opts){
+  return {
+    id: 'proj_'+Date.now().toString(36),
+    createdAt: Date.now(),
+    mode,
+    aspect: opts.aspect || '9:16',
+    topic:'', source:'topic',
+    tone:'info', tonefree:'',
+    lang: channel,
+    ab:false,
+    script:'',
+    scenes: Array.from({length:6}, (_,i)=>({
+      label:['훅','도입','전개1','전개2','클라이맥스','결말'][i],
+      script:'', prompt:'', image:null
+    })),
+    style:{imgStyle:'ghibli', voice:'gold', speed:1.1, sub:'white-black', subSize:'mid', subPos:'bottom', bgm:'piano', bgmVol:0.35},
+    validate:{},
+    media:{},
+    publish:{},
+    // 티키타카 전용
+    charA:{ name:'한국', flag:'🇰🇷', personality:'자존심강함', speech:'반말' },
+    charB:{ name:'일본', flag:'🇯🇵', personality:'논리적', speech:'정중' },
+    category:'문화배틀', ending:'auto', tkStyle:'countryballs',
+    step:1
+  };
+}
+
+function startPipeline(mode, opts){
+  pipe = newPipe(mode, opts);
+  showView('pipe');
+  renderPipe();
+}
+
+function saveProject(){
+  if(!pipe) return;
+  const list = read(LS_PROJECTS, []);
+  pipe.updatedAt = Date.now();
+  const idx = list.findIndex(p=>p.id===pipe.id);
+  if(idx>=0) list[idx] = pipe; else list.unshift(pipe);
+  write(LS_PROJECTS, list.slice(0, 40));
+}
+
+function renderPipe(){
+  const bar = $('stepbar'); bar.innerHTML = STEPS.map(s=>`
+    <div class="stepbox ${pipe.step===s.i?'active':pipe.step>s.i?'done':''}" onclick="jumpStep(${s.i})">
+      <span class="num">${s.emoji} ${s.i}</span>${s.name}
+    </div>`).join('');
+  const c = $('step-content');
+  const nav= $('step-nav');
+  const renderer = {1:renderStep1, 2:renderStep2, 3:renderStep3, 4:renderStep4, 5:renderStep5, 6:renderStep6}[pipe.step];
+  c.innerHTML = renderer ? renderer() : '';
+  if(renderer && renderer.__after) renderer.__after();
+  nav.innerHTML = `
+    <button class="btn" onclick="goDash()">🏠 대시보드</button>
+    ${pipe.step>1?`<button class="btn" onclick="stepMove(-1)">← 이전 단계</button>`:''}
+    <button class="btn" onclick="saveProject();toast('💾 프로젝트 저장됨!')">💾 저장</button>
+    ${pipe.step<6?`<button class="btn pri" onclick="stepMove(1)">${pipe.step===1?'대본 생성':'다음 단계'} →</button>`:`<button class="btn pri" onclick="finishPipe()">🚀 완료 · 업로드 패키지</button>`}
+  `;
+}
+function jumpStep(n){ if(!pipe) return; pipe.step = Math.max(1, Math.min(6,n)); renderPipe(); }
+async function stepMove(dir){
+  if(dir===1){
+    // 단계 이동 전에 각 스텝에 따른 자동 처리
+    if(pipe.step===1){ await step1Generate(); }
+    else if(pipe.step===4){ await step4Validate(); }
+    else if(pipe.step===5){ await step5Generate(); }
+    pipe.step = Math.min(6, pipe.step+1);
+  } else {
+    pipe.step = Math.max(1, pipe.step-1);
+  }
+  saveProject();
+  renderPipe();
+}
+function finishPipe(){
+  // 업로드 패키지 생성
+  step7Package();
+}
+
+/* ─────── STEP 1: 주제 선택 ─────── */
+function renderStep1(){
+  if(pipe.mode==='tiki'){
+    return renderStep1Tiki();
+  }
+  return `
+    <div class="panel">
+      <h3>⚡ 1단계 · 주제 선택</h3>
+      <p class="desc">AI가 6장면 대본을 자동 생성합니다 · 입력 방식을 골라 주제를 넣어주세요</p>
+
+      <div class="topic-tabs" id="topicTabs">
+        <button class="on" data-src="topic"   onclick="pickSrc('topic',this)">✏️ 주제 입력</button>
+        <button data-src="news"   onclick="pickSrc('news',this)">📰 뉴스 링크</button>
+        <button data-src="yt"     onclick="pickSrc('yt',this)">📺 유튜브 분석</button>
+        <button data-src="book"   onclick="pickSrc('book',this)">📖 책 명구절</button>
+        <button data-src="trend"  onclick="pickSrc('trend',this)">🔥 트렌드에서</button>
+      </div>
+
+      <label>주제</label>
+      <textarea class="ta" id="topic-input" placeholder='예: "아침에 일어나서 하면 인생이 바뀌는 습관 3가지"'>${esc(pipe.topic)}</textarea>
+
+      <h4>톤 선택</h4>
+      <div class="opt-row" id="toneRow">
+        <button class="opt ${pipe.tone==='info'?'on':''}"    onclick="pickTone('info',this)">기본(정보전달)</button>
+        <button class="opt ${pipe.tone==='emotion'?'on':''}" onclick="pickTone('emotion',this)">감동적으로</button>
+        <button class="opt ${pipe.tone==='comic'?'on':''}"   onclick="pickTone('comic',this)">코믹/재미있게</button>
+        <button class="opt ${pipe.tone==='tiki'?'on':''}"    onclick="pickTone('tiki',this)">티키타카</button>
+        <button class="opt ${pipe.tone==='custom'?'on':''}"  onclick="pickTone('custom',this)">직접입력</button>
+      </div>
+      <input class="input" id="tone-free" placeholder="톤 직접 입력 (예: 시니어 감성·따뜻하게)" value="${esc(pipe.tonefree||'')}" style="display:${pipe.tone==='custom'?'block':'none'};margin-bottom:10px">
+
+      <h4>언어</h4>
+      <div class="opt-row" id="langRow">
+        <button class="opt ${pipe.lang==='kr'?'on':''}"   onclick="pickLang('kr',this)">🇰🇷 한국어</button>
+        <button class="opt ${pipe.lang==='jp'?'on':''}"   onclick="pickLang('jp',this)">🇯🇵 일본어</button>
+        <button class="opt ${pipe.lang==='kojp'?'on':''}" onclick="pickLang('kojp',this)">🇰🇷🇯🇵 동시</button>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px">
+        <input type="checkbox" id="ab-toggle" ${pipe.ab?'checked':''}> A/B 대본 동시생성 (2가지 버전 비교)
+      </label>
+
+      <div class="score-card" style="margin-top:14px">
+        <h4>⚡ 딸깍 모드 흐름</h4>
+        <div class="line"><span>1. 주제 선택</span><span>→ AI가 6장면 대본 생성</span></div>
+        <div class="line"><span>2. 대본 검토</span><span>→ 장면별 수정·이미지 프롬프트</span></div>
+        <div class="line"><span>3. 스타일 설정</span><span>→ 이미지·음성·자막·BGM</span></div>
+        <div class="line"><span>4. 1차 검증</span><span>→ 품질·바이럴 점수</span></div>
+        <div class="line"><span>5. 미디어 생성</span><span>→ 음성·이미지 프롬프트 자동화</span></div>
+        <div class="line"><span>6. 최종 검증·업로드</span><span>→ 제목·태그·스케줄</span></div>
+      </div>
+    </div>
+  `;
+}
+function pickSrc(s, btn){
+  pipe.source = s;
+  document.querySelectorAll('#topicTabs button').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  const ta = $('topic-input');
+  if(s==='news') ta.placeholder = '뉴스 기사 URL 또는 본문 붙여넣기';
+  if(s==='yt')   ta.placeholder = '유튜브 URL 또는 영상 주제·설명 붙여넣기';
+  if(s==='book') ta.placeholder = '책 구절 또는 인용문';
+  if(s==='trend')ta.placeholder = '오늘의 트렌드 키워드 (허브 [🔥 트렌드 분석]에서 복사)';
+}
+function pickTone(t, btn){
+  pipe.tone = t;
+  document.querySelectorAll('#toneRow .opt').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  $('tone-free').style.display = (t==='custom'?'block':'none');
+}
+function pickLang(l, btn){
+  pipe.lang = l;
+  document.querySelectorAll('#langRow .opt').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+}
+
+async function step1Generate(){
+  // 입력 수집
+  pipe.topic = ($('topic-input')||{}).value || pipe.topic;
+  pipe.tonefree = ($('tone-free')||{}).value || pipe.tonefree;
+  pipe.ab = !!($('ab-toggle')||{}).checked;
+  if(!pipe.topic.trim()){ alert('주제를 입력해주세요!'); throw new Error('주제 미입력'); }
+
+  toast('✨ AI가 6장면 대본을 만드는 중...');
+  const toneLabel = pipe.tone==='custom' ? pipe.tonefree : ({info:'정보전달',emotion:'감동적',comic:'코믹·유머',tiki:'티키타카 대화체'}[pipe.tone]||'정보전달');
+  const aspectLabel = pipe.aspect==='16:9' ? '16:9 롱폼 (5~10분)' : '9:16 세로 숏츠 (60초)';
+  const langInstr = pipe.lang==='kr' ? '[언어] 반드시 한국어.' : pipe.lang==='jp' ? '[言語] 必ず日本語で作成。' : '[언어] 한국어 먼저, 일본어 번역을 나란히 제공.';
+
+  const sys = `당신은 숏츠/롱폼 영상 대본 전문 작가입니다. 다음 형식으로 정확히 6개 장면을 만드세요.
+${aspectLabel} · 톤: ${toneLabel} · 시청자 완주율 극대화.
+출력 형식 (반드시 JSON 배열):
+[
+ {"label":"훅","script":"첫 3초 시선 끌기","prompt":"image prompt english"},
+ {"label":"도입","script":"...","prompt":"..."},
+ {"label":"전개1","script":"...","prompt":"..."},
+ {"label":"전개2","script":"...","prompt":"..."},
+ {"label":"클라이맥스","script":"...","prompt":"..."},
+ {"label":"결말","script":"CTA 포함","prompt":"..."}
+]
+${langInstr}`;
+
+  const r = await callAI(sys, `주제: ${pipe.topic}\n소스 유형: ${pipe.source}`, 2500, 'shorts-step1');
+  let arr;
+  try{ arr = JSON.parse((r.match(/\[[\s\S]*\]/)||[r])[0]); }catch(_){ arr = null; }
+  if(!Array.isArray(arr) || arr.length<6){
+    // 파싱 실패 시 응답 전체를 훅에 넣고 나머지는 빈 칸
+    pipe.script = r;
+    for(let i=0;i<6;i++){ pipe.scenes[i].script = i===0 ? r : ''; }
+  } else {
+    arr.slice(0,6).forEach((s,i)=>{
+      pipe.scenes[i].label = s.label || pipe.scenes[i].label;
+      pipe.scenes[i].script = s.script || '';
+      pipe.scenes[i].prompt = s.prompt || '';
+    });
+    pipe.script = pipe.scenes.map(s=>'['+s.label+']\n'+s.script).join('\n\n');
+  }
+  toast('✅ 대본 생성 완료!');
+  // 자동 저장
+  if(window.LibraryAdapter){
+    window.LibraryAdapter.save({text:pipe.script, category:'shorts', lang:pipe.lang==='jp'?'jp':pipe.lang==='kojp'?'kojp':'ko',
+      title:'[자동숏츠] '+pipe.topic.slice(0,40), meta:{shorts:true, aspect:pipe.aspect, mode:pipe.mode}});
+  }
+}
+
+/* ─────── STEP 1: 티키타카 ─────── */
+function renderStep1Tiki(){
+  return `
+    <div class="panel">
+      <h3>🌍 1단계 · 캐릭터 대결 설정</h3>
+      <p class="desc">캐릭터 두 명이 주제를 두고 배틀하는 짧은 대본을 만들어요</p>
+
+      <h4>캐릭터 A</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <input class="input" id="tk-a-name" value="${esc(pipe.charA.name)}" placeholder="이름 (예: 한국)">
+        <input class="input" id="tk-a-flag" value="${esc(pipe.charA.flag)}" placeholder="🇰🇷">
+        <input class="input" id="tk-a-personality" value="${esc(pipe.charA.personality)}" placeholder="성격 (예: 자존심 강함)">
+      </div>
+
+      <h4>캐릭터 B</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <input class="input" id="tk-b-name" value="${esc(pipe.charB.name)}" placeholder="이름 (예: 일본)">
+        <input class="input" id="tk-b-flag" value="${esc(pipe.charB.flag)}" placeholder="🇯🇵">
+        <input class="input" id="tk-b-personality" value="${esc(pipe.charB.personality)}" placeholder="성격 (예: 논리적)">
+      </div>
+
+      <h4>대결 주제·카테고리</h4>
+      <div class="opt-row">
+        ${['문화배틀','음식배틀','직장생활','직접입력'].map(c=>`<button class="opt ${pipe.category===c?'on':''}" onclick="pipe.category='${c}';renderPipe()">${c}</button>`).join('')}
+      </div>
+      <textarea class="ta" id="tk-topic" placeholder='예: "한국 치킨 vs 일본 카라아게"'>${esc(pipe.topic)}</textarea>
+
+      <h4>스타일 · 결말 · 언어</h4>
+      <div class="opt-row">
+        <button class="opt ${pipe.tkStyle==='countryballs'?'on':''}" onclick="pipe.tkStyle='countryballs';renderPipe()">Countryballs</button>
+        <button class="opt ${pipe.tkStyle==='human'?'on':''}" onclick="pipe.tkStyle='human';renderPipe()">사람 캐릭터</button>
+      </div>
+      <div class="opt-row">
+        ${[['a','A 승리'],['b','B 승리'],['draw','무승부'],['auto','AI 결정']].map(e=>`<button class="opt ${pipe.ending===e[0]?'on':''}" onclick="pipe.ending='${e[0]}';renderPipe()">${e[1]}</button>`).join('')}
+      </div>
+      <div class="opt-row" id="langRow">
+        <button class="opt ${pipe.lang==='kr'?'on':''}"   onclick="pickLang('kr',this)">🇰🇷</button>
+        <button class="opt ${pipe.lang==='jp'?'on':''}"   onclick="pickLang('jp',this)">🇯🇵</button>
+        <button class="opt ${pipe.lang==='kojp'?'on':''}" onclick="pickLang('kojp',this)">🇰🇷🇯🇵 동시</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────── STEP 2: 대본 검토 (장면 카드) ─────── */
+function renderStep2(){
+  const scenesHtml = pipe.scenes.map((s,i)=>`
+    <div class="scene-card">
+      <h5><span class="num">${i+1}</span> ${esc(s.label||'장면')}</h5>
+      <div class="scene-section">
+        <div class="hd"><b>📝 대본</b><button onclick="regenScript(${i})">🔄 재생성</button></div>
+        <textarea oninput="pipe.scenes[${i}].script=this.value">${esc(s.script||'')}</textarea>
+      </div>
+      <div class="scene-section">
+        <div class="hd"><b>🎨 이미지 프롬프트 (영문)</b><button onclick="regenPrompt(${i})">🔄 재생성</button></div>
+        <textarea oninput="pipe.scenes[${i}].prompt=this.value">${esc(s.prompt||'')}</textarea>
+      </div>
+      <div class="img-box">${s.image?`<img src="${esc(s.image)}" alt="">`:'(미디어 생성 단계에서 채워집니다)'}</div>
+    </div>
+  `).join('');
+  return `
+    <div class="panel">
+      <h3>✏️ 2단계 · 대본 검토 및 수정</h3>
+      <p class="desc">각 장면의 대본과 이미지 프롬프트를 확인하고 수정하세요</p>
+      <div class="scenes-wrap"><div class="scenes-row">${scenesHtml}</div></div>
+
+      <h4>하단 설정</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div>
+          <label>화자</label>
+          <select class="select" id="speaker">
+            <option value="gentle-butler">Gentle Butler (따뜻한 남성)</option>
+            <option value="warm-female">Warm Female (따뜻한 여성)</option>
+            <option value="bright-female">Bright Female (밝은 여성)</option>
+            <option value="calm-male">Calm Male (차분한 남성)</option>
+          </select>
+        </div>
+        <div>
+          <label>화풍 (STEP3 에서 변경 가능)</label>
+          <select class="select" id="style-hint">
+            <option value="realism">기본 (Realism)</option>
+            <option value="ghibli">지브리풍</option>
+            <option value="anime">일본 애니</option>
+            <option value="webtoon">웹툰</option>
+          </select>
+        </div>
+        <div>
+          <label>속도</label>
+          <select class="select" id="voice-speed">
+            <option value="0.9">0.9x (천천히)</option>
+            <option value="1.0">1.0x</option>
+            <option value="1.1" selected>1.1x (약간 빠르게)</option>
+            <option value="1.2">1.2x</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  `;
+}
+async function regenScript(i){
+  if(!pipe.scenes[i]) return;
+  toast('✏️ 재생성 중...');
+  const sys = '장면 1개만 다시 쓰는 숏츠 작가. 기존 전체 흐름과 어울리게 간결하게.';
+  const ctx = pipe.scenes.map((s,idx)=>`[${idx+1}. ${s.label}] ${s.script}`).join('\n');
+  try{
+    const r = await callAI(sys, `전체 흐름:\n${ctx}\n\n다시 쓸 장면: #${i+1} ${pipe.scenes[i].label}`, 500, 'shorts-regen-scene');
+    pipe.scenes[i].script = r.trim(); renderPipe();
+  }catch(e){ alert('❌ '+e.message); }
+}
+async function regenPrompt(i){
+  if(!pipe.scenes[i]) return;
+  toast('🎨 이미지 프롬프트 재생성...');
+  const sys = 'Image prompt generator. Output a single concise English prompt for DALL-E/Midjourney matching the given Korean/Japanese script line. Include style, lighting, composition hints.';
+  try{
+    const r = await callAI(sys, `Script line: ${pipe.scenes[i].script}\nStyle hint: ${pipe.style.imgStyle}`, 300, 'shorts-regen-prompt');
+    pipe.scenes[i].prompt = r.trim(); renderPipe();
+  }catch(e){ alert('❌ '+e.message); }
+}
+
+/* ─────── STEP 3: 스타일 ─────── */
+function renderStep3(){
+  const styles = [
+    {k:'realism',emoji:'📸',name:'실사',hint:'사진'},
+    {k:'ghibli',emoji:'🌸',name:'지브리',hint:'따뜻한'},
+    {k:'disney',emoji:'🏰',name:'디즈니',hint:'친근함'},
+    {k:'anime',emoji:'🎌',name:'일본애니',hint:'선명'},
+    {k:'oil',emoji:'🖌️',name:'유화',hint:'클래식'},
+    {k:'watercolor',emoji:'💧',name:'수채화',hint:'부드러움'},
+    {k:'webtoon',emoji:'📖',name:'웹툰',hint:'한국식'},
+    {k:'custom',emoji:'🌟',name:'커스텀',hint:'직접'}
+  ];
+  return `
+    <div class="panel">
+      <h3>🎨 3단계 · 스타일 설정</h3>
+      <p class="desc">이미지·음성·자막·BGM을 설정하세요. 기본값도 OK에요.</p>
+
+      <h4>🖼 이미지 스타일</h4>
+      <div class="style-grid" id="styleGrid">
+        ${styles.map(s=>`<div class="st-card ${pipe.style.imgStyle===s.k?'on':''}" onclick="pipe.style.imgStyle='${s.k}';renderPipe()">
+          <span class="emoji">${s.emoji}</span><strong>${s.name}</strong><span>${s.hint}</span>
+        </div>`).join('')}
+      </div>
+
+      <h4>🎤 목소리</h4>
+      <div class="voice-list">
+        <div class="voice-row gold ${pipe.style.voice==='gold'?'on':''}" onclick="pipe.style.voice='gold';renderPipe()">
+          <span class="medal">🥇</span><div class="info"><strong>따뜻한 여성</strong><span>ElevenLabs · 추천</span></div>
+          <button class="play" onclick="event.stopPropagation();alert('▶ 미리듣기는 미디어 단계에서 지원')">▶</button>
+        </div>
+        <div class="voice-row silver ${pipe.style.voice==='silver'?'on':''}" onclick="pipe.style.voice='silver';renderPipe()">
+          <span class="medal">🥈</span><div class="info"><strong>차분한 남성</strong><span>OpenAI TTS</span></div>
+          <button class="play" onclick="event.stopPropagation();alert('▶')">▶</button>
+        </div>
+        <div class="voice-row bronze ${pipe.style.voice==='bronze'?'on':''}" onclick="pipe.style.voice='bronze';renderPipe()">
+          <span class="medal">🥉</span><div class="info"><strong>밝은 여성</strong><span>CLOVA · NijiVoice</span></div>
+          <button class="play" onclick="event.stopPropagation();alert('▶')">▶</button>
+        </div>
+      </div>
+
+      <div class="slider-row">
+        <label>속도</label>
+        <input type="range" min="0.7" max="1.4" step="0.05" value="${pipe.style.speed}" oninput="pipe.style.speed=parseFloat(this.value);$('spd-val').textContent=this.value+'x'">
+        <span class="val" id="spd-val">${pipe.style.speed}x</span>
+      </div>
+
+      <h4>💬 자막</h4>
+      <div class="opt-row">
+        ${[['yellow-black','노랑+검정테두리'],['white-black','흰색+검정테두리'],['popup','팝업 스타일']].map(e=>`<button class="opt ${pipe.style.sub===e[0]?'on':''}" onclick="pipe.style.sub='${e[0]}';renderPipe()">${e[1]}</button>`).join('')}
+      </div>
+      <div class="opt-row">
+        <span style="align-self:center;font-size:11px;color:var(--sub);width:50px">크기</span>
+        ${[['sm','소'],['mid','중'],['lg','대']].map(e=>`<button class="opt ${pipe.style.subSize===e[0]?'on':''}" onclick="pipe.style.subSize='${e[0]}';renderPipe()">${e[1]}</button>`).join('')}
+      </div>
+      <div class="opt-row">
+        <span style="align-self:center;font-size:11px;color:var(--sub);width:50px">위치</span>
+        ${[['top','위'],['bottom','아래'],['center','중앙']].map(e=>`<button class="opt ${pipe.style.subPos===e[0]?'on':''}" onclick="pipe.style.subPos='${e[0]}';renderPipe()">${e[1]}</button>`).join('')}
+      </div>
+
+      <h4>🎵 BGM</h4>
+      <div class="opt-row">
+        ${[['piano','🎹 감동피아노'],['upbeat','🎵 경쾌한'],['lofi','🎸 Lo-fi'],['none','없음']].map(e=>`<button class="opt ${pipe.style.bgm===e[0]?'on':''}" onclick="pipe.style.bgm='${e[0]}';renderPipe()">${e[1]}</button>`).join('')}
+      </div>
+      <div class="slider-row">
+        <label>볼륨</label>
+        <input type="range" min="0" max="1" step="0.05" value="${pipe.style.bgmVol}" oninput="pipe.style.bgmVol=parseFloat(this.value);$('bgm-val').textContent=Math.round(this.value*100)+'%'">
+        <span class="val" id="bgm-val">${Math.round(pipe.style.bgmVol*100)}%</span>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────── STEP 4: 1차 검증 ─────── */
+function renderStep4(){
+  const v = pipe.validate||{};
+  const score = v.score || null;
+  return `
+    <div class="panel">
+      <h3>✅ 4단계 · 1차 검증</h3>
+      <p class="desc">바이럴 예측 점수와 품질 체크 (자동 실행 후 결과 표시)</p>
+
+      <h4>✔ 체크리스트</h4>
+      <div class="chk-row ${v.len?'done':''}"><input type="checkbox" ${v.len?'checked':''} disabled> 길이 적절함 (${pipe.aspect==='16:9'?'5분~':'60초'})</div>
+      <div class="chk-row ${v.hook?'done':''}"><input type="checkbox" ${v.hook?'checked':''} disabled> 첫 3초 훅이 강함</div>
+      <div class="chk-row ${v.cta?'done':''}"><input type="checkbox" ${v.cta?'checked':''} disabled> CTA 포함</div>
+      <div class="chk-row ${v.safe?'done':''}"><input type="checkbox" ${v.safe?'checked':''} disabled> 금지어/저작권 이슈 없음</div>
+      <div class="chk-row ${v.lang?'done':''}"><input type="checkbox" ${v.lang?'checked':''} disabled> 한국어/일본어 자연스러움</div>
+
+      ${score?`<div class="score-card">
+        <h4>🎯 AI 품질 점수</h4>
+        <div class="line"><span>예상 시청완료율</span><span><strong>${score.complete}%</strong></span></div>
+        <div class="line"><span>공유 가능성</span><span class="stars">${'★'.repeat(score.share)}${'☆'.repeat(5-score.share)}</span></div>
+        <div class="line"><span>훅 강도</span><span class="stars">${'★'.repeat(score.hook)}${'☆'.repeat(5-score.hook)}</span></div>
+        <div class="line"><span>경쟁영상 대비</span><span><strong>상위 ${score.rank}%</strong></span></div>
+        ${score.tip?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #f0d6a0;font-size:12px">💡 ${esc(score.tip)}</div>`:''}
+      </div>`:'<div class="score-card">[다음 단계] 버튼을 누르면 AI가 자동으로 검증해드려요.</div>'}
+
+      <div class="actions">
+        <button class="btn" onclick="pipe.step=2;renderPipe()">수정하러 가기</button>
+        <button class="btn pri" onclick="stepMove(1)">통과! 미디어 생성 →</button>
+      </div>
+    </div>
+  `;
+}
+async function step4Validate(){
+  toast('🔍 AI가 품질을 체크 중...');
+  const sys = `당신은 유튜브·틱톡 숏츠 품질 심사관입니다. 주어진 대본을 평가하여 다음 JSON만 출력하세요:
+{"len":true, "hook":true, "cta":true, "safe":true, "lang":true, "score":{"complete":72,"share":4,"hook":5,"rank":20,"tip":"제목에 숫자를 넣으면 CTR이 더 높아요"}}
+값은 솔직하게 평가하세요 (true/false, 0~100, 1~5, 상위%).`;
+  try{
+    const r = await callAI(sys, pipe.script || pipe.scenes.map(s=>s.script).join('\n'), 800, 'shorts-step4');
+    const j = JSON.parse((r.match(/\{[\s\S]*\}/)||[r])[0]);
+    pipe.validate = j;
+  }catch(e){
+    pipe.validate = {len:true, hook:true, cta:true, safe:true, lang:true, score:{complete:65, share:3, hook:4, rank:30, tip:'AI 평가 파싱 실패 — 기본값 표시'}};
+  }
+}
+
+/* ─────── STEP 5: 미디어 생성 ─────── */
+function renderStep5(){
+  const m = pipe.media || {};
+  const items = pipe.scenes.map((s,i)=>({
+    k:'scene'+i, label:`장면 ${i+1} 이미지 프롬프트`, state: m['scene'+i] ? 'done' : 'waiting'
+  }));
+  items.push({k:'voice', label:'음성 생성 (가이드)', state: m.voice?'done':'waiting'});
+  items.push({k:'subs',  label:'자막 파일 (.srt) 생성', state: m.subs?'done':'waiting'});
+  items.push({k:'thumb', label:'썸네일 A/B 문구',      state: m.thumb?'done':'waiting'});
+  const voiceCost = 200, imgCost = 300;
+  return `
+    <div class="panel">
+      <h3>🎬 5단계 · 미디어 생성</h3>
+      <p class="desc">음성 프롬프트·이미지 프롬프트·자막·썸네일 문구를 자동으로 생성해요 (실제 렌더는 미디어 엔진에서)</p>
+
+      <div class="progress-list" id="mediaList">
+        ${items.map(it=>`<div class="prog-item ${it.state==='done'?'done':''}"><span class="st">${it.state==='done'?'✅':'⬜'}</span><span>${esc(it.label)}</span></div>`).join('')}
+      </div>
+
+      <div class="cost-box">
+        <div class="line"><span>음성 (예상)</span><span>약 ${voiceCost}원</span></div>
+        <div class="line"><span>이미지 6장 (예상)</span><span>약 ${imgCost}원</span></div>
+        <div class="line total"><span>합계</span><span>약 ${(voiceCost+imgCost).toLocaleString()}원</span></div>
+      </div>
+
+      ${m.subs?`<h4>자막 미리보기</h4><div class="mono" style="max-height:200px;overflow:auto;padding:10px;background:var(--pink-soft);border-radius:10px;font-size:11px;white-space:pre-wrap">${esc(m.subs.slice(0,800))}${m.subs.length>800?'\n...':''}</div>`:''}
+      ${m.thumb?`<h4>썸네일 문구 A/B</h4><div class="score-card">${esc(m.thumb)}</div>`:''}
+
+      <div class="actions">
+        <button class="btn" onclick="pipe.media={};renderPipe();toast('↻ 초기화')">↻ 다시 생성</button>
+        <button class="btn pri" onclick="stepMove(1)">최종 검증 →</button>
+      </div>
+    </div>
+  `;
+}
+async function step5Generate(){
+  pipe.media = pipe.media || {};
+  toast('🎬 미디어 프롬프트 생성 중...');
+  try{
+    // 이미지 프롬프트 보강 (프롬프트 비어있는 장면만)
+    for(let i=0;i<pipe.scenes.length;i++){
+      if(!pipe.scenes[i].prompt){
+        const r = await callAI('Image prompt generator. Concise English prompt.', `Script: ${pipe.scenes[i].script}\nStyle: ${pipe.style.imgStyle}`, 200, 'shorts-img-'+i);
+        pipe.scenes[i].prompt = r.trim();
+      }
+      pipe.media['scene'+i] = pipe.scenes[i].prompt;
+    }
+    // 음성 가이드
+    pipe.media.voice = `Voice: ${pipe.style.voice}, speed ${pipe.style.speed}x\n` +
+      pipe.scenes.map((s,i)=>`[Scene ${i+1}] ${s.script}`).join('\n\n');
+    // 자막 (간단 SRT)
+    pipe.media.subs = buildSRT(pipe.scenes);
+    // 썸네일
+    const tr = await callAI('Create 2 Korean thumbnail texts (A/B) under 18 chars each, high CTR.', `주제: ${pipe.topic}`, 300, 'shorts-thumb');
+    pipe.media.thumb = tr.trim();
+  }catch(e){
+    alert('❌ 생성 일부 실패: '+e.message);
+  }
+}
+function buildSRT(scenes){
+  const durPerScene = pipe.aspect==='16:9' ? 40 : 10; // 초
+  let t = 0; let out = '';
+  scenes.forEach((s,i)=>{
+    const from = fmtSrt(t), to = fmtSrt(t+durPerScene);
+    out += `${i+1}\n${from} --> ${to}\n${s.script}\n\n`;
+    t += durPerScene;
+  });
+  return out;
+}
+function fmtSrt(sec){
+  const h=String(Math.floor(sec/3600)).padStart(2,'0');
+  const m=String(Math.floor((sec%3600)/60)).padStart(2,'0');
+  const s=String(Math.floor(sec%60)).padStart(2,'0');
+  return `${h}:${m}:${s},000`;
+}
+
+/* ─────── STEP 6: 최종 검증 ─────── */
+function renderStep6(){
+  const p = pipe.publish || {};
+  return `
+    <div class="panel">
+      <h3>🔍 6단계 · 최종 검증</h3>
+      <p class="desc">플랫폼 정책과 SEO를 체크해요</p>
+
+      <h4>플랫폼 정책 체크</h4>
+      <div class="chk-row done"><input type="checkbox" checked disabled> 유튜브 정책 (저작권·폭력·혐오)</div>
+      <div class="chk-row done"><input type="checkbox" checked disabled> 틱톡 정책</div>
+      <div class="chk-row done"><input type="checkbox" checked disabled> 인스타그램 정책</div>
+      <div class="chk-row done"><input type="checkbox" checked disabled> 저작권 이슈 없음</div>
+
+      <h4>SEO 최적화</h4>
+      <div style="display:grid;gap:8px">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px">
+          <div><label>제목 A</label><input class="input" id="ttlA" value="${esc(p.titleA||'')}"></div>
+          <button class="btn" onclick="genPublishField('titleA')">🎯 자동</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px">
+          <div><label>제목 B</label><input class="input" id="ttlB" value="${esc(p.titleB||'')}"></div>
+          <button class="btn" onclick="genPublishField('titleB')">🎯 자동</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px">
+          <div><label>설명문</label><textarea class="ta" id="descF" style="min-height:80px">${esc(p.desc||'')}</textarea></div>
+          <button class="btn" onclick="genPublishField('desc')">🎯 자동</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px">
+          <div><label>태그 30개</label><textarea class="ta" id="tagsF" style="min-height:70px">${esc(p.tags||'')}</textarea></div>
+          <button class="btn" onclick="genPublishField('tags')">🎯 자동</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px">
+          <div><label>해시태그</label><input class="input" id="hashF" value="${esc(p.hash||'')}"></div>
+          <button class="btn" onclick="genPublishField('hash')">🎯 자동</button>
+        </div>
+      </div>
+
+      <div class="score-card">
+        <div class="line"><span>⏰ 최적 업로드</span><span>🇰🇷 오후 7시 / 🇯🇵 오후 8시</span></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn pri lg" onclick="step7Package()">🚀 플랫폼 패키지 생성 →</button>
+      </div>
+    </div>
+  `;
+}
+async function genPublishField(which){
+  pipe.publish = pipe.publish || {};
+  // UI → state
+  pipe.publish.titleA = $('ttlA')?.value || pipe.publish.titleA;
+  pipe.publish.titleB = $('ttlB')?.value || pipe.publish.titleB;
+  pipe.publish.desc   = $('descF')?.value || pipe.publish.desc;
+  pipe.publish.tags   = $('tagsF')?.value || pipe.publish.tags;
+  pipe.publish.hash   = $('hashF')?.value || pipe.publish.hash;
+
+  const sysMap = {
+    titleA: '클릭률 높은 한국어 제목 1개 (18자 이내, 숫자·괄호·감정 강조).',
+    titleB: '클릭률 높은 한국어 제목 1개 (의문형·호기심 유발).',
+    desc:   'YouTube 설명문 (3~5문단, CTA 포함, 검색어 반영, 280자).',
+    tags:   '태그 30개를 쉼표로 구분해 한 줄로.',
+    hash:   '해시태그 10~15개 (#으로 시작, 공백으로 구분).'
+  };
+  try{
+    const r = await callAI(sysMap[which]||'자동 생성', '주제: '+pipe.topic+'\n대본 요약:\n'+ (pipe.script||'').slice(0,800), 700, 'shorts-seo-'+which);
+    pipe.publish[which] = r.trim();
+    renderPipe();
+  }catch(e){ alert('❌ '+e.message); }
+}
+
+/* ─────── STEP 7: 업로드 패키지 ─────── */
+function step7Package(){
+  pipe.step = 6; // 최종 검증 데이터 저장
+  // UI state 캡처
+  pipe.publish = pipe.publish || {};
+  pipe.publish.titleA = $('ttlA')?.value || pipe.publish.titleA;
+  pipe.publish.titleB = $('ttlB')?.value || pipe.publish.titleB;
+  pipe.publish.desc   = $('descF')?.value || pipe.publish.desc;
+  pipe.publish.tags   = $('tagsF')?.value || pipe.publish.tags;
+  pipe.publish.hash   = $('hashF')?.value || pipe.publish.hash;
+  saveProject();
+
+  const p = pipe.publish;
+  $('step-content').innerHTML = `
+    <div class="panel">
+      <h3>🚀 7단계 · 플랫폼 업로드 패키지</h3>
+      <p class="desc">각 플랫폼에 올릴 준비물을 바로 복사해서 쓰세요</p>
+
+      <div class="pkg-grid">
+        <div class="pkg-card">
+          <h5>📺 유튜브 숏츠</h5>
+          <div class="row"><input readonly value="${esc(p.titleA||'')}"><button onclick="shCopy(${JSON.stringify(p.titleA||'').replace(/"/g,'&quot;')})">복사</button></div>
+          <div class="row"><input readonly value="${esc(p.titleB||'')}"><button onclick="shCopy(${JSON.stringify(p.titleB||'').replace(/"/g,'&quot;')})">복사</button></div>
+          <div class="row"><textarea readonly rows="2">${esc(p.desc||'')}</textarea><button onclick="shCopy(${JSON.stringify(p.desc||'').replace(/"/g,'&quot;')})">설명</button></div>
+          <div class="row"><textarea readonly rows="2">${esc(p.tags||'')}</textarea><button onclick="shCopy(${JSON.stringify(p.tags||'').replace(/"/g,'&quot;')})">태그</button></div>
+          <div class="opt-time">⏰ 최적: 오후 7시</div>
+        </div>
+        <div class="pkg-card">
+          <h5>🎵 틱톡</h5>
+          <div class="row"><input readonly value="${esc(p.titleA||'')}"><button onclick="shCopy(${JSON.stringify(p.titleA||'').replace(/"/g,'&quot;')})">제목</button></div>
+          <div class="row"><input readonly value="${esc(p.hash||'')}"><button onclick="shCopy(${JSON.stringify(p.hash||'').replace(/"/g,'&quot;')})">해시태그</button></div>
+          <div class="opt-time">⏰ 최적: 저녁 6~9시</div>
+        </div>
+        <div class="pkg-card">
+          <h5>📸 인스타그램 릴스</h5>
+          <div class="row"><textarea readonly rows="2">${esc((p.titleA||'')+'\n\n'+(p.desc||''))}</textarea><button onclick="shCopy(${JSON.stringify(((p.titleA||'')+'\n\n'+(p.desc||''))).replace(/"/g,'&quot;')})">캡션</button></div>
+          <div class="row"><input readonly value="${esc(p.hash||'')}"><button onclick="shCopy(${JSON.stringify(p.hash||'').replace(/"/g,'&quot;')})">해시태그</button></div>
+          <div class="opt-time">⏰ 최적: 금~일 오후</div>
+        </div>
+        <div class="pkg-card">
+          <h5>🇯🇵 일본 플랫폼</h5>
+          <div class="row"><input readonly value="${esc(p.titleA||'')}" placeholder="LINE VOOM"><button onclick="shCopy(${JSON.stringify(p.titleA||'').replace(/"/g,'&quot;')})">LINE</button></div>
+          <div class="row"><input readonly value="${esc((p.titleA||'').slice(0,60))}"><button onclick="shCopy(${JSON.stringify((p.titleA||'').slice(0,60)).replace(/"/g,'&quot;')})">X/Twitter</button></div>
+          <div class="opt-time">⏰ 최적: 오후 8시</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn pri lg" onclick="downloadAllPackage()">📥 전체 다운로드 (JSON)</button>
+        <button class="btn sv" onclick="saveToLibrary()">📁 보관함에 저장</button>
+        <button class="btn" onclick="pipe=null;goDash()">🔄 다음 영상 만들기</button>
+        <button class="btn" onclick="goMode('analytics')">📊 성과 분석 보기</button>
+      </div>
+    </div>
+  `;
+  // 단계 표시를 완료로
+  $('stepbar').innerHTML = STEPS.map(s=>`<div class="stepbox done"><span class="num">${s.emoji} ${s.i}</span>${s.name}</div>`).join('') + '<div class="stepbox active"><span class="num">🚀 7</span>업로드</div>';
+  $('step-nav').innerHTML = '';
+}
+function shCopy(v){ navigator.clipboard.writeText(String(v||'')).then(()=>toast('📋 복사됨!')); }
+function downloadAllPackage(){
+  const blob = new Blob([JSON.stringify(pipe, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  const d=new Date(); const p=n=>String(n).padStart(2,'0');
+  a.download = `shorts_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${pipe.topic.replace(/[^\w가-힣]/g,'_').slice(0,20)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+function saveToLibrary(){
+  if(window.LibraryAdapter){
+    window.LibraryAdapter.save({
+      text: [pipe.topic, pipe.script, '\n\n=== 패키지 ===', JSON.stringify(pipe.publish,null,2)].join('\n'),
+      category:'shorts',
+      lang: pipe.lang==='jp'?'jp':pipe.lang==='kojp'?'kojp':'ko',
+      title:'[자동숏츠] '+pipe.topic.slice(0,40),
+      meta:{shorts:true, mode:pipe.mode, aspect:pipe.aspect, hasScenes:true}
+    });
+  } else toast('⚠ library-adapter.js 미로드');
+}
+
+/* ═══════════════════════════════════════════════
+   완전자동 모드
+═══════════════════════════════════════════════ */
+function renderAutoQueue(){
+  const q = JSON.parse(sessionStorage.getItem('auto_queue')||'[]');
+  $('auto-q-count').textContent = `${q.length}개`;
+  const box = $('auto-queue');
+  if(!q.length){ box.innerHTML = '<div class="queue-item" style="justify-content:center;color:var(--muted)">대기열이 비어있습니다</div>'; return; }
+  box.innerHTML = q.map((it,i)=>`<div class="queue-item ${it.status==='done'?'done':it.status==='working'?'working':''}">
+    <span class="num">${i+1}</span>
+    <span class="t">${esc(it.topic)}</span>
+    <span style="font-size:10px;color:var(--muted)">${it.status==='done'?'✅ 완료':it.status==='working'?'🔄 진행':'⬜ 대기'}</span>
+    <button onclick="autoQueueRemove(${i})">🗑</button>
+  </div>`).join('');
+}
+function autoQueueAdd(){
+  const v = ($('auto-input')||{}).value || '';
+  const lines = v.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!lines.length){ alert('주제를 입력해주세요.'); return; }
+  const q = JSON.parse(sessionStorage.getItem('auto_queue')||'[]');
+  lines.forEach(t => q.push({topic:t, status:'waiting'}));
+  sessionStorage.setItem('auto_queue', JSON.stringify(q));
+  $('auto-input').value = '';
+  renderAutoQueue();
+}
+function autoQueueRemove(i){
+  const q = JSON.parse(sessionStorage.getItem('auto_queue')||'[]');
+  q.splice(i,1); sessionStorage.setItem('auto_queue', JSON.stringify(q)); renderAutoQueue();
+}
+function autoQueueClear(){
+  if(!confirm('대기열을 비울까요?')) return;
+  sessionStorage.removeItem('auto_queue'); renderAutoQueue();
+}
+function autoPick(kind, btn){
+  const sel = '[data-auto-'+kind+']';
+  document.querySelectorAll(sel).forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+}
+async function autoRunAll(){
+  const q = JSON.parse(sessionStorage.getItem('auto_queue')||'[]');
+  if(!q.length){ alert('대기열이 비어있어요.'); return; }
+  const out = $('auto-progress');
+  const style = document.querySelector('[data-auto-style].on')?.dataset.autoStyle || 'info';
+  const imgSt = document.querySelector('[data-auto-img].on')?.dataset.autoImg || 'ghibli';
+  out.innerHTML = q.map((it,i)=>`<div class="prog-item" id="autop-${i}"><span class="st">⬜</span><span>${esc(it.topic)}</span></div>`).join('');
+  for(let i=0;i<q.length;i++){
+    q[i].status='working';
+    sessionStorage.setItem('auto_queue', JSON.stringify(q));
+    $('autop-'+i).className='prog-item loading';
+    $('autop-'+i).innerHTML = `<span class="st">🔄</span><span>${esc(q[i].topic)} · 생성 중...</span>`;
+    try{
+      const sys = `숏츠 대본 작가. 주제를 60초 숏츠 6장면 구조로 작성. 톤: ${style}, 이미지 스타일 힌트: ${imgSt}. ${channel==='kojp'?'한국어+일본어 동시.':channel==='jp'?'일본어.':'한국어.'}`;
+      const r = await callAI(sys, q[i].topic, 1800, 'shorts-auto');
+      if(window.LibraryAdapter){
+        window.LibraryAdapter.save({text:r, category:'shorts', lang:channel==='kojp'?'kojp':channel==='jp'?'jp':'ko', title:'[자동] '+q[i].topic.slice(0,40), meta:{shorts:true, auto:true}});
+      }
+      q[i].status='done'; q[i].result=r;
+      $('autop-'+i).className='prog-item done';
+      $('autop-'+i).innerHTML = `<span class="st">✅</span><span>${esc(q[i].topic)} 완료 · <button class="btn" style="padding:4px 8px;font-size:10px" onclick="shCopy(${JSON.stringify(r).replace(/"/g,'&quot;')})">복사</button></span>`;
+    }catch(e){
+      q[i].status='error';
+      $('autop-'+i).className='prog-item';
+      $('autop-'+i).innerHTML = `<span class="st">❌</span><span>${esc(q[i].topic)} · ${esc(e.message)}</span>`;
+    }
+    sessionStorage.setItem('auto_queue', JSON.stringify(q));
+  }
+  toast('🎉 전체 자동 생성 완료!');
+}
+
+/* ═══════════════════════════════════════════════
+   이어만들기
+═══════════════════════════════════════════════ */
+function renderResumeList(){
+  const list = read(LS_PROJECTS, []);
+  const box = $('resume-list');
+  if(!list.length){ box.innerHTML = '<div class="score-card">저장된 프로젝트가 없어요.</div>'; return; }
+  box.innerHTML = list.map((p,i)=>`<div class="analytics-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px"><strong>${esc(p.topic||'(제목 없음)')}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(p.mode||'instant')} · 단계 ${p.step||1} · ${fmtDate(p.updatedAt||p.createdAt)}</span></div>
+    <div><button class="btn pri" onclick="resumeOpen(${i})">📂 불러오기</button>
+    <button class="btn warn" onclick="resumeDelete(${i})">🗑</button></div>
+  </div>`).join('');
+}
+function resumeOpen(i){
+  const list = read(LS_PROJECTS, []);
+  pipe = list[i]; if(!pipe) return;
+  showView('pipe'); renderPipe();
+}
+function resumeDelete(i){
+  if(!confirm('이 프로젝트를 삭제할까요?')) return;
+  const list = read(LS_PROJECTS, []); list.splice(i,1); write(LS_PROJECTS, list); renderResumeList();
+}
+function resumeClearAll(){
+  if(!confirm('모든 프로젝트를 삭제할까요?')) return;
+  write(LS_PROJECTS, []); renderResumeList();
+}
+
+/* ═══════════════════════════════════════════════
+   성과 분석
+═══════════════════════════════════════════════ */
+function renderAnalytics(){
+  const list = read(LS_ANALYTICS, []);
+  const box = $('analytics-list');
+  if(!list.length){ box.innerHTML = '<div class="score-card">기록이 없어요. 위에서 영상별 조회수를 입력해주세요.</div>'; }
+  else {
+    box.innerHTML = `<table class="analytics-table">
+      <thead><tr><th>영상명</th><th>조회수</th><th>완료율</th><th>스타일</th><th>날짜</th><th></th></tr></thead>
+      <tbody>${list.map((x,i)=>`<tr>
+        <td>${esc(x.title)}</td><td>${x.views.toLocaleString()}</td><td>${x.rate}%</td>
+        <td>${esc(x.style||'-')}</td><td>${fmtDate(x.at)}</td>
+        <td><button class="btn" style="padding:5px 10px;font-size:10px" onclick="analyticsDelete(${i})">🗑</button></td>
+      </tr>`).join('')}</tbody></table>`;
+  }
+}
+function analyticsAdd(){
+  const title = ($('an-title')||{}).value||'';
+  if(!title.trim()){ alert('영상명을 입력해주세요.'); return; }
+  const views = parseInt(($('an-views')||{}).value||'0',10)||0;
+  const rate  = parseInt(($('an-rate')||{}).value||'0',10)||0;
+  const style = ($('an-style')||{}).value||'';
+  const list = read(LS_ANALYTICS, []);
+  list.unshift({title, views, rate, style, at:Date.now()});
+  write(LS_ANALYTICS, list.slice(0,100));
+  ['an-title','an-views','an-rate','an-style'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  renderAnalytics();
+}
+function analyticsDelete(i){
+  const list = read(LS_ANALYTICS, []); list.splice(i,1); write(LS_ANALYTICS, list); renderAnalytics();
+}
+async function analyticsInsight(){
+  const list = read(LS_ANALYTICS, []);
+  if(list.length<3){ alert('3개 이상 기록이 필요해요.'); return; }
+  const top = [...list].sort((a,b)=>b.views-a.views).slice(0,5);
+  $('analytics-insight').innerHTML = '⏳ AI 인사이트 생성 중...';
+  try{
+    const sys = '영상 성과 데이터를 보고 잘된 공통점과 다음 영상 주제 3개를 한국어로 간결히 정리.';
+    const r = await callAI(sys, JSON.stringify(top), 900, 'shorts-insight');
+    $('analytics-insight').innerHTML = `<h4>🤖 AI 인사이트</h4><div style="white-space:pre-wrap;font-size:12px;line-height:1.8">${esc(r)}</div>`;
+  }catch(e){ $('analytics-insight').innerHTML = '❌ '+esc(e.message); }
+}
+
+/* ═══════════════════════════════════════════════
+   대량 생산
+═══════════════════════════════════════════════ */
+async function batchRun(){
+  const topics = (($('batch-topics')||{}).value||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,10);
+  if(!topics.length){ alert('주제를 입력해주세요.'); return; }
+  const out = $('batch-out');
+  out.innerHTML = topics.map((t,i)=>`<div class="prog-item" id="bpx-${i}"><span class="st">⬜</span><span>${esc(t)}</span></div>`).join('');
+  for(let i=0;i<topics.length;i++){
+    $('bpx-'+i).className='prog-item loading';
+    $('bpx-'+i).innerHTML = `<span class="st">🔄</span><span>${esc(topics[i])} · 대본 생성 중...</span>`;
+    try{
+      const r = await callAI('숏츠 대본 6장면 구조로 간결하게.', topics[i], 1500, 'shorts-batch');
+      if(window.LibraryAdapter) window.LibraryAdapter.save({text:r, category:'shorts', lang:channel==='kojp'?'kojp':channel==='jp'?'jp':'ko', title:'[배치] '+topics[i].slice(0,40), meta:{shorts:true, batch:true}});
+      $('bpx-'+i).className='prog-item done';
+      $('bpx-'+i).innerHTML = `<span class="st">✅</span><span>${esc(topics[i])} 완료</span>`;
+    }catch(e){
+      $('bpx-'+i).className='prog-item';
+      $('bpx-'+i).innerHTML = `<span class="st">❌</span><span>${esc(topics[i])} · ${esc(e.message)}</span>`;
+    }
+  }
+  toast('📦 배치 생성 완료!');
+}
+async function seriesRun(){
+  const theme = ($('series-theme')||{}).value||'';
+  const n = parseInt(($('series-count')||{}).value||'5',10);
+  if(!theme.trim()){ alert('시리즈 주제를 입력해주세요.'); return; }
+  $('series-out').innerHTML = '⏳ 시리즈 기획 중...';
+  try{
+    const sys = `${n}편짜리 숏츠 시리즈를 기획하세요. 각 편은 제목·훅·핵심 내용 3줄·CTA 형식.`;
+    const r = await callAI(sys, '시리즈 주제: '+theme, 2000, 'shorts-series');
+    $('series-out').innerHTML = '<div class="score-card"><h4>📚 '+esc(theme)+' 시리즈 '+n+'편</h4><div style="white-space:pre-wrap;font-size:12px;line-height:1.85">'+esc(r)+'</div><div class="actions"><button class="btn pri" onclick="shCopy('+JSON.stringify(r).replace(/"/g,'&quot;')+')">📋 복사</button></div></div>';
+  }catch(e){ $('series-out').innerHTML = '❌ '+esc(e.message); }
+}
+async function calendarRun(){
+  const ch = ($('cal-channel')||{}).value||'';
+  const t  = ($('cal-target')||{}).value||'';
+  if(!ch.trim()){ alert('채널 컨셉을 입력해주세요.'); return; }
+  $('cal-out').innerHTML = '⏳ 캘린더 생성 중...';
+  try{
+    const sys = '30일짜리 콘텐츠 캘린더 (일별 주제 + 요일 톤). 한국·일본 채널 동시 기획.';
+    const r = await callAI(sys, `채널: ${ch}\n타깃: ${t}`, 2400, 'shorts-calendar');
+    $('cal-out').innerHTML = '<div class="score-card"><h4>🗓 한달치 캘린더</h4><div style="white-space:pre-wrap;font-size:12px;line-height:1.85">'+esc(r)+'</div><div class="actions"><button class="btn pri" onclick="shCopy('+JSON.stringify(r).replace(/"/g,'&quot;')+')">📋 복사</button></div></div>';
+  }catch(e){ $('cal-out').innerHTML = '❌ '+esc(e.message); }
+}
+async function recycleRun(){
+  const v = ($('recycle-input')||{}).value||'';
+  if(v.trim().length<200){ alert('300자 이상 입력해주세요.'); return; }
+  $('recycle-out').innerHTML = '⏳ 숏츠로 변환 중...';
+  try{
+    const sys = '긴 글을 60초 숏츠 여러 개로 자동 분할 (각 3장면 구조). 각 숏츠는 번호·제목·3장면 대본 형식.';
+    const r = await callAI(sys, v, 2400, 'shorts-recycle');
+    $('recycle-out').innerHTML = '<div class="score-card"><h4>♻️ 변환 결과</h4><div style="white-space:pre-wrap;font-size:12px;line-height:1.85">'+esc(r)+'</div><div class="actions"><button class="btn pri" onclick="shCopy('+JSON.stringify(r).replace(/"/g,'&quot;')+')">📋 복사</button></div></div>';
+  }catch(e){ $('recycle-out').innerHTML = '❌ '+esc(e.message); }
+}
+
+/* ═══════════════════════════════════════════════
+   캐릭터 라이브러리 (기존 키 유지)
+═══════════════════════════════════════════════ */
+function loadCharacters(){ try{return JSON.parse(localStorage.getItem(LS_CHARS)||'{}');}catch(_){return {};} }
+function renderCharList(){
+  const chars = loadCharacters();
+  const box = $('char-list');
+  const keys = Object.keys(chars);
+  if(!keys.length){ box.innerHTML = '<div class="score-card">저장된 캐릭터가 없어요.</div>'; return; }
+  box.innerHTML = keys.map(name => {
+    const c = chars[name];
+    return `<div class="char-card">
+      <div class="flag">${esc(c.flag||'🎭')}</div>
+      <h5>${esc(c.name||name)}</h5>
+      <div class="props"><b>성격:</b> ${esc(c.personality||'-')} · <b>말투:</b> ${esc(c.speech||'-')} · <b>외모:</b> ${esc(c.appearance||'-')}</div>
+      <div class="actions"><button class="btn warn" onclick="if(confirm('삭제?')){const a=loadCharacters();delete a[${JSON.stringify(name)}];localStorage.setItem('${LS_CHARS}',JSON.stringify(a));renderCharList();}">🗑</button></div>
+    </div>`;
+  }).join('');
+}
+function saveCharacter(){
+  const name = ($('char-name')||{}).value.trim();
+  if(!name){ alert('캐릭터 이름을 입력해주세요.'); return; }
+  const all = loadCharacters();
+  all[name] = {
+    name, flag: $('char-flag').value.trim()||'🎭',
+    personality: $('char-personality').value.trim(),
+    speech: $('char-speech').value.trim(),
+    appearance: $('char-appearance').value.trim(),
+    prompt: $('char-prompt').value.trim(),
+    savedAt: Date.now()
+  };
+  localStorage.setItem(LS_CHARS, JSON.stringify(all));
+  ['char-name','char-flag','char-personality','char-speech','char-appearance','char-prompt'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  renderCharList();
+  toast('💾 캐릭터 저장됨');
+}
+
+/* ═══════════════════════════════════════════════
+   시리즈 관리 (기존 키 유지)
+═══════════════════════════════════════════════ */
+function loadSeries(){ try{return JSON.parse(localStorage.getItem(LS_SERIES)||'{}');}catch(_){return {};} }
+function renderSeriesList(){
+  const all = loadSeries();
+  const keys = Object.keys(all);
+  const box = $('series-list');
+  if(!keys.length){ box.innerHTML = '<div class="score-card">저장된 시리즈가 없어요.</div>'; return; }
+  box.innerHTML = keys.map(name => {
+    const s = all[name];
+    return `<div class="char-card">
+      <h5>📺 ${esc(s.name||name)}</h5>
+      <div class="props"><b>총 편수:</b> ${s.total||'-'} · <b>캐릭터:</b> ${esc(s.charA||'')} vs ${esc(s.charB||'')}</div>
+      <div class="props"><b>에피소드:</b> ${esc((s.episodes||'').slice(0,100))}${(s.episodes||'').length>100?'...':''}</div>
+      <div class="actions">
+        <button class="btn" onclick="seriesNextEp(${JSON.stringify(name)})">💡 다음편 AI 기획</button>
+        <button class="btn warn" onclick="if(confirm('삭제?')){const a=loadSeries();delete a[${JSON.stringify(name)}];localStorage.setItem('${LS_SERIES}',JSON.stringify(a));renderSeriesList();}">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function saveSeries(){
+  const name = ($('sr-name')||{}).value.trim();
+  if(!name){ alert('시리즈 이름을 입력해주세요.'); return; }
+  const all = loadSeries();
+  all[name] = {
+    name, total: $('sr-total').value, charA:$('sr-charA').value, charB:$('sr-charB').value,
+    episodes: $('sr-episodes').value, savedAt: Date.now()
+  };
+  localStorage.setItem(LS_SERIES, JSON.stringify(all));
+  ['sr-name','sr-total','sr-charA','sr-charB','sr-episodes'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  renderSeriesList();
+  toast('💾 시리즈 저장됨');
+}
+async function seriesNextEp(name){
+  const all = loadSeries(); const s = all[name]; if(!s) return;
+  toast('🤖 다음편 아이디어 생성 중...');
+  try{
+    const r = await callAI('시리즈 다음 편 아이디어를 제안하세요. 제목·훅·핵심 3줄·다음편 예고 형식.', JSON.stringify(s), 900, 'shorts-next-ep');
+    alert('💡 다음편 아이디어\n\n'+r);
+  }catch(e){ alert('❌ '+e.message); }
+}
+
+/* ═══════════════════════════════════════════════
+   예시로 자동 체험
+═══════════════════════════════════════════════ */
+async function fillExample(){
+  const a = await openAspect(); if(!a) return;
+  startPipeline('instant', {aspect:a});
+  // 기본 주제로 채우기
+  setTimeout(()=>{
+    const ta = $('topic-input'); if(ta){ ta.value = '아침에 일어나서 하면 인생이 바뀌는 습관 3가지'; }
+  }, 100);
+}
+
+/* ═══════════════════════════════════════════════
+   초기화
+═══════════════════════════════════════════════ */
+function boot(){
+  // 채널 복원
+  const saved = localStorage.getItem(LS_CHANNEL) || 'kojp';
+  channel = saved;
+  document.querySelectorAll('#chSel button').forEach(b=>b.classList.toggle('on', b.dataset.ch===saved));
+  renderStatusBar();
+
+  // 허브에서 전달한 topic 자동 진입
+  const urlP = new URLSearchParams(location.search);
+  const topic = urlP.get('topic');
+  const viewP = urlP.get('view');
+  if(viewP === 'tikitaka'){
+    (async()=>{ const a = await openAspect(); if(a){ startPipeline('tiki', {aspect:a}); if(topic){ pipe.topic = topic; renderPipe(); } } })();
+  } else if(topic){
+    (async()=>{ const a = await openAspect(); if(a){ startPipeline('instant', {aspect:a}); setTimeout(()=>{ const ta=$('topic-input'); if(ta) ta.value=topic; pipe.topic=topic; },120); } })();
+  }
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+console.log('✅ ☕ MOCA 자동숏츠 v3 로드 완료');
+</script>
+</body>
+</html>

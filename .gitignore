@@ -1,0 +1,26 @@
+# Claude Code 로컬 설정 (머신마다 다름)
+.claude/
+
+# Office 임시/잠금 파일
+~$*
+*.tmp
+
+# macOS / Windows 시스템 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node / 빌드 산출물
+node_modules/
+dist/
+build/
+
+# 로그·캐시
+*.log
+.cache/

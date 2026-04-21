@@ -1,0 +1,235 @@
+/* ============================================================
+   통합 콘텐츠 생성기 · 공통 스타일
+   - 한국어 (Pretendard) + 일본어 (Noto Sans JP) 동시 지원
+   - 핑크-보라 포인트 색상 팔레트
+   - 공통 버튼·카드·입력 스타일
+   - 모바일 반응형 기본 세트
+   ============================================================ */
+
+/* ─── 폰트 로드 (웹폰트) ─── */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+/* ─── 색상 · 그림자 · 여백 변수 ─── */
+:root{
+  /* 배경 · 카드 */
+  --bg:#fff9fc;
+  --card:#ffffff;
+  --line:#f1dce7;
+  --line-strong:#e8a6c6;
+
+  /* 텍스트 */
+  --text:#2b2430;
+  --sub:#7b7077;
+  --muted:#a69aa2;
+
+  /* 포인트 (핑크-보라) */
+  --pink:#ef6fab;
+  --pink-soft:#fff1f8;
+  --pink-deep:#b14d82;
+  --purple:#9181ff;
+  --purple-soft:#f7f4ff;
+
+  /* 보조 톤 */
+  --blue:#eff6ff;
+  --green:#eefbf7;
+  --peach:#fff7ee;
+  --mint:#eefbf7;
+
+  /* 상태 */
+  --ok:#2fa98a;
+  --warn:#d48a3a;
+  --err:#d95574;
+
+  /* 그라데이션 */
+  --grad-main:linear-gradient(135deg,#ef6fab,#d65f9d 55%,#9181ff);
+  --grad-soft:linear-gradient(180deg,#fdf2fa,#fff);
+  --grad-logo:linear-gradient(145deg,#ffc0de,#ef6fab 52%,#9181ff);
+
+  /* 그림자 · 라운드 */
+  --shadow:0 16px 40px rgba(126,87,110,.10);
+  --shadow-soft:0 8px 20px rgba(126,87,110,.07);
+  --shadow-hover:0 14px 28px rgba(126,87,110,.13);
+  --radius:22px;
+  --radius-lg:28px;
+  --radius-pill:999px;
+}
+
+/* ─── 리셋 · 기본 ─── */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:
+    'Pretendard Variable', Pretendard,
+    'Noto Sans JP',
+    Inter, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont,
+    system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+/* 일본어 블록 전용 (명시적으로 지정하고 싶을 때) */
+.jp, [lang="ja"]{
+  font-family: 'Noto Sans JP', 'Pretendard Variable', Pretendard, sans-serif;
+}
+
+/* ─── 레이아웃 컨테이너 ─── */
+.app{max-width:1280px;margin:0 auto;padding:18px 14px 80px}
+
+/* ─── 공통 카드 ─── */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+}
+.cardhead{padding:18px 18px 10px}
+.cardhead h3{margin:0;font-size:18px;font-weight:800}
+.cardhead p{margin:8px 0 0;color:var(--sub);font-size:12px;line-height:1.7}
+.cardbody{padding:12px 14px 18px}
+
+/* 컬러 배경 카드 */
+.bg-pink{background:#fff5fa}
+.bg-purple{background:#f7f4ff}
+.bg-green{background:#effbf7}
+.bg-blue{background:#eff6ff}
+.bg-peach{background:#fff7ee}
+.bg-mint{background:#eefbf7}
+
+/* ─── 버튼 ─── */
+.btn{
+  border:none;
+  border-radius:var(--radius-pill);
+  padding:12px 18px;
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.15s ease;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn.primary{background:var(--grad-main);color:#fff}
+.btn.ghost{background:#fff;border:1px solid var(--line);color:var(--text)}
+.btn.ghost:hover{border-color:var(--line-strong)}
+.btn.soft{background:var(--pink-soft);color:var(--pink-deep);border:1px solid var(--line-strong)}
+.btn.sm{padding:8px 12px;font-size:12px}
+.btn.lg{padding:15px 22px;font-size:15px}
+
+/* Pill / Badge / Chip */
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#fff;border:1px solid var(--line);
+  border-radius:var(--radius-pill);padding:10px 14px;
+  font-size:13px;font-weight:900;
+}
+.pill.on{background:var(--pink-soft);border-color:var(--line-strong);color:var(--pink-deep)}
+.badge{
+  display:inline-block;padding:4px 10px;border-radius:var(--radius-pill);
+  background:#fff;border:1px solid var(--line);
+  font-size:11px;font-weight:900;color:var(--sub);
+}
+.badge.on{background:var(--pink-soft);border-color:var(--line-strong);color:var(--pink-deep)}
+.chip{
+  border:1px solid var(--line);background:#fff;
+  border-radius:var(--radius-pill);padding:8px 14px;
+  font-size:12px;font-weight:800;cursor:pointer;transition:.14s
+}
+.chip:hover{border-color:var(--line-strong)}
+.chip.on{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border-color:transparent}
+
+/* ─── 입력 요소 ─── */
+input,select,textarea{
+  width:100%;
+  background:#fff;
+  border:1px solid #f0e3ea;
+  border-radius:var(--radius);
+  padding:14px 16px;
+  font-size:14px;
+  outline:none;
+  transition:.15s ease;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--line-strong);
+  box-shadow:0 0 0 3px rgba(239,111,171,.12);
+}
+textarea{min-height:140px;resize:vertical;line-height:1.8}
+label{display:block;margin:0 0 8px;font-size:13px;font-weight:900}
+
+/* ─── 로고 · 브랜드 ─── */
+.logo{
+  width:50px;height:50px;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--grad-logo);color:#fff;font-weight:900;font-size:21px
+}
+
+/* ─── 유틸 ─── */
+.hstack{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vstack{display:grid;gap:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.text-sub{color:var(--sub)}
+.text-muted{color:var(--muted)}
+.text-pink{color:var(--pink-deep)}
+.text-center{text-align:center}
+.hidden{display:none !important}
+
+/* ─── 공통 AI 선택바 (engines/* 각 화면 상단) ─── */
+.ai-bar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 14px;margin:0 auto 12px;max-width:1280px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow-soft);font-size:13px;
+}
+.ai-bar .ai-bar-label{font-weight:900;color:var(--sub);margin-right:2px}
+.ai-bar button{
+  padding:7px 13px;border:1.5px solid var(--line);border-radius:9px;
+  background:#fff;font-weight:800;font-size:13px;color:var(--text);cursor:pointer;
+  transition:.15s ease;
+}
+.ai-bar button:hover{border-color:var(--line-strong)}
+.ai-bar button.on-claude{background:linear-gradient(135deg,#6030C0,#9040D0);color:#fff;border-color:transparent}
+.ai-bar button.on-openai{background:linear-gradient(135deg,#006400,#228B22);color:#fff;border-color:transparent}
+.ai-bar button.on-gemini{background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border-color:transparent}
+.ai-bar .ai-bar-hint{margin-left:auto;color:var(--muted);font-size:11px}
+.ai-bar-toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  background:#2b2430;color:#fff;padding:12px 18px;border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:13px;font-weight:800;
+  z-index:9999;display:flex;align-items:center;gap:10px;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+.ai-bar-toast.show{opacity:1;pointer-events:auto}
+.ai-bar-toast a{color:#ffd4e8;text-decoration:underline}
+
+/* ─── 모바일 반응형 기본 세트 ─── */
+@media (max-width:1180px){
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:980px){
+  .app{padding:14px 10px 60px}
+  .grid-3{grid-template-columns:1fr 1fr}
+  .grid-4{grid-template-columns:1fr 1fr}
+  .btn{padding:11px 15px;font-size:13px}
+}
+@media (max-width:560px){
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .cardhead h3{font-size:16px}
+  input,select,textarea{font-size:13px;padding:12px 14px}
+}
+@media (max-width:480px){
+  .app{padding:10px 8px 60px}
+  .btn{padding:10px 12px;font-size:12.5px}
+  .btn.lg{padding:12px 16px;font-size:13px}
+  .pill,.chip{padding:7px 11px;font-size:12px}
+  .ai-bar{padding:8px 10px;gap:6px;font-size:12px}
+  .ai-bar button{padding:6px 10px;font-size:12px}
+  .ai-bar .ai-bar-hint{display:none}
+  .cardbody{padding:10px 10px 14px}
+}

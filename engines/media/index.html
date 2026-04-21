@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>미디어 엔진 — 대본만 있으면 영상까지 자동!</title>
+<link rel="stylesheet" href="../../assets/common.css">
+<style>
+:root{
+  --bg:#fff9fc;--line:#f1dce7;--line-strong:#e8a6c6;
+  --pink:#ef6fab;--purple:#9181ff;--muted:#9a8e94;
+  --pink-soft:#fff5fa;--purple-soft:#f7f4ff
+}
+body{background:var(--bg);margin:0;font-family:'Pretendard Variable','Noto Sans JP',Pretendard,sans-serif;color:#2b2430}
+.container{max-width:1180px;margin:0 auto;padding:16px 14px 80px}
+.hide{display:none !important}
+
+/* 상단 */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  background:#fff;border:1px solid var(--line);border-radius:22px;padding:14px 18px;
+  box-shadow:0 8px 20px rgba(126,87,110,.07);margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#ffc0de,#ef6fab 52%,#9181ff);color:#fff;font-weight:900;font-size:22px}
+.brand h1{margin:0;font-size:22px}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.tb-btn{padding:11px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;
+  font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;transition:.15s}
+.tb-btn:hover{border-color:var(--line-strong)}
+.tb-btn.pri{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border-color:transparent}
+
+/* 메인 허브 */
+.hub-hero{padding:24px 22px;margin-bottom:14px;border-radius:24px;
+  background:linear-gradient(135deg,#fff5fa,#eff6ff,#effbf7);border:1px solid var(--line-strong);text-align:center}
+.hub-hero h2{margin:0;font-size:28px;color:#b14d82}
+.hub-hero p{margin:10px 0 0;font-size:15px;color:var(--sub);line-height:1.7}
+.hub-hero .slogan{display:inline-block;margin-top:12px;padding:8px 20px;border-radius:999px;
+  background:#fff;font-weight:800;color:#b14d82;border:2px solid var(--line-strong);font-size:14px}
+
+.big-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.big-btn{border:3px solid var(--line);background:#fff;border-radius:24px;padding:26px 20px;
+  cursor:pointer;text-align:left;font-family:inherit;transition:.2s;position:relative;overflow:hidden}
+.big-btn:hover{border-color:var(--line-strong);transform:translateY(-3px);box-shadow:0 14px 30px rgba(232,166,198,.18)}
+.big-btn .emoji{font-size:40px;display:block;margin-bottom:8px}
+.big-btn strong{display:block;font-size:19px;color:#b14d82;margin-bottom:6px}
+.big-btn .sub{display:block;font-size:13px;color:var(--muted);line-height:1.6}
+.big-btn.recommend{background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft));border-color:var(--line-strong)}
+.big-btn.recommend::before{content:'👑 추천';position:absolute;top:10px;right:10px;font-size:11px;
+  background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;padding:4px 10px;border-radius:999px;font-weight:900}
+
+/* 채널 카드 */
+.channel-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ch-card{padding:16px;border:2px solid var(--line);border-radius:18px;background:#fff;text-align:center;cursor:pointer;font-family:inherit;transition:.14s}
+.ch-card:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+.ch-card.add{background:var(--pink-soft);border-style:dashed}
+.ch-card .flag{font-size:32px;display:block;margin-bottom:4px}
+.ch-card strong{display:block;font-size:14px}
+.ch-card span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+
+/* 스텝바 */
+.stepbar{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding:12px;
+  background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 4px 14px rgba(126,87,110,.06)}
+.stepbox{flex:1;min-width:130px;padding:12px 10px;border-radius:14px;text-align:center;
+  font-weight:800;font-size:12px;background:#fff;border:2px solid transparent;color:#7a6d73}
+.stepbox.done{background:#effbf7;border-color:#a8dcc9;color:#1a7a5a}
+.stepbox.active{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;box-shadow:0 4px 12px rgba(232,166,198,.3)}
+.stepbox .num{display:block;font-size:18px;margin-bottom:2px}
+
+/* 패널 */
+.panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:12px;box-shadow:0 6px 18px rgba(126,87,110,.06)}
+.panel h3{margin:0 0 10px;font-size:19px;color:#b14d82}
+.panel h4{margin:14px 0 8px;font-size:15px;color:#5d4aad}
+.panel .q{margin:0 0 14px;font-size:15px;color:#5d4aad;font-weight:700;line-height:1.7}
+.panel .small{font-size:12px;color:var(--muted);margin:4px 0}
+
+label{display:block;font-size:13px;font-weight:800;color:#6b5d65;margin-bottom:6px}
+.input,.select,.ta{width:100%;padding:13px 16px;border:2px solid #ead9e1;border-radius:12px;
+  font-size:14px;font-family:inherit;background:#fff;outline:none}
+.input:focus,.select:focus,.ta:focus{border-color:var(--line-strong);box-shadow:0 0 0 3px rgba(239,111,171,.12)}
+.ta{min-height:160px;resize:vertical;line-height:1.75}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+/* 선택 카드 (큰 버튼형) */
+.pick-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pick{padding:16px 12px;border:2px solid var(--line);border-radius:16px;background:#fff;
+  text-align:center;cursor:pointer;font-family:inherit;transition:.14s}
+.pick:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.pick.on{background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft));border-color:var(--line-strong);box-shadow:0 8px 18px rgba(232,166,198,.2)}
+.pick .emo{font-size:30px;display:block;margin-bottom:4px}
+.pick strong{display:block;font-size:14px;color:#2b2430;margin-bottom:4px}
+.pick span{display:block;font-size:11px;color:var(--muted);line-height:1.5}
+
+/* 추천 카드 (1/2/3순위) */
+.rec{padding:14px 16px;border:2px solid var(--line);border-radius:14px;background:#fff;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.rec.gold{border-color:#FFD700;background:linear-gradient(135deg,#fffef0,#fff)}
+.rec.silver{border-color:#C0C0C0;background:linear-gradient(135deg,#f7f7f7,#fff)}
+.rec.bronze{border-color:#CD7F32;background:linear-gradient(135deg,#fff5ed,#fff)}
+.rec .medal{font-size:28px}
+.rec .info strong{display:block;font-size:14px;color:#2b2430}
+.rec .info span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.rec .info .cost{color:#1a7a5a;font-weight:800;font-size:11px;margin-top:2px}
+
+/* 액션 */
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.btn{padding:12px 20px;border-radius:12px;border:2px solid var(--line);background:#fff;
+  font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--line-strong)}
+.btn.pri{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border-color:transparent}
+.btn.sv{background:#effbf7;border-color:#a8dcc9;color:#1a7a5a}
+.btn.lg{padding:16px 28px;font-size:15px}
+.btn.full{width:100%}
+
+/* 도움말 버튼 */
+.help-btn{border:none;background:#fff7ee;color:#9a5a1a;padding:4px 10px;border-radius:999px;
+  font-size:11px;font-weight:800;cursor:pointer;margin-left:6px;font-family:inherit}
+.help-btn:hover{background:#f1e0c4}
+
+/* 결과 박스 */
+.out-card{padding:14px;background:var(--pink-soft);border:2px solid var(--line-strong);border-radius:14px;margin-bottom:10px}
+.out-card h5{margin:0 0 8px;font-size:14px;color:#b14d82}
+.out-card .body{font-size:13px;line-height:1.8;color:#2b2430}
+.out-card .mono{font-family:'Consolas',ui-monospace,monospace;font-size:11px;padding:10px;background:#fff;border-radius:8px;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
+
+/* 진행 표시 */
+.progress-list{display:grid;gap:6px}
+.prog-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff9fc;
+  border:1px solid var(--line);border-radius:10px;font-size:13px}
+.prog-item.done{background:#effbf7;border-color:#a8dcc9;color:#1a7a5a}
+.prog-item.loading{background:#fff7ee;border-color:#f1e0c4;color:#9a5a1a}
+
+/* 비용 표시 */
+.cost-box{padding:14px;background:linear-gradient(135deg,#fff7ee,#fff5fa);border:2px dashed #f1a860;border-radius:14px;margin:10px 0}
+.cost-box .line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.cost-box .total{border-top:1px solid #f1a860;padding-top:6px;margin-top:6px;font-weight:900;color:#b14d82}
+
+/* 도움말 팝업 */
+.help-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:3px solid var(--line-strong);border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(126,87,110,.22);z-index:9999;max-width:480px;width:92%}
+.help-popup h4{margin:0 0 10px;color:#b14d82}
+.help-popup p{margin:6px 0;font-size:13px;line-height:1.8}
+.help-popup .close{position:absolute;top:10px;right:14px;border:none;background:none;font-size:24px;cursor:pointer;color:#b14d82}
+
+@media (max-width:820px){.big-btns,.pick-cards,.grid-3,.channel-row{grid-template-columns:1fr 1fr}.stepbox{min-width:100px}}
+@media (max-width:520px){.big-btns,.pick-cards,.grid-2,.grid-3,.channel-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🎬</div>
+      <div><h1>미디어 엔진</h1><p id="topbar-sub">대본만 있으면 영상까지 자동으로 만들어드려요!</p></div>
+    </div>
+    <div>
+      <button class="tb-btn" onclick="goHub()">🏠 처음 화면</button>
+      <button class="tb-btn pri" onclick="location.href='../../index.html'">← 허브로 돌아가기</button>
+    </div>
+  </header>
+
+  <!-- ════ 메인 허브 ════ -->
+  <section id="view-hub" class="view">
+    <div class="hub-hero">
+      <h2>🎬 미디어 엔진</h2>
+      <p>대본만 있으면 <b>영상에 필요한 모든 것</b>을 한 번에 만들어드려요.<br>목소리 · 이미지 · 자막 · 썸네일 · 업로드 준비물까지!</p>
+      <span class="slogan">👶 초등학생도 쓸 수 있게 쉬운 말로 안내해드려요</span>
+    </div>
+
+    <div class="big-btns">
+      <button class="big-btn recommend" onclick="goView('one')">
+        <span class="emoji">🚀</span>
+        <strong>영상 한 개 만들기</strong>
+        <span class="sub">처음이라면 여기서 시작! 5단계로 완성돼요.</span>
+      </button>
+      <button class="big-btn" onclick="goView('batch')">
+        <span class="emoji">📅</span>
+        <strong>이번주 영상 모아 만들기</strong>
+        <span class="sub">여러 개를 한 번에 만들어서 시간 절약!</span>
+      </button>
+      <button class="big-btn" onclick="goView('analysis')">
+        <span class="emoji">📊</span>
+        <strong>내 채널 분석하기</strong>
+        <span class="sub">잘된 영상의 공통점을 찾아드려요.</span>
+      </button>
+    </div>
+
+    <div class="panel">
+      <h3>🎭 내 채널 <button class="help-btn" onclick="showHelp('channel')">❓ 이게 뭔가요?</button></h3>
+      <p class="small">여러 채널을 따로 관리할 수 있어요. 각 채널마다 좋아하는 목소리·스타일을 기억해뒀다가 자동으로 적용해드려요.</p>
+      <div class="channel-row" id="channel-row"></div>
+    </div>
+
+    <div class="panel" style="background:linear-gradient(135deg,#fff7ee,#fff5fa)">
+      <h3>💡 초보자 도우미</h3>
+      <p>🎁 <b>처음 쓰시는 분께</b>: 아래 버튼을 누르면 샘플 대본과 설정을 자동으로 채워서 전체 체험해볼 수 있어요!</p>
+      <div class="actions">
+        <button class="btn pri" onclick="fillExample()">✨ 예시로 자동채우기</button>
+        <button class="btn" onclick="goView('comments')">💬 댓글 답글 도우미</button>
+        <button class="btn" onclick="goView('revenue')">💰 수익 추적기</button>
+        <button class="btn" onclick="goView('trend')">🔥 트렌드 보기</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>⏰ 시간 절약 계산기</h3>
+      <div class="grid-3">
+        <div class="out-card">
+          <h5>😰 AI 없이</h5>
+          <div class="body">약 <b style="font-size:24px;color:#c01818">4시간</b></div>
+        </div>
+        <div class="out-card" style="background:linear-gradient(135deg,#effbf7,#fff);border-color:#a8dcc9">
+          <h5>😊 AI 도움으로</h5>
+          <div class="body">약 <b style="font-size:24px;color:#1a7a5a">30분</b></div>
+        </div>
+        <div class="out-card" style="background:linear-gradient(135deg,#fff7ee,#fff5fa);border-color:#f1a860">
+          <h5>⏰ 아낀 시간</h5>
+          <div class="body">약 <b style="font-size:24px;color:#b05010">3시간 30분!</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ 영상 한 개 만들기 (5단계 마법사) ════ -->
+  <section id="view-one" class="view hide">
+    <div class="stepbar" id="stepbar"></div>
+    <div id="step-content"></div>
+  </section>
+
+  <!-- ════ 이번주 영상 모아 만들기 ════ -->
+  <section id="view-batch" class="view hide">
+    <div class="panel">
+      <h3>📅 이번주 영상 모아 만들기</h3>
+      <p class="q">"한 번에 여러 개 만들면 시간 절약!"</p>
+      <p class="small">주제를 입력하면 영상 여러 개를 한꺼번에 만들어드려요. 만들어진 영상들은 요일별로 자동 배치됩니다.</p>
+
+      <h4>✍️ 만들고 싶은 주제를 써주세요</h4>
+      <div id="batch-topics"></div>
+      <button class="btn" onclick="addBatchTopic()">➕ 주제 추가</button>
+
+      <h4 style="margin-top:14px">🎭 어느 채널에 올릴 영상인가요?</h4>
+      <div class="pick-cards" id="batch-channel"></div>
+
+      <div class="actions">
+        <button class="btn pri lg" onclick="runBatch()">🚀 한 번에 패키지 만들기</button>
+        <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+      </div>
+
+      <div id="batch-status" class="small" style="margin-top:10px"></div>
+      <div id="batch-result"></div>
+    </div>
+  </section>
+
+  <!-- ════ 내 채널 분석하기 ════ -->
+  <section id="view-analysis" class="view hide">
+    <div class="panel">
+      <h3>📊 내 채널 분석하기</h3>
+      <p class="q">"잘된 영상의 공통점을 AI가 찾아드려요"</p>
+      <p class="small">잘된 영상 정보를 입력하세요 (최대 10개). AI가 공통점을 찾아서 다음 영상에 뭘 해야 할지 알려드려요.</p>
+
+      <div id="analysis-rows"></div>
+      <button class="btn" onclick="addAnalysisRow()">➕ 영상 추가</button>
+
+      <div class="actions">
+        <button class="btn pri lg" onclick="runAnalysis()">🔍 AI가 분석해줘!</button>
+        <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+      </div>
+
+      <div id="analysis-out"></div>
+    </div>
+  </section>
+
+  <!-- ════ 채널 프로파일 관리 ════ -->
+  <section id="view-channels" class="view hide">
+    <div class="panel">
+      <h3>🎭 채널 프로파일 관리</h3>
+      <p class="q">"여러 채널을 따로 관리해요. 한번 설정하면 계속 기억해요!"</p>
+
+      <div class="grid-2">
+        <div>
+          <label>채널 이름</label>
+          <input class="input" id="cp-name" placeholder="예: 엄마의 하루 / あの頃チャンネル">
+        </div>
+        <div>
+          <label>🏳️ 언어</label>
+          <select class="select" id="cp-lang">
+            <option value="ko">🇰🇷 한국어 (한국 채널)</option>
+            <option value="jp">🇯🇵 日本語 (일본 채널)</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="kojp" selected>🇰🇷+🇯🇵 한·일 동시 운영</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:10px">
+        <div>
+          <label>🎭 장르</label>
+          <select class="select" id="cp-genre">
+            <option value="seniorEmotion">시니어 감동</option>
+            <option value="comic">코믹</option>
+            <option value="tikitaka">티키타카</option>
+            <option value="knowledge">지식</option>
+            <option value="drama">드라마</option>
+            <option value="edu">교육</option>
+          </select>
+        </div>
+        <div>
+          <label>👥 타겟</label>
+          <select class="select" id="cp-target">
+            <option value="senior">시니어</option>
+            <option value="20s">20대</option>
+            <option value="30s">30대</option>
+            <option value="40s">40대</option>
+            <option value="all" selected>전체</option>
+          </select>
+        </div>
+        <div>
+          <label>📱 주력 플랫폼</label>
+          <select class="select" id="cp-platform">
+            <option value="youtube" selected>유튜브</option>
+            <option value="tiktok">틱톡</option>
+            <option value="instagram">인스타그램</option>
+            <option value="naver">네이버</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:10px">
+        <div>
+          <label>⏰ 최적 업로드 시간</label>
+          <input class="input" id="cp-time" placeholder="예: 오후 7시">
+        </div>
+        <div>
+          <label>🎨 좋아하는 이미지 스타일</label>
+          <input class="input" id="cp-style" placeholder="예: 지브리풍, 따뜻한 색감">
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>🎙 선호 목소리 기록 (선택)</label>
+        <input class="input" id="cp-voice" placeholder="예: ElevenLabs Rachel, 따뜻함">
+      </div>
+
+      <div id="cp-jp-settings" style="display:none;margin-top:14px;padding:14px;background:#f0f4ff;border:1px solid #d7dffa;border-radius:14px">
+        <h4 style="color:#4a5abf">🇯🇵 일본 채널 특화 설정</h4>
+        <div class="grid-2">
+          <div><label>자막 크기 (일본어는 더 크게)</label>
+            <select class="select" id="cp-jp-subsize"><option>보통</option><option selected>크게</option><option>매우 크게</option></select>
+          </div>
+          <div><label>일본 최적 업로드 시간</label>
+            <input class="input" id="cp-jp-time" placeholder="예: 오후 8시 (JST)">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn pri" onclick="saveChannel()">💾 이 채널 저장</button>
+        <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+      </div>
+
+      <h4 style="margin-top:14px">💾 저장된 채널</h4>
+      <div id="cp-list"></div>
+    </div>
+  </section>
+
+  <!-- ════ 댓글 답글 도우미 ════ -->
+  <section id="view-comments" class="view hide">
+    <div class="panel">
+      <h3>💬 댓글 답글 도우미</h3>
+      <p class="q">"댓글 답글을 AI가 3가지 버전으로 만들어드려요!"</p>
+
+      <label>📩 받은 댓글을 여기에 붙여넣으세요</label>
+      <textarea class="ta" id="cm-text" placeholder="예: 영상 너무 좋았어요! 다음 편도 기대할게요 ㅠㅠ"></textarea>
+
+      <h4>🎭 답글 느낌을 골라주세요</h4>
+      <div class="pick-cards">
+        <button class="pick" data-reply="thanks" onclick="setReply('thanks',this)"><span class="emo">😊</span><strong>감사 댓글</strong><span>따뜻한 답글</span></button>
+        <button class="pick" data-reply="question" onclick="setReply('question',this)"><span class="emo">❓</span><strong>질문 댓글</strong><span>정보성 답글</span></button>
+        <button class="pick" data-reply="negative" onclick="setReply('negative',this)"><span class="emo">😠</span><strong>부정 댓글</strong><span>차분한 답글</span></button>
+        <button class="pick" data-reply="funny" onclick="setReply('funny',this)"><span class="emo">🤣</span><strong>웃긴 댓글</strong><span>유머 답글</span></button>
+      </div>
+
+      <div class="actions">
+        <button class="btn pri lg" onclick="runComments()">✨ AI 답글 3가지 만들기</button>
+        <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+      </div>
+
+      <div id="cm-out"></div>
+    </div>
+  </section>
+
+  <!-- ════ 수익 추적기 ════ -->
+  <section id="view-revenue" class="view hide">
+    <div class="panel">
+      <h3>💰 수익 추적기</h3>
+      <p class="q">"내가 만든 영상이 얼마나 벌어줬는지 기록해봐요!"</p>
+
+      <h4>➕ 영상 추가</h4>
+      <div class="grid-3">
+        <div><label>영상 제목</label><input class="input" id="rv-title" placeholder="예: 엄마의 편지"></div>
+        <div><label>제작 비용 (원)</label><input class="input" type="number" id="rv-cost" placeholder="450"></div>
+        <div><label>조회수</label><input class="input" type="number" id="rv-views" placeholder="12000"></div>
+      </div>
+      <div class="grid-2" style="margin-top:10px">
+        <div><label>예상 수익 (원)</label><input class="input" type="number" id="rv-revenue" placeholder="25000"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn pri" onclick="addRevenue()" style="width:100%">➕ 추가</button></div>
+      </div>
+
+      <h4 style="margin-top:14px">📋 내가 만든 영상들</h4>
+      <div id="rv-list"></div>
+
+      <div class="cost-box">
+        <div class="line"><span>이번달 총 제작 비용</span><b id="rv-total-cost">0원</b></div>
+        <div class="line"><span>이번달 총 예상 수익</span><b id="rv-total-rev">0원</b></div>
+        <div class="line total"><span>순수익</span><span id="rv-profit">0원</span></div>
+      </div>
+
+      <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+    </div>
+  </section>
+
+  <!-- ════ 트렌드 보기 ════ -->
+  <section id="view-trend" class="view hide">
+    <div class="panel">
+      <h3>🔥 지금 뜨는 것</h3>
+      <p class="q">"지금 한국과 일본에서 뜨고 있는 주제를 알려드려요"</p>
+
+      <div class="grid-2">
+        <div class="out-card">
+          <h5>🇰🇷 지금 한국에서 뜨는 것</h5>
+          <div class="body">
+            <p>🔥 배우자 사별 극복 이야기</p>
+            <p>🔥 노후 자금 관리 팁</p>
+            <p>🔥 시골집 생활 브이로그</p>
+            <p>🔥 황혼 이혼 이야기</p>
+            <p>🔥 손주 용돈 주는 법</p>
+          </div>
+        </div>
+        <div class="out-card" style="background:#f0f4ff;border-color:#d7dffa">
+          <h5>🇯🇵 지금 일본에서 뜨는 것</h5>
+          <div class="body">
+            <p>🔥 終活 (삶의 마무리 준비)</p>
+            <p>🔥 年金生活 (연금 생활)</p>
+            <p>🔥 孫の入学 (손주 입학)</p>
+            <p>🔥 温泉旅行 (온천 여행)</p>
+            <p>🔥 健康寿命 (건강 수명)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn pri lg" onclick="location.href='../script/index.html?tab=gen'">✍️ 이 트렌드로 대본 만들기 (대본생성기로)</button>
+        <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+      </div>
+
+      <p class="small" style="margin-top:10px">※ 실제 실시간 트렌드는 각 플랫폼 API 연동이 필요해요. 지금은 시니어 채널용 샘플 트렌드를 보여드려요.</p>
+    </div>
+  </section>
+
+</div>
+
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+
+<script>
+// 상단 AI 선택바 (공통 위젯)
+document.addEventListener('DOMContentLoaded', function(){
+  if (typeof APIAdapter !== 'undefined' && APIAdapter.mountAiBar){
+    var holder = document.createElement('div');
+    holder.id = 'engineAiBar';
+    document.body.insertBefore(holder, document.body.firstChild);
+    APIAdapter.mountAiBar(holder, { hint:'← 설정의 기본값 자동 적용 / 클릭으로 변경' });
+  }
+});
+</script>
+
+<script>
+/* ═══════ 상태 ═══════ */
+let view = 'hub';
+let wizardStep = 1;
+let wizard = {
+  channel: 'kojp',  // kr, jp, kojp
+  scriptSource: null, // hub, paste
+  script: '',
+  analysis: null,
+  imgStyle: 'ghibli',
+  voice: null,
+  voiceChoice: 'gold',
+  speakers: '1',
+  subtitle: { style:'emphasize', size:'mid', pos:'bottom' },
+  bgm: 'emotional-piano',
+  result: null
+};
+
+let batchTopics = [{}, {}, {}];
+let batchChannel = 'kr';
+let analysisRows = [{}, {}, {}];
+let replyType = null;
+
+/* ═══════ 뷰 전환 ═══════ */
+function goView(v){
+  view = v;
+  document.querySelectorAll('.view').forEach(el => el.classList.add('hide'));
+  document.getElementById('view-' + v).classList.remove('hide');
+  if (v === 'one') { wizardStep = 1; renderWizard(); }
+  if (v === 'batch') renderBatch();
+  if (v === 'analysis') renderAnalysis();
+  if (v === 'channels') renderChannels();
+  if (v === 'revenue') renderRevenue();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function goHub(){ goView('hub'); renderChannelRow(); }
+
+/* ═══════ 채널 허브 카드 ═══════ */
+function renderChannelRow(){
+  const box = document.getElementById('channel-row');
+  const list = loadChannels();
+  box.innerHTML = Object.entries(list).map(([name, p]) => {
+    const flag = p.lang==='jp'?'🇯🇵':p.lang==='en'?'🇺🇸':p.lang==='kojp'?'🇰🇷🇯🇵':'🇰🇷';
+    return `<button class="ch-card" onclick="loadCh('${name}')"><span class="flag">${flag}</span><strong>${name}</strong><span>${p.genre||''}</span></button>`;
+  }).join('') + `<button class="ch-card add" onclick="goView('channels')"><span class="flag">➕</span><strong>새 채널 추가</strong><span>여기를 누르세요</span></button>`;
+}
+function loadCh(name){ const p = loadChannels()[name]; if(!p) return; wizard.channel = p.lang; goView('one'); }
+
+/* ═══════ 도움말 ═══════ */
+const HELPS = {
+  channel: '"채널"이란 유튜브에서 내가 영상을 올리는 곳이에요. 여러 개 있어도 돼요! 각 채널마다 좋아하는 느낌이 다르니까 따로 설정해두면 편해요.',
+  script: '"대본"은 영상에서 말하게 될 내용이에요. 말풍선 안에 들어갈 글자라고 생각하면 돼요.',
+  voice: '"목소리"는 영상에서 말하는 사람의 목소리예요. AI가 실제 사람처럼 읽어줘요.',
+  style: '"이미지 스타일"은 영상에 나오는 그림의 느낌이에요. 사진처럼? 만화처럼? 골라보세요.',
+  subtitle: '"자막"은 영상 아래에 나오는 글자예요. 귀가 안 좋은 사람도 볼 수 있게 해줘요.',
+  bgm: '"배경음악"은 영상 뒤에 깔리는 음악이에요. 분위기가 확 살아나요!',
+  cost: 'AI를 쓰면 돈이 조금 들어요. 미리 얼마 드는지 알려드릴게요. 대신 사람이 만드는 것보다 엄청 저렴해요!'
+};
+function showHelp(key){
+  document.querySelectorAll('.help-popup').forEach(el => el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'help-popup';
+  pop.innerHTML = `<button class="close" onclick="this.parentElement.remove()">×</button><h4>💡 이게 뭔가요?</h4><p>${HELPS[key] || '설명 준비 중'}</p>`;
+  document.body.appendChild(pop);
+}
+
+/* ═══════ 예시 채우기 ═══════ */
+function fillExample(){
+  wizard.channel = 'kojp';
+  wizard.script = '어느 날, 70대 어머니가 낡은 편지함에서 편지 한 통을 꺼냈습니다.\n40년 전 딸에게 쓰지 못한 사랑의 편지였어요.\n오늘, 드디어 그 편지를 딸에게 읽어줍니다.\n"내 딸, 태어나줘서 고마워."';
+  wizard.imgStyle = 'ghibli';
+  wizard.speakers = '1';
+  wizard.bgm = 'emotional-piano';
+  goView('one');
+  wizardStep = 2;
+  renderWizard();
+  alert('✨ 예시로 자동채움 완료! 2단계부터 체험해보세요.');
+}
+
+/* ═══════ 마법사: 스텝바 ═══════ */
+const STEPS = [
+  {n:1, label:'채널 선택'},
+  {n:2, label:'대본 가져오기'},
+  {n:3, label:'스타일 고르기'},
+  {n:4, label:'자동 생성'},
+  {n:5, label:'결과 확인'}
+];
+
+function renderWizard(){
+  const bar = document.getElementById('stepbar');
+  bar.innerHTML = STEPS.map(s => `
+    <div class="stepbox ${s.n === wizardStep ? 'active' : (s.n < wizardStep ? 'done' : '')}">
+      <span class="num">${s.n < wizardStep ? '✓' : s.n}</span>${s.label}
+    </div>`).join('');
+  const c = document.getElementById('step-content');
+  c.innerHTML = ({1:step1, 2:step2, 3:step3, 4:step4, 5:step5}[wizardStep])();
+  if (typeof window._winit === 'function') { window._winit(); window._winit = null; }
+}
+
+/* ─── 1단계: 채널 선택 ─── */
+function step1(){
+  window._winit = null;
+  return `
+  <div class="panel">
+    <h3>1단계: 어떤 채널에 올릴 영상인가요? <button class="help-btn" onclick="showHelp('channel')">❓ 이게 뭔가요?</button></h3>
+    <p class="q">"어느 채널에 올릴 영상인지 골라주세요"</p>
+    <div class="pick-cards">
+      <button class="pick ${wizard.channel==='kr'?'on':''}" onclick="pickCh('kr')"><span class="emo">🇰🇷</span><strong>한국 채널</strong><span>한국어 영상</span></button>
+      <button class="pick ${wizard.channel==='jp'?'on':''}" onclick="pickCh('jp')"><span class="emo">🇯🇵</span><strong>일본 채널</strong><span>일본어 영상</span></button>
+      <button class="pick ${wizard.channel==='kojp'?'on':''}" onclick="pickCh('kojp')"><span class="emo">🇰🇷🇯🇵</span><strong>한국 + 일본 동시</strong><span>영상 하나로 두 채널에!</span></button>
+    </div>
+    <div class="actions">
+      <button class="btn pri lg" onclick="wizardStep=2;renderWizard()">다음 단계 →</button>
+      <button class="btn" onclick="goHub()">← 처음 화면으로</button>
+    </div>
+  </div>`;
+}
+function pickCh(c){ wizard.channel = c; renderWizard(); }
+
+/* ─── 2단계: 대본 가져오기 ─── */
+function step2(){
+  window._winit = function(){
+    if (wizard.script) analyzeScript();
+  };
+  return `
+  <div class="panel">
+    <h3>2단계: 대본 가져오기 <button class="help-btn" onclick="showHelp('script')">❓ 이게 뭔가요?</button></h3>
+    <p class="q">"영상에 쓸 대본을 넣어주세요"</p>
+    <div class="actions">
+      <button class="btn pri" onclick="loadFromHub()">📋 대본생성기에서 가져오기 (추천!)</button>
+      <button class="btn" onclick="location.href='../script/index.html?tab=gen'">✍️ 대본생성기 열기 ↗</button>
+    </div>
+    <h4>또는 직접 붙여넣기</h4>
+    <textarea class="ta" id="w-script" placeholder="대본을 여기에 붙여넣으세요.&#10;예: 어느 날, 70대 어머니가..." oninput="wizard.script=this.value;analyzeScript()">${wizard.script||''}</textarea>
+
+    <div id="w-analysis"></div>
+
+    <div class="actions">
+      <button class="btn" onclick="wizardStep=1;renderWizard()">← 이전</button>
+      <button class="btn pri lg" onclick="if(!wizard.script.trim()){alert('대본을 입력해주세요!');return;}wizardStep=3;renderWizard()">다음 단계 →</button>
+    </div>
+  </div>`;
+}
+function loadFromHub(){
+  try{
+    const list = JSON.parse(localStorage.getItem('hub_scripts_v1')||'[]');
+    if (!list.length) { alert('⚠️ 대본생성기에서 전송된 대본이 없어요.\n대본생성기에서 "미디어 엔진으로 보내기" 버튼을 먼저 눌러주세요!'); return; }
+    wizard.script = list[0].text;
+    const ta = document.getElementById('w-script'); if (ta) ta.value = wizard.script;
+    analyzeScript();
+    alert('📥 대본 불러오기 완료!');
+  }catch(e){ alert('불러오기 실패: '+e.message); }
+}
+function analyzeScript(){
+  const s = wizard.script.trim();
+  if (!s) { document.getElementById('w-analysis').innerHTML = ''; return; }
+  const chars = s.length;
+  const seconds = Math.round(chars / 5);
+  const scenes = s.split(/\n{1,}|(?<=[.!?。！？])\s+/).filter(x => x.trim().length > 5).length;
+  const hasEmotion = /사랑|그리움|감사|눈물|어머니|아버지|가족/.test(s);
+  const emotion = hasEmotion ? '😢 따뜻함 · 감동적' : '📖 일반 · 정보성';
+  document.getElementById('w-analysis').innerHTML = `
+    <div class="out-card" style="margin-top:10px">
+      <h5>🔍 대본 분석 결과</h5>
+      <div class="body">
+        📏 <b>길이:</b> 약 <b>${seconds}초</b> 분량 (${chars}자)<br>
+        🎭 <b>장면 수:</b> <b>${scenes}개</b> 장면으로 나뉘어요<br>
+        😊 <b>감정:</b> ${emotion}
+      </div>
+    </div>`;
+  wizard.analysis = { seconds, scenes, emotion };
+}
+
+/* ─── 3단계: 스타일 고르기 ─── */
+const IMG_STYLES = [
+  {id:'photo',   emo:'📸', t:'실사사진',  s:'진짜 사진 같은 느낌'},
+  {id:'disney',  emo:'🏰', t:'디즈니풍',  s:'귀엽고 화려한 느낌'},
+  {id:'ghibli',  emo:'🌸', t:'지브리풍',  s:'따뜻하고 자연스러운 느낌'},
+  {id:'anime',   emo:'🎌', t:'일본 애니', s:'애니메이션 느낌'},
+  {id:'oil',     emo:'🖌️', t:'유화',     s:'그림 같은 느낌'},
+  {id:'water',   emo:'💧', t:'수채화',    s:'부드럽고 감성적인 느낌'},
+  {id:'webtoon', emo:'📖', t:'웹툰',      s:'만화 느낌'},
+  {id:'custom',  emo:'🌟', t:'커스텀',    s:'직접 입력'}
+];
+const VOICE_RECS = {
+  kr:[
+    {medal:'🥇', t:'따뜻하고 부드러운 목소리', detail:'ElevenLabs · Rachel', cost:'약 250원/1분'},
+    {medal:'🥈', t:'활기차고 밝은 목소리',   detail:'OpenAI TTS · Nova',   cost:'약 50원/1분 · 저렴!'},
+    {medal:'🥉', t:'차분하고 신뢰감 있는 목소리', detail:'CLOVA Voice · 나라', cost:'한국어 특화'}
+  ],
+  jp:[
+    {medal:'🥇', t:'温かく優しい声 (따뜻한 목소리)', detail:'ElevenLabs · Asahi', cost:'약 250원/1분'},
+    {medal:'🥈', t:'明るく元気な声 (밝은 목소리)',  detail:'Nijivoice · 彩音',    cost:'일본어 특화'},
+    {medal:'🥉', t:'落ち着いた声 (차분한 목소리)',  detail:'OpenAI TTS · Onyx',  cost:'약 50원/1분 · 저렴!'}
+  ],
+  kojp:[
+    {medal:'🥇', t:'따뜻한 목소리 (한·일 모두)',   detail:'ElevenLabs 다국어', cost:'약 500원/1분 (두 언어)'},
+    {medal:'🥈', t:'밝고 활기찬 (각 언어별)',      detail:'OpenAI (KO) + Niji (JP)', cost:'약 100원/1분'},
+    {medal:'🥉', t:'차분한 (한국=CLOVA, 일본=Niji)', detail:'현지화 특화',  cost:'각 언어 네이티브'}
+  ]
+};
+function step3(){
+  window._winit = null;
+  const recs = VOICE_RECS[wizard.channel] || VOICE_RECS.kr;
+  return `
+  <div class="panel">
+    <h3>3단계: 스타일 고르기 <button class="help-btn" onclick="showHelp('style')">❓ 이게 뭔가요?</button></h3>
+    <p class="q">"영상의 느낌을 골라주세요"</p>
+
+    <h4>🎨 이미지 스타일</h4>
+    <div class="pick-cards">
+      ${IMG_STYLES.map(s => `<button class="pick ${wizard.imgStyle===s.id?'on':''}" onclick="wizard.imgStyle='${s.id}';renderWizard()"><span class="emo">${s.emo}</span><strong>${s.t}</strong><span>${s.s}</span></button>`).join('')}
+    </div>
+
+    <h4 style="margin-top:16px">🎙 목소리 <button class="help-btn" onclick="showHelp('voice')">❓ 이게 뭔가요?</button></h4>
+    <p class="small">채널 장르에 맞춰 AI가 3가지를 추천해드려요. 하나 고르세요!</p>
+    ${recs.map((r,i) => `
+      <div class="rec ${i===0?'gold':i===1?'silver':'bronze'}" onclick="wizard.voiceChoice='${i===0?'gold':i===1?'silver':'bronze'}';renderWizard()" style="cursor:pointer;${wizard.voiceChoice===(i===0?'gold':i===1?'silver':'bronze')?'box-shadow:0 0 0 3px rgba(239,111,171,.3)':''}">
+        <div class="medal">${r.medal}</div>
+        <div class="info">
+          <strong>${r.t}</strong>
+          <span>${r.detail}</span>
+          <span class="cost">💰 ${r.cost}</span>
+        </div>
+        <button class="btn" onclick="alert('🔊 미리듣기는 각 공급자 사이트에서 들을 수 있어요')">▶ 미리듣기</button>
+      </div>`).join('')}
+
+    <h4 style="margin-top:16px">👥 화자 수</h4>
+    <div class="pick-cards">
+      <button class="pick ${wizard.speakers==='1'?'on':''}" onclick="wizard.speakers='1';renderWizard()"><span class="emo">👤</span><strong>1인 진행</strong><span>혼자 내레이션</span></button>
+      <button class="pick ${wizard.speakers==='2'?'on':''}" onclick="wizard.speakers='2';renderWizard()"><span class="emo">👥</span><strong>2인 티키타카</strong><span>A/B 다른 목소리</span></button>
+      <button class="pick ${wizard.speakers==='3'?'on':''}" onclick="wizard.speakers='3';renderWizard()"><span class="emo">👨‍👩‍👧</span><strong>3인 이상</strong><span>여러 명 대화</span></button>
+    </div>
+
+    <h4 style="margin-top:16px">📝 자막 스타일 <button class="help-btn" onclick="showHelp('subtitle')">❓ 이게 뭔가요?</button></h4>
+    <div class="pick-cards">
+      <button class="pick ${wizard.subtitle.style==='basic'?'on':''}" onclick="wizard.subtitle.style='basic';renderWizard()"><span class="emo">⬜</span><strong>기본형</strong><span>흰글+검정 테두리</span></button>
+      <button class="pick ${wizard.subtitle.style==='emphasize'?'on':''}" onclick="wizard.subtitle.style='emphasize';renderWizard()"><span class="emo">💛</span><strong>강조형</strong><span>노란글+검정 테두리</span></button>
+      <button class="pick ${wizard.subtitle.style==='emotional'?'on':''}" onclick="wizard.subtitle.style='emotional';renderWizard()"><span class="emo">💗</span><strong>감성형</strong><span>분홍글+흰 테두리</span></button>
+    </div>
+    <div class="grid-2" style="margin-top:8px">
+      <div><label>자막 크기</label>
+        <select class="select" onchange="wizard.subtitle.size=this.value">
+          <option value="sm" ${wizard.subtitle.size==='sm'?'selected':''}>작게</option>
+          <option value="mid" ${wizard.subtitle.size==='mid'?'selected':''}>보통</option>
+          <option value="lg" ${wizard.subtitle.size==='lg'?'selected':''}>크게</option>
+        </select>
+      </div>
+      <div><label>자막 위치</label>
+        <select class="select" onchange="wizard.subtitle.pos=this.value">
+          <option value="top" ${wizard.subtitle.pos==='top'?'selected':''}>위</option>
+          <option value="bottom" ${wizard.subtitle.pos==='bottom'?'selected':''}>아래</option>
+          <option value="center" ${wizard.subtitle.pos==='center'?'selected':''}>가운데</option>
+        </select>
+      </div>
+    </div>
+
+    <h4 style="margin-top:16px">🎵 배경음악 <button class="help-btn" onclick="showHelp('bgm')">❓ 이게 뭔가요?</button></h4>
+    <div class="pick-cards">
+      <button class="pick ${wizard.bgm==='emotional-piano'?'on':''}" onclick="wizard.bgm='emotional-piano';renderWizard()"><span class="emo">🎹</span><strong>감동적인 피아노</strong><span>잔잔하고 따뜻</span></button>
+      <button class="pick ${wizard.bgm==='upbeat'?'on':''}" onclick="wizard.bgm='upbeat';renderWizard()"><span class="emo">🎺</span><strong>밝고 경쾌한</strong><span>발랄한 분위기</span></button>
+      <button class="pick ${wizard.bgm==='lofi'?'on':''}" onclick="wizard.bgm='lofi';renderWizard()"><span class="emo">🎧</span><strong>Lo-fi 집중</strong><span>차분한 공부 느낌</span></button>
+      <button class="pick ${wizard.bgm==='orchestra'?'on':''}" onclick="wizard.bgm='orchestra';renderWizard()"><span class="emo">🎻</span><strong>오케스트라</strong><span>웅장·감동</span></button>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="wizardStep=2;renderWizard()">← 이전</button>
+      <button class="btn pri lg" onclick="wizardStep=4;renderWizard()">다음 단계 →</button>
+    </div>
+  </div>`;
+}
+
+/* ─── 4단계: AI 자동 생성 ─── */
+function step4(){
+  window._winit = null;
+  return `
+  <div class="panel">
+    <h3>4단계: AI가 다 만들어드려요! ✨</h3>
+    <p class="q">"아래 큰 버튼을 누르면 AI가 전부 알아서 만들어드려요"</p>
+
+    <div class="cost-box">
+      <div class="line"><span>🎙 목소리 생성</span><span>약 250원</span></div>
+      <div class="line"><span>🖼 이미지 프롬프트 (5장)</span><span>약 200원</span></div>
+      <div class="line"><span>📝 자막 생성</span><span>약 50원</span></div>
+      <div class="line total"><span>💰 총 예상 비용</span><span>약 500원</span></div>
+    </div>
+
+    <button class="btn pri lg full" onclick="runWizardGen()" style="font-size:18px;padding:20px" id="w-gen-btn">🚀 영상 패키지 만들기 시작!</button>
+
+    <div class="progress-list" id="w-progress" style="margin-top:14px"></div>
+
+    <div class="actions">
+      <button class="btn" onclick="wizardStep=3;renderWizard()">← 이전</button>
+    </div>
+  </div>`;
+}
+
+const PROG_STEPS = [
+  {id:'analyze', label:'장면 분석'},
+  {id:'voice',   label:'음성 설정'},
+  {id:'image',   label:'이미지 프롬프트 생성'},
+  {id:'subtitle',label:'자막 파일 생성'},
+  {id:'thumb',   label:'썸네일 설계'},
+  {id:'package', label:'업로드 패키지 준비'}
+];
+
+async function runWizardGen(){
+  document.getElementById('w-gen-btn').disabled = true;
+  const prog = document.getElementById('w-progress');
+  prog.innerHTML = PROG_STEPS.map(s => `<div class="prog-item" id="p-${s.id}">⬜ ${s.label}</div>`).join('');
+
+  try {
+    await _syncAPI();
+    const result = {};
+
+    // 1. 분석
+    setProg('analyze','loading');
+    result.analysis = wizard.analysis || await analyzeAI();
+    setProg('analyze','done');
+
+    // 2. 음성
+    setProg('voice','loading');
+    result.voice = buildVoiceSetting();
+    setProg('voice','done');
+
+    // 3. 이미지
+    setProg('image','loading');
+    result.image = await aiCall('media-image', '이미지 프롬프트 전문가. 대본을 씬별로 나눠 '+IMG_STYLES.find(s=>s.id===wizard.imgStyle).t+' 스타일로 각 씬의 이미지 프롬프트를 작성. 씬마다 한국어·일본어 2버전 출력.', wizard.script, 2500);
+    setProg('image','done');
+
+    // 4. 자막
+    setProg('subtitle','loading');
+    result.subtitle = await aiCall('media-subtitle', '자막(.srt) 생성기. 대본을 SRT 타임코드 형식(한국어·일본어 2버전)으로 출력. 한 줄 ' + (wizard.subtitle.size==='lg'?12:16) + '자 이내.', wizard.script, 2500);
+    setProg('subtitle','done');
+
+    // 5. 썸네일
+    setProg('thumb','loading');
+    result.thumb = await aiCall('media-thumb', '유튜브 썸네일 전문가. JSON으로만 응답:\n{\n "A":{"title":"감동형 제목","bg":"색상","style":"스타일"},\n "B":{"title":"궁금증형 제목","bg":"색상","style":"스타일"},\n "ideogramPrompt":"이미지 프롬프트"\n}', wizard.script.slice(0,1500), 1000);
+    setProg('thumb','done');
+
+    // 6. 업로드 패키지
+    setProg('package','loading');
+    result.package = await aiCall('media-package', '업로드 패키지 생성기. JSON:\n{\n "yt":{"titleA":"","titleB":"","description":"","tags":[]},\n "tiktok":{"caption":"","hashtags":[]},\n "instagram":{"caption":"","hashtags":[]},\n "jp":{"titleA":"","titleB":"","description":"","tags":[]}\n}', wizard.script.slice(0,1500), 2000);
+    setProg('package','done');
+
+    wizard.result = result;
+    wizardStep = 5; renderWizard();
+  } catch(err) {
+    alert('❌ 오류: ' + err.message);
+    document.getElementById('w-gen-btn').disabled = false;
+  }
+}
+
+function setProg(id, state){
+  const el = document.getElementById('p-'+id); if (!el) return;
+  el.classList.remove('loading','done');
+  if (state === 'loading') { el.classList.add('loading'); el.innerHTML = el.innerHTML.replace(/^[⬜🔄✅]\s/,'🔄 '); }
+  if (state === 'done') { el.classList.add('done'); el.innerHTML = el.innerHTML.replace(/^[⬜🔄✅]\s/,'✅ '); }
+}
+
+async function _syncAPI(){
+  if (typeof APIAdapter === 'undefined') throw new Error('api-adapter.js 미로드');
+  ['uc_claude_key','v10_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('claude',v);});
+  ['uc_openai_key','v30_openai_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('openai',v);});
+  ['uc_gemini_key','v30_gemini_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('gemini',v);});
+}
+async function aiCall(featureId, sys, user, maxTokens){
+  return APIAdapter.callAI(sys, user, { maxTokens: maxTokens||2000, featureId });
+}
+async function analyzeAI(){
+  const r = await aiCall('media-analyze','대본 분석가. JSON:\n{"seconds":30,"scenes":5,"emotion":"따뜻함"}', wizard.script.slice(0,1500), 400);
+  try{ return JSON.parse(r.match(/\{[\s\S]*\}/)[0]); }catch(e){ return {seconds:30,scenes:5,emotion:'일반'}; }
+}
+function buildVoiceSetting(){
+  const recs = VOICE_RECS[wizard.channel] || VOICE_RECS.kr;
+  const idx = {gold:0, silver:1, bronze:2}[wizard.voiceChoice] || 0;
+  const pick = recs[idx];
+  return {
+    choice: pick,
+    speakers: wizard.speakers,
+    ko: wizard.channel==='jp' ? null : { provider:'ElevenLabs/OpenAI', voice:pick.t },
+    jp: wizard.channel==='kr' ? null : { provider:'Nijivoice/ElevenLabs', voice:pick.t }
+  };
+}
+
+/* ─── 5단계: 결과 확인 ─── */
+function step5(){
+  window._winit = null;
+  const r = wizard.result; if (!r) return '<div class="panel">결과가 없어요. 4단계로 돌아가 생성해주세요.</div>';
+
+  return `
+  <div class="panel">
+    <h3>🎉 완성! 이 내용으로 영상을 만드세요</h3>
+    <p class="q">각 카드 옆의 <b>📋 복사</b> 버튼을 눌러서 AI 도구에 붙여넣으면 돼요!</p>
+
+    <div class="out-card">
+      <h5>🎙 목소리 설정</h5>
+      <div class="body">
+        ${r.voice.choice.medal} <b>${r.voice.choice.t}</b><br>
+        도구: ${r.voice.choice.detail}<br>
+        화자 수: ${r.voice.speakers}인<br>
+        비용: ${r.voice.choice.cost}
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="copyJson('voice')">📋 설정 복사</button>
+        <button class="btn" onclick="window.open('https://elevenlabs.io','_blank')">ElevenLabs 열기 ↗</button>
+      </div>
+    </div>
+
+    <div class="out-card" style="background:#eff6ff;border-color:#bcd7f0">
+      <h5>🖼 장면별 이미지 만들기</h5>
+      <div class="mono" id="rc-image">${escHtml(r.image)}</div>
+      <div class="actions">
+        <button class="btn" onclick="copyText('rc-image')">📋 전체 복사</button>
+        <button class="btn" onclick="window.open('https://labs.openai.com','_blank')">DALL-E 열기 ↗</button>
+        <button class="btn" onclick="window.open('https://ideogram.ai','_blank')">Ideogram 열기 ↗</button>
+      </div>
+    </div>
+
+    <div class="out-card" style="background:#f7f4ff;border-color:#d8d2f4">
+      <h5>📝 자막 파일 (.srt)</h5>
+      <div class="mono" id="rc-sub">${escHtml(r.subtitle)}</div>
+      <div class="actions">
+        <button class="btn" onclick="copyText('rc-sub')">📋 자막 복사</button>
+        <button class="btn sv" onclick="downloadSrt()">💾 .srt 다운로드</button>
+      </div>
+    </div>
+
+    <div class="out-card" style="background:#effbf7;border-color:#c8ebd9">
+      <h5>🖼 썸네일 전략</h5>
+      <div class="mono" id="rc-thumb">${escHtml(r.thumb)}</div>
+      <div class="actions">
+        <button class="btn" onclick="copyText('rc-thumb')">📋 복사</button>
+        <button class="btn" onclick="window.open('https://ideogram.ai','_blank')">Ideogram 열기 ↗</button>
+      </div>
+    </div>
+
+    <div class="out-card" style="background:#fff7ee;border-color:#f1e0c4">
+      <h5>📋 업로드 준비물 (모든 플랫폼)</h5>
+      <div class="mono" id="rc-pkg">${escHtml(r.package)}</div>
+      <div class="actions">
+        <button class="btn" onclick="copyText('rc-pkg')">📋 전체 복사</button>
+      </div>
+      <p class="small" style="margin-top:8px">⏰ 추천 업로드 시간: 🇰🇷 오후 7시 · 🇯🇵 오후 8시 (JST)</p>
+    </div>
+
+    <div class="out-card">
+      <h5>🎵 배경음악 만들기</h5>
+      <div class="mono" id="rc-bgm">Suno 프롬프트 예시: ${ {'emotional-piano':'emotional piano ballad, warm nostalgic, 70 BPM','upbeat':'upbeat bright pop, cheerful, 120 BPM','lofi':'lo-fi chill beats, study mood, 85 BPM','orchestra':'epic orchestra, cinematic, emotional, 90 BPM'}[wizard.bgm] }</div>
+      <div class="actions">
+        <button class="btn" onclick="copyText('rc-bgm')">📋 복사</button>
+        <button class="btn" onclick="window.open('https://suno.com','_blank')">Suno 열기 ↗</button>
+      </div>
+    </div>
+
+    <div class="cost-box">
+      <div class="line"><span>🎙 음성</span><span>약 250원</span></div>
+      <div class="line"><span>🖼 이미지 (5장)</span><span>약 200원</span></div>
+      <div class="line"><span>📝 자막</span><span>약 50원</span></div>
+      <div class="line total"><span>💰 이번 영상 비용</span><span>약 500원</span></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="wizardStep=1;wizard.result=null;renderWizard()">🔄 처음부터 다시</button>
+      <button class="btn pri" onclick="saveAsRevenue()">💾 수익 추적기에 기록</button>
+      <button class="btn sv" onclick="downloadBundle()">💾 전체 번들 .txt</button>
+      <button class="btn" onclick="goHub()">🏠 처음 화면으로</button>
+    </div>
+  </div>`;
+}
+function copyJson(key){
+  const t = JSON.stringify(wizard.result[key], null, 2);
+  navigator.clipboard.writeText(t).then(()=>alert('📋 복사됨!'));
+}
+function copyText(id){
+  const el = document.getElementById(id);
+  const t = el.textContent || el.value;
+  if (!t) return;
+  navigator.clipboard.writeText(t).then(()=>alert('📋 복사됨!'));
+}
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function downloadSrt(){
+  const t = document.getElementById('rc-sub').textContent;
+  const blob = new Blob([t],{type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'subtitle_'+Date.now()+'.srt'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function downloadBundle(){
+  const r = wizard.result; if (!r) return;
+  const combined = [
+    '═══ 미디어 엔진 결과물 ═══', '생성: '+new Date().toLocaleString('ko-KR'), '',
+    '━━━ 🎙 목소리 ━━━', JSON.stringify(r.voice, null, 2), '',
+    '━━━ 🖼 이미지 프롬프트 ━━━', r.image, '',
+    '━━━ 📝 자막 ━━━', r.subtitle, '',
+    '━━━ 🖼 썸네일 ━━━', r.thumb, '',
+    '━━━ 📋 업로드 패키지 ━━━', r.package
+  ].join('\n');
+  const blob = new Blob([combined],{type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'media_bundle_'+Date.now()+'.txt'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ═══════ 배치 모드 ═══════ */
+function renderBatch(){
+  const box = document.getElementById('batch-topics');
+  box.innerHTML = batchTopics.map((t,i) => `
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+      <span style="font-weight:800;color:#b14d82;min-width:40px">${i+1}.</span>
+      <input class="input" value="${t.text||''}" placeholder="예: 시니어 감동 스토리" oninput="batchTopics[${i}].text=this.value">
+      <button class="btn" onclick="batchTopics.splice(${i},1);renderBatch()">🗑️</button>
+    </div>`).join('');
+  document.getElementById('batch-channel').innerHTML = ['kr','jp','kojp'].map(c =>
+    `<button class="pick ${batchChannel===c?'on':''}" onclick="batchChannel='${c}';renderBatch()"><span class="emo">${c==='kr'?'🇰🇷':c==='jp'?'🇯🇵':'🇰🇷🇯🇵'}</span><strong>${c==='kr'?'한국':c==='jp'?'일본':'한·일 동시'}</strong></button>`
+  ).join('');
+}
+function addBatchTopic(){ batchTopics.push({}); renderBatch(); }
+
+async function runBatch(){
+  const topics = batchTopics.filter(t => t.text && t.text.trim());
+  if (!topics.length) { alert('주제를 최소 1개 입력하세요.'); return; }
+  document.getElementById('batch-status').textContent = '⏳ ' + topics.length + '개 영상 패키지 생성 중...';
+
+  try {
+    await _syncAPI();
+    const days = ['월','수','금','일'];
+    const results = await Promise.all(topics.map((t,i) => aiCall(
+      'media-batch',
+      '영상 패키지 요약 생성기. JSON:\n{"voice":"추천 목소리","image":"추천 스타일","title":"제목","hashtags":["태그5개"]}',
+      '주제: '+t.text+'\n채널: '+batchChannel,
+      800
+    ).then(r => ({ topic:t.text, day:days[i%4], result:r })).catch(e => ({topic:t.text,day:days[i%4],result:'❌ '+e.message}))));
+
+    const box = document.getElementById('batch-result');
+    box.innerHTML = `
+      <div class="out-card">
+        <h5>📅 업로드 스케줄 (자동 배치)</h5>
+        <div class="body">` +
+        results.map((r,i) => `<p><b>${r.day}요일:</b> 영상 ${i+1} · ${r.topic} → 오후 7시</p>`).join('') + `
+        </div>
+      </div>` +
+      results.map((r,i) => `<div class="out-card" style="background:#eff6ff;border-color:#bcd7f0"><h5>🎬 영상 ${i+1}: ${r.topic}</h5><div class="mono">${escHtml(r.result)}</div></div>`).join('');
+    document.getElementById('batch-status').textContent = '✅ '+results.length+'개 완료';
+  } catch(e) { document.getElementById('batch-status').textContent = '❌ '+e.message; }
+}
+
+/* ═══════ 분석 모드 ═══════ */
+function renderAnalysis(){
+  const box = document.getElementById('analysis-rows');
+  box.innerHTML = analysisRows.map((r,i) => `
+    <div class="panel" style="padding:12px;margin-bottom:8px">
+      <div class="grid-3">
+        <div><label>영상 ${i+1} 제목</label><input class="input" value="${r.title||''}" oninput="analysisRows[${i}].title=this.value" placeholder="예: 엄마의 편지"></div>
+        <div><label>조회수</label><input class="input" type="number" value="${r.views||''}" oninput="analysisRows[${i}].views=this.value" placeholder="12000"></div>
+        <div><label>시청완료율 (%)</label><input class="input" type="number" value="${r.completion||''}" oninput="analysisRows[${i}].completion=this.value" placeholder="45"></div>
+      </div>
+      <div class="grid-2" style="margin-top:8px">
+        <div><label>이미지 스타일</label>
+          <select class="select" onchange="analysisRows[${i}].style=this.value">
+            <option value="">선택</option>${IMG_STYLES.map(s=>`<option value="${s.id}" ${r.style===s.id?'selected':''}>${s.emo} ${s.t}</option>`).join('')}
+          </select>
+        </div>
+        <div><label>업로드 시간</label><input class="input" value="${r.time||''}" oninput="analysisRows[${i}].time=this.value" placeholder="예: 오후 7시"></div>
+      </div>
+    </div>`).join('');
+}
+function addAnalysisRow(){ if (analysisRows.length < 10) { analysisRows.push({}); renderAnalysis(); } else alert('최대 10개까지만'); }
+
+async function runAnalysis(){
+  const rows = analysisRows.filter(r => r.title && r.views);
+  if (rows.length < 2) { alert('최소 2개 이상의 영상 데이터가 필요해요.'); return; }
+  const out = document.getElementById('analysis-out');
+  out.innerHTML = '<div class="out-card"><div class="body">⏳ AI가 분석 중...</div></div>';
+  try {
+    await _syncAPI();
+    const data = JSON.stringify(rows);
+    const r = await aiCall('media-analysis',
+      '유튜브 성과 분석가. 여러 영상 데이터를 분석해서 공통점·다음 영상 추천을 구조화해 출력. ✅ 잘된 공통점 5개 / 📈 다음 영상 주제 추천 3개 / 🎨 추천 썸네일 스타일 / ⏰ 최적 업로드 시간.',
+      data, 1500);
+    out.innerHTML = '<div class="out-card" style="background:#effbf7;border-color:#c8ebd9"><h5>📊 AI 분석 결과</h5><div class="body" style="white-space:pre-wrap">'+escHtml(r)+'</div></div>';
+  } catch(e) { out.innerHTML = '<div class="out-card"><div class="body">❌ '+e.message+'</div></div>'; }
+}
+
+/* ═══════ 채널 프로파일 ═══════ */
+function loadChannels(){ try{return JSON.parse(localStorage.getItem('uc_media_channels')||'{}');}catch(e){return {};} }
+function saveChannel(){
+  const name = document.getElementById('cp-name').value.trim();
+  if (!name) { alert('채널 이름을 입력해주세요.'); return; }
+  const all = loadChannels();
+  all[name] = {
+    lang: document.getElementById('cp-lang').value,
+    genre: document.getElementById('cp-genre').value,
+    target: document.getElementById('cp-target').value,
+    platform: document.getElementById('cp-platform').value,
+    time: document.getElementById('cp-time').value,
+    style: document.getElementById('cp-style').value,
+    voice: document.getElementById('cp-voice').value,
+    jpSubSize: document.getElementById('cp-jp-subsize')?.value,
+    jpTime: document.getElementById('cp-jp-time')?.value
+  };
+  localStorage.setItem('uc_media_channels', JSON.stringify(all));
+  renderChannels(); alert('💾 "'+name+'" 채널 저장됨');
+}
+function renderChannels(){
+  const all = loadChannels();
+  const lang = document.getElementById('cp-lang');
+  if (lang) lang.onchange = () => { document.getElementById('cp-jp-settings').style.display = (lang.value==='jp'||lang.value==='kojp')?'block':'none'; };
+  const list = document.getElementById('cp-list');
+  if (!Object.keys(all).length) { list.innerHTML = '<p class="small">아직 저장된 채널이 없어요.</p>'; return; }
+  list.innerHTML = Object.entries(all).map(([name,p]) => `
+    <div class="out-card">
+      <h5>🎭 ${name}</h5>
+      <div class="body">
+        언어: ${p.lang} · 장르: ${p.genre} · 타겟: ${p.target}<br>
+        플랫폼: ${p.platform} · 업로드 시간: ${p.time||'-'}<br>
+        좋아하는 스타일: ${p.style||'-'}
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="if(confirm('삭제할까요?')){const a=loadChannels();delete a['${name}'];localStorage.setItem('uc_media_channels',JSON.stringify(a));renderChannels();renderChannelRow();}">🗑️ 삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════ 댓글 도우미 ═══════ */
+function setReply(t, btn){ replyType = t; document.querySelectorAll('#view-comments .pick').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+async function runComments(){
+  const text = document.getElementById('cm-text').value.trim();
+  if (!text) { alert('댓글을 붙여넣어주세요.'); return; }
+  if (!replyType) { alert('답글 느낌을 먼저 골라주세요.'); return; }
+  const out = document.getElementById('cm-out');
+  out.innerHTML = '<div class="out-card"><div class="body">⏳ 3가지 답글 만드는 중...</div></div>';
+  try {
+    await _syncAPI();
+    const toneMap = {thanks:'따뜻하고 감사한 톤', question:'친절하게 답하는 정보성 톤', negative:'차분하고 공감하는 톤', funny:'유머러스하고 재치있는 톤'};
+    const isJP = /[\u3040-\u30ff]/.test(text);
+    const sys = '유튜브 크리에이터의 댓글 답글 전문가. 주어진 댓글에 ' + toneMap[replyType] + '으로 3가지 다른 버전의 답글 생성. 각 2~3문장. ' + (isJP?'일본어로':'한국어로') + ' 답글 작성.';
+    const r = await aiCall('media-comment', sys, '댓글: '+text, 1000);
+    const versions = r.split(/\n(?=\d[\.\)]|버전|Version|バージョン)/).filter(x=>x.trim()).slice(0,3);
+    out.innerHTML = versions.map((v,i) => `<div class="out-card"><h5>✍️ 답글 버전 ${i+1}</h5><div class="body" style="white-space:pre-wrap">${escHtml(v.trim())}</div><div class="actions"><button class="btn" onclick="navigator.clipboard.writeText(\`${v.trim().replace(/`/g,'\\`')}\`).then(()=>alert('📋 복사됨'))">📋 복사</button></div></div>`).join('');
+  } catch(e) { out.innerHTML = '<div class="out-card"><div class="body">❌ '+e.message+'</div></div>'; }
+}
+
+/* ═══════ 수익 추적 ═══════ */
+function loadRevenues(){ try{return JSON.parse(localStorage.getItem('uc_media_revenue')||'[]');}catch(e){return [];} }
+function addRevenue(){
+  const item = {
+    at: Date.now(),
+    title: document.getElementById('rv-title').value,
+    cost: parseInt(document.getElementById('rv-cost').value)||0,
+    views: parseInt(document.getElementById('rv-views').value)||0,
+    revenue: parseInt(document.getElementById('rv-revenue').value)||0
+  };
+  if (!item.title) { alert('영상 제목을 입력해주세요.'); return; }
+  const list = loadRevenues(); list.unshift(item); localStorage.setItem('uc_media_revenue', JSON.stringify(list.slice(0,100)));
+  ['rv-title','rv-cost','rv-views','rv-revenue'].forEach(id=>document.getElementById(id).value='');
+  renderRevenue();
+}
+function saveAsRevenue(){
+  localStorage.setItem('uc_pending_rv', JSON.stringify({
+    title: wizard.analysis ? '영상 ('+wizard.analysis.seconds+'초)' : '영상',
+    cost: 500,
+    at: Date.now()
+  }));
+  alert('💾 수익 추적기로 이동해서 조회수·수익을 입력하세요');
+  goView('revenue');
+}
+function renderRevenue(){
+  const list = loadRevenues();
+  const box = document.getElementById('rv-list');
+  if (!list.length) { box.innerHTML = '<p class="small">아직 기록된 영상이 없어요.</p>'; }
+  else {
+    box.innerHTML = list.map((r,i) => `
+      <div class="out-card">
+        <h5>🎬 ${r.title}</h5>
+        <div class="body">
+          제작비용: <b>${r.cost.toLocaleString()}원</b> · 조회수: ${r.views.toLocaleString()}<br>
+          예상수익: <b style="color:#1a7a5a">${r.revenue.toLocaleString()}원</b> · 순수익: ${(r.revenue - r.cost).toLocaleString()}원
+        </div>
+        <div class="actions"><button class="btn" onclick="const l=loadRevenues();l.splice(${i},1);localStorage.setItem('uc_media_revenue',JSON.stringify(l));renderRevenue()">🗑️</button></div>
+      </div>`).join('');
+  }
+  // 이번달 합계
+  const now = new Date();
+  const thisMonth = list.filter(r => { const d=new Date(r.at); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+  const totalCost = thisMonth.reduce((s,r)=>s+r.cost,0);
+  const totalRev = thisMonth.reduce((s,r)=>s+r.revenue,0);
+  document.getElementById('rv-total-cost').textContent = totalCost.toLocaleString()+'원';
+  document.getElementById('rv-total-rev').textContent = totalRev.toLocaleString()+'원';
+  document.getElementById('rv-profit').textContent = (totalRev - totalCost).toLocaleString()+'원';
+}
+
+/* ═══════ 초기화 ═══════ */
+renderChannelRow();
+
+// ?view=xxx 라우팅
+(function(){
+  const m = location.search.match(/[?&]view=([^&]+)/);
+  if (m) {
+    const v = decodeURIComponent(m[1]);
+    if (['one','batch','analysis','channels','comments','revenue','trend'].includes(v)) goView(v);
+  }
+})();
+
+// 다른 엔진 전송 대본 자동 로드 (10분 이내)
+(function(){
+  try{
+    const list = JSON.parse(localStorage.getItem('hub_scripts_v1')||'[]');
+    if (!list.length) return;
+    const latest = list[0];
+    if (!latest.at || (Date.now() - latest.at) > 10*60*1000) return;
+    wizard.script = latest.text;
+    console.log('📥 외부 엔진 대본 자동 로드됨');
+  }catch(e){}
+})();
+
+console.log('✅ 미디어 엔진 v5 로드 완료 (마법사 방식)');
+</script>
+</body>
+</html>
