@@ -176,4 +176,38 @@ CSS 변수:
 
 ---
 
+---
+
+## 예정된 분리 작업 (TODO)
+
+### `modules/studio/s1-script.js` 분리 예정
+현재 606줄. 기능 완성 후 아래 구조로 분리:
+
+```
+modules/studio/
+  state.js       프로젝트 상태·저장·불러오기
+  router.js      openStudio / studioClose / 스텝 라우팅
+  dashboard.js   _studioDash / _studioBindDash
+  script-step.js STEP1 대본 (_studioS1 계열)
+  voice-step.js  STEP4 음성 → 현재 s2-voice.js
+  image-step.js  STEP3 이미지 → 현재 s3-image.js
+  edit-step.js   STEP5 편집 → 현재 s4-edit.js
+  upload-step.js STEP6 업로드 → 현재 s5-upload.js
+```
+
+**분리 시점:** s1-script.js가 다시 700줄 초과하거나, 음성/이미지 단계 기능 완성 후
+
+---
+
+## 알려진 기술 부채
+
+| 항목 | 위치 | 상태 |
+|------|------|------|
+| `core/shorts*.js` 3개가 index.html에 불필요하게 로드됨 | index.html | 미해결 |
+| `engines/shorts` ↔ `modules/studio` 역할 경계 주석 없음 | 두 파일 모두 | 미해결 |
+| `shared/ui.css` 내용 없음 (플레이스홀더) | shared/ui.css | 미해결 |
+| `core/bench.js` 481줄 (분리 여지 있음) | core/bench.js | 낮은 우선순위 |
+
+---
+
 *최종 업데이트: 2026-04*
