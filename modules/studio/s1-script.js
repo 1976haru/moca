@@ -267,64 +267,6 @@ function _studioS0(){
 }
 function _studioBindS0(){ /* 순수 static 렌더 — 별도 바인딩 불필요 */ }
 
-/* ═════════════ STEP 1 기획 (라벨은 '① 대본 생성' 이지만 본문은 기존 기획 유지 — 사용자가 조건부 재작성 보류) ═════════════ */
-function _studioS1(){
-  const p = STUDIO.project.s1;
-  const ch = STUDIO.project.channel;
-  const genreBtns = STUDIO_GENRES.map(g =>
-    '<button class="studio-chip' + (p.genre===g.id?' on':'') + '" data-v="' + g.id + '" onclick="studioPickGenre(\'' + g.id + '\',this)">' + g.label + '</button>'
-  ).join('');
-  return '<div class="studio-panel">' +
-    '<h4>① 기획 · 장르·주제·기본 설정</h4>' +
-    '<p class="sub">채널: ' + (ch==='both'?'🇰🇷🇯🇵 동시':ch==='ja'?'🇯🇵 일본어':'🇰🇷 한국어') + ' · 여기서 언제든 바꿀 수 있어요.</p>' +
-    '<div class="studio-chips">' +
-      '<button class="studio-chip' + (ch==='ko'?' on':'') + '"   onclick="studioSetChannel(\'ko\')">🇰🇷 한국어</button>' +
-      '<button class="studio-chip' + (ch==='ja'?' on':'') + '"   onclick="studioSetChannel(\'ja\')">🇯🇵 일본어</button>' +
-      '<button class="studio-chip' + (ch==='both'?' on':'') + '" onclick="studioSetChannel(\'both\')">🇰🇷🇯🇵 동시</button>' +
-    '</div>' +
-
-    '<label class="studio-label">장르 (10종)</label>' +
-    '<div class="studio-chips" id="s1-genres">' + genreBtns + '</div>' +
-
-    '<label class="studio-label">주제 / 제목</label>' +
-    '<input class="studio-in" id="s1-topic" placeholder="예: 치매 예방하는 음식 TOP5" value="' + (p.topic||'') + '">' +
-    '<div class="studio-actions" style="margin-top:8px">' +
-      '<button class="studio-btn ghost" onclick="studioAiSuggestTopics()">🤖 AI 주제 추천 5개</button>' +
-      '<button class="studio-btn ghost" onclick="studioTrendTopics()">🔥 트렌드 주제</button>' +
-    '</div>' +
-    '<div id="s1-topic-out" style="margin-top:8px"></div>' +
-
-    '<label class="studio-label">영상 길이</label>' +
-    '<div class="studio-chips">' +
-      [30,45,60,90,180].map(sec => '<button class="studio-chip' + (p.lengthSec===sec?' on':'') + '" onclick="studioSetLen(' + sec + ',this)">' + sec + '초</button>').join('') +
-    '</div>' +
-
-    '<div class="studio-row" style="margin-top:10px">' +
-      '<div><label class="studio-label">시리즈 여부</label>' +
-        '<select class="studio-in" id="s1-series"><option value="false" ' + (!p.series?'selected':'') + '>단편</option><option value="true" ' + (p.series?'selected':'') + '>시리즈 (여러 편 연결)</option></select>' +
-      '</div>' +
-      '<div><label class="studio-label">타겟 시청자</label>' +
-        '<select class="studio-in" id="s1-target">' +
-          ['일반','시니어(50+)','중년(40~50)','청년(20~30)','학부모','어린이','직장인'].map(x => '<option ' + (p.target===x?'selected':'') + '>' + x + '</option>').join('') +
-        '</select>' +
-      '</div>' +
-      '<div><label class="studio-label">분위기</label>' +
-        '<select class="studio-in" id="s1-mood">' +
-          ['밝게','따뜻하게','진지하게','감동적으로','재미있게','긴장감있게','차분하게'].map(x => '<option ' + (p.mood===x?'selected':'') + '>' + x + '</option>').join('') +
-        '</select>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="studio-actions" style="margin-top:14px">' +
-      '<button class="studio-btn ghost" onclick="studioPresetSave()">💾 이 설정 프리셋 저장</button>' +
-      '<button class="studio-btn ghost" onclick="studioPresetLoad()">📂 프리셋 불러오기</button>' +
-    '</div>' +
-
-    '<div class="studio-actions" style="margin-top:14px;justify-content:flex-end">' +
-      '<button class="studio-btn pri" onclick="studioS1Next()">다음: 대본 생성 →</button>' +
-    '</div>' +
-  '</div>';
-}
 function _studioBindS1(){
   const p = STUDIO.project.s1;
   const on = (id, fn) => { const e = document.getElementById(id); if(e) e.addEventListener('change', fn); };
