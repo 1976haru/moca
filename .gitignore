@@ -24,3 +24,10 @@ build/
 # 로그·캐시
 *.log
 .cache/
+
+# 일회성 유틸리티 스크립트 (로컬 작업용)
+patch_*.py
+split_*.py
+scan_*.py
+redistribute*.py
+*.bak
