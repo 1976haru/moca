@@ -5233,309 +5233,46 @@ const LS_PROFILE_ACT = 'uc_profile_active';   // 활성 프로필 ID
 
 const DEFAULT_EMOJIS = ['👴','👩','🧒','👧','👦','👵','🧑','🐰','☕','🌸'];
 
-function profileList(){
-  try{ const l = JSON.parse(localStorage.getItem(LS_PROFILES)||'[]'); return Array.isArray(l) ? l : []; }catch(_){ return []; }
-}
 
-function profileGet(id){ return profileList().find(p => p.id === id) || null; }
 
-function profileActive(){
-  const aid = localStorage.getItem(LS_PROFILE_ACT);
-  const list = profileList();
-  if(aid){ const found = list.find(p => p.id === aid); if(found) return found; }
-  return list[0] || null;
-}
 
-function profileSave(profile){
-  const list = profileList();
-  const i = list.findIndex(p => p.id === profile.id);
-  if(i >= 0) list[i] = profile; else list.push(profile);
-  if(list.length > 10) list.length = 10;
-  localStorage.setItem(LS_PROFILES, JSON.stringify(list));
-}
 
-function profileDelete(id){
-  const list = profileList().filter(p => p.id !== id);
-  localStorage.setItem(LS_PROFILES, JSON.stringify(list));
-  if(localStorage.getItem(LS_PROFILE_ACT) === id) localStorage.removeItem(LS_PROFILE_ACT);
-  _renderProfileBadge();
-}
 
-function profileActivate(id){
-  localStorage.setItem(LS_PROFILE_ACT, id);
-  _renderProfileBadge();
-  document.getElementById('profileModal')?.classList.remove('on');
-  // 애니메이션 (배경 잠깐 깜빡)
-  document.body.style.transition = 'filter .3s ease';
-  document.body.style.filter = 'brightness(1.05)';
-  setTimeout(()=>{ document.body.style.filter=''; setTimeout(()=>{document.body.style.transition='';}, 400); }, 120);
-}
 
-function profileCreate(defaults){
-  const id = 'pf_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6);
-  const p = Object.assign({
-    id, name:'새 프로필', emoji:'🧑', ageGroup:'adult', role:'other',
-    language:'ko', tone:'friendly', channelName:'', target:'general',
-    categories:[], styleAnalysis:null, createdAt: Date.now()
-  }, defaults||{});
-  profileSave(p);
-  return p;
-}
+
+
+
+
+
+
+
 
 /* ─── 상단 배지 + 전환 모달 ─── */
 
-function _renderProfileBadge(){
-  let b = document.getElementById('profileBadge');
-  const p = profileActive();
-  if(!p){
-    if(b) b.remove();
-    return;
-  }
-  if(!b){
-    b = document.createElement('button');
-    b.id = 'profileBadge';
-    b.className = 'profile-badge';
-    b.type = 'button';
-    b.addEventListener('click', profileOpenSwitcher);
-    document.body.appendChild(b);
-  }
-  b.innerHTML = '<span class="emoji">' + (p.emoji||'🧑') + '</span><span class="name">' + (p.name||'프로필') + '</span>';
-}
-function profileOpenSwitcher(){
-  let m = document.getElementById('profileModal');
-  if(!m){
-    m = document.createElement('div');
-    m.id = 'profileModal';
-    m.className = 'profile-modal';
-    m.addEventListener('click', function(e){ if(e.target === m) m.classList.remove('on'); });
-    document.body.appendChild(m);
-  }
-  const active = profileActive();
-  const list = profileList();
-  m.innerHTML =
-    '<div class="profile-modal-body">' +
-      '<h3>👤 누가 사용하나요?</h3>' +
-      '<p class="sub">프로필을 바꾸면 모든 기록·스타일이 그 사람 것으로 전환돼요</p>' +
-      '<div class="profile-grid">' +
-        list.map(p => '<div class="profile-card' + (active && p.id===active.id ? ' on':'') + '" onclick="profileActivate(\'' + p.id + '\')">' +
-          '<div class="emoji">' + (p.emoji||'🧑') + '</div>' +
-          '<div class="name">' + p.name + '</div>' +
-          (active && p.id===active.id ? '<div class="chk">사용중 ✓</div>' : '') +
-        '</div>').join('') +
-        '<div class="profile-card add" onclick="profileQuickAdd()">' +
-          '<div class="emoji">➕</div><div class="name">새 프로필 추가</div>' +
-        '</div>' +
-      '</div>' +
-      '<div style="display:flex;gap:6px;justify-content:flex-end">' +
-        '<button class="mz-btn ghost" onclick="document.getElementById(\'profileModal\').classList.remove(\'on\')">닫기</button>' +
-        '<button class="mz-btn" onclick="document.getElementById(\'profileModal\').classList.remove(\'on\');var t=document.querySelector(\'.toptab[data-mode=setting]\');if(t)t.click();setTimeout(function(){setOpen(\'profile\');}, 100)">⚙️ 상세 설정</button>' +
-      '</div>' +
-    '</div>';
-  m.classList.add('on');
-}
-function profileQuickAdd(){
-  const name = prompt('프로필 이름:'); if(!name) return;
-  const p = profileCreate({ name });
-  profileActivate(p.id);
-  profileOpenSwitcher();
-}
+
+
+
 
 /* ─── 설정 탭: 나의 프로필 섹션 ─── */
-function renderSetProfile(){
-  const list = profileList();
-  const active = profileActive();
-  const editId = window._editingProfile || (active && active.id);
-  const p = list.find(x => x.id === editId) || list[0] || { id:'', name:'', emoji:'🧑', ageGroup:'adult', role:'other', language:'ko', tone:'friendly', channelName:'', target:'general', categories:[], styleAnalysis:null };
 
-  const emojiPicker = DEFAULT_EMOJIS.map(e =>
-    '<button class="set-pill' + (p.emoji === e ? ' on':'') + '" onclick="document.getElementById(\'pf-emoji\').value=\'' + e + '\';document.querySelectorAll(\'#pf-emoji-row .set-pill\').forEach(x=>x.classList.remove(\'on\'));this.classList.add(\'on\')">' + e + '</button>'
-  ).join('');
 
-  return '<div class="set-panel">' +
-    '<h3>👤 나의 프로필</h3>' +
-    '<p class="hint">여러 사람이 같은 컴퓨터를 써도 각자 기록이 분리돼요. 최대 10개까지.</p>' +
 
-    '<div class="profile-grid" style="margin:12px 0 14px">' +
-      list.map(x => '<div class="profile-card' + (x.id===editId?' on':'') + '" onclick="window._editingProfile=\'' + x.id + '\';renderSetSection(\'profile\')">' +
-        '<div class="emoji">' + (x.emoji||'🧑') + '</div>' +
-        '<div class="name">' + x.name + '</div>' +
-        (active && x.id===active.id ? '<div class="chk">사용중 ✓</div>' : '') +
-      '</div>').join('') +
-      '<div class="profile-card add" onclick="profileNewAndEdit()"><div class="emoji">➕</div><div class="name">새 프로필</div></div>' +
-    '</div>' +
 
-    (p.id ? (
-      '<div class="set-budget-box">' +
-        '<h4>✏️ 프로필 상세 설정</h4>' +
-        '<div class="set-row">' +
-          '<div><label>이름 / 별명</label><input class="set-in" id="pf-name" value="' + (p.name||'') + '"></div>' +
-          '<div><label>이모지</label><input class="set-in" id="pf-emoji" value="' + (p.emoji||'🧑') + '" maxlength="2"></div>' +
-          '<div><label style="opacity:.7">빠른 이모지 선택</label><div class="set-pill-row" id="pf-emoji-row" style="margin:0">' + emojiPicker + '</div></div>' +
-        '</div>' +
-        '<label>나이대</label>' +
-        '<div class="set-pill-row" id="pf-age">' +
-          ['child','youth','adult','senior'].map(v => '<button class="set-pill' + (p.ageGroup===v?' on':'') + '" onclick="_pfPick(\'pf-age\',\'ageGroup\',\'' + v + '\',this)">' +
-            {child:'🌱 어린이', youth:'🌿 청소년', adult:'🌳 성인', senior:'🍂 시니어'}[v] +
-          '</button>').join('') +
-        '</div>' +
-        '<label>역할</label>' +
-        '<div class="set-pill-row" id="pf-role">' +
-          ['youtuber','smb','public','student','parent','other'].map(v => '<button class="set-pill' + (p.role===v?' on':'') + '" onclick="_pfPick(\'pf-role\',\'role\',\'' + v + '\',this)">' +
-            {youtuber:'📺 유튜버', smb:'🏪 소상공인', public:'🏛️ 공무원', student:'📚 학생', parent:'👨‍👩‍👧 학부모', other:'기타'}[v] +
-          '</button>').join('') +
-        '</div>' +
-        '<label>기본 언어</label>' +
-        '<div class="set-pill-row" id="pf-lang">' +
-          ['ko','ja','both'].map(v => '<button class="set-pill' + (p.language===v?' on':'') + '" onclick="_pfPick(\'pf-lang\',\'language\',\'' + v + '\',this)">' +
-            {ko:'🇰🇷 한국어', ja:'🇯🇵 일본어', both:'동시'}[v] +
-          '</button>').join('') +
-        '</div>' +
-        '<label>말투 스타일</label>' +
-        '<div class="set-pill-row" id="pf-tone">' +
-          ['friendly','expert','emotional','formal'].map(v => '<button class="set-pill' + (p.tone===v?' on':'') + '" onclick="_pfPick(\'pf-tone\',\'tone\',\'' + v + '\',this)">' +
-            {friendly:'친근하게', expert:'전문적으로', emotional:'감성적으로', formal:'격식체'}[v] +
-          '</button>').join('') +
-        '</div>' +
 
-        (p.role === 'youtuber' ? (
-          '<h4 style="margin-top:12px">📺 채널 설정 (유튜버)</h4>' +
-          '<div class="set-row">' +
-            '<div><label>채널명</label><input class="set-in" id="pf-channelName" value="' + (p.channelName||'') + '"></div>' +
-            '<div><label>타겟 시청자</label><select class="set-in" id="pf-target">' +
-              [['senior','시니어'],['general','일반'],['kids','어린이']].map(v => '<option value="' + v[0] + '" ' + (p.target===v[0]?'selected':'') + '>' + v[1] + '</option>').join('') +
-            '</select></div>' +
-          '</div>' +
-          '<label>주요 카테고리 (복수 선택)</label>' +
-          '<div class="set-pill-row" id="pf-cats">' +
-            ['health','info','emotion','comedy','music'].map(v => '<button class="set-pill' + ((p.categories||[]).includes(v)?' on':'') + '" onclick="_pfToggleCat(\'' + v + '\',this)">' +
-              {health:'건강', info:'정보', emotion:'감동', comedy:'유머', music:'음악'}[v] +
-            '</button>').join('') +
-          '</div>'
-        ) : '') +
 
-        '<div class="set-row" style="margin-top:14px">' +
-          '<div><button class="set-btn" onclick="pfSave()">💾 저장</button></div>' +
-          '<div><button class="set-btn" onclick="profileActivate(\'' + p.id + '\')">✅ 이 프로필로 전환</button></div>' +
-          '<div><button class="set-btn ghost" onclick="pfDelete(\'' + p.id + '\')" style="color:var(--err)">🗑 삭제</button></div>' +
-        '</div>' +
-      '</div>' +
 
-      _renderStyleLearning(p)
-    ) : '<p class="hint" style="padding:16px;text-align:center">프로필이 없어요. "➕ 새 프로필" 을 눌러 만들어보세요.</p>') +
-  '</div>';
-}
 
-function _renderStyleLearning(p){
-  const st = p.styleAnalysis;
-  return '<div class="set-budget-box" style="margin-top:14px;background:linear-gradient(135deg,#fff5fa,#f7f4ff)">' +
-    '<h4>🧠 내 글쓰기 스타일 학습</h4>' +
-    '<p class="hint" style="font-size:12px">선택사항. 내가 쓴 글을 붙여넣으면 AI 가 분석해서 내 말투로 써요.</p>' +
-    '<label>내가 쓴 글 샘플 1</label>' +
-    '<textarea class="set-in" id="pf-style-1" style="min-height:90px" placeholder="여기에 내가 쓴 글을 붙여넣으세요 (블로그·카톡·편지 등 아무거나)">' + (st?.sample1||'') + '</textarea>' +
-    '<label style="margin-top:6px">샘플 2 (선택)</label>' +
-    '<textarea class="set-in" id="pf-style-2" style="min-height:70px" placeholder="(선택) 두 번째 샘플">' + (st?.sample2||'') + '</textarea>' +
-    '<button class="set-btn" style="margin-top:8px" onclick="pfAnalyzeStyle(\'' + p.id + '\')">🧠 내 스타일 분석하기</button>' +
-    (st && st.summary ? (
-      '<div class="set-budget-box" style="background:#fff;margin-top:10px;padding:12px">' +
-        '<b>📊 분석 결과</b>' +
-        '<div style="font-size:13px;line-height:1.7;margin-top:6px;white-space:pre-wrap">' + st.summary + '</div>' +
-        '<div class="hint" style="font-size:11px;margin-top:6px">' + new Date(st.at||Date.now()).toLocaleString('ko-KR') + ' 분석</div>' +
-      '</div>'
-    ) : '') +
-  '</div>';
-}
 
-function _pfPick(rowId, key, v, btn){
-  document.querySelectorAll('#' + rowId + ' .set-pill').forEach(x => x.classList.remove('on'));
-  btn.classList.add('on');
-  window._pfPendingField = window._pfPendingField || {};
-  window._pfPendingField[key] = v;
-}
 
-function _pfToggleCat(v, btn){
-  btn.classList.toggle('on');
-  const sel = Array.from(document.querySelectorAll('#pf-cats .set-pill.on')).map(x => x.textContent.trim());
-  const map = {'건강':'health','정보':'info','감동':'emotion','유머':'comedy','음악':'music'};
-  window._pfPendingField = window._pfPendingField || {};
-  window._pfPendingField.categories = sel.map(x => map[x] || x);
-}
 
-function profileNewAndEdit(){
-  const p = profileCreate({});
-  window._editingProfile = p.id;
-  renderSetSection('profile');
-}
 
-function pfSave(){
-  const id = window._editingProfile;
-  const cur = profileGet(id); if(!cur) return;
-  const pending = window._pfPendingField || {};
-  const p = Object.assign({}, cur, {
-    name:   document.getElementById('pf-name').value.trim() || cur.name,
-    emoji:  document.getElementById('pf-emoji').value.trim() || cur.emoji,
-    channelName: document.getElementById('pf-channelName')?.value || cur.channelName,
-    target: document.getElementById('pf-target')?.value || cur.target
-  }, pending);
-  profileSave(p);
-  window._pfPendingField = {};
-  _renderProfileBadge();
-  alert('💾 저장됨');
-  renderSetSection('profile');
-}
 
-function pfDelete(id){
-  if(profileList().length <= 1){ alert('최소 1개 프로필은 남겨두세요'); return; }
-  if(!confirm('이 프로필과 모든 기록을 삭제할까요?')) return;
-  profileDelete(id);
-  window._editingProfile = null;
-  renderSetSection('profile');
-}
 
-async function pfAnalyzeStyle(id){
-  const s1 = document.getElementById('pf-style-1').value.trim();
-  const s2 = document.getElementById('pf-style-2').value.trim();
-  if(!s1){ alert('최소 1개 샘플을 붙여넣어주세요'); return; }
-  try{
-    const sys =
-      '아래 샘플에서 작성자의 글쓰기 스타일을 분석하라.\n' +
-      '출력 형식(한국어, 5~6줄):\n' +
-      '문장 길이: (짧은편/보통/긴편, 평균 글자수)\n' +
-      '감정 온도: ★(1~5)\n' +
-      '자주 쓰는 표현: "~", "~"\n' +
-      '특징: (이모지/어미/문체 등 3가지)\n' +
-      '다음 글을 이 스타일로 써야 하는 지침 2줄';
-    const user = '=== 샘플 1 ===\n' + s1 + (s2 ? '\n\n=== 샘플 2 ===\n' + s2 : '');
-    const res = await APIAdapter.callWithFallback(sys, user, { maxTokens: 800, featureId: 'style-analyze' });
-    const cur = profileGet(id); if(!cur) return;
-    cur.styleAnalysis = { sample1: s1, sample2: s2, summary: res.trim(), at: Date.now() };
-    profileSave(cur);
-    alert('🧠 분석 완료!');
-    renderSetSection('profile');
-  }catch(e){ alert('❌ ' + e.message); }
-}
+
 
 /* ─── AI 프롬프트 자동 주입 ─── */
 
-function buildProfileSystemPrefix(){
-  const p = profileActive();
-  if(!p || !p.name) return '';
-  const roleMap = {youtuber:'유튜버', smb:'소상공인', public:'공무원', student:'학생', parent:'학부모', other:'일반'};
-  const ageMap  = {child:'어린이', youth:'청소년', adult:'성인', senior:'시니어'};
-  const toneMap = {friendly:'따뜻하고 친근하게', expert:'전문적으로', emotional:'감성적으로', formal:'격식체로'};
-  let out = '[사용자 정보]\n';
-  out += '이름/별명: ' + p.name + '\n';
-  out += '나이대: ' + (ageMap[p.ageGroup]||'성인') + '\n';
-  out += '역할: ' + (roleMap[p.role]||'일반') + '\n';
-  out += '기본 언어: ' + (p.language === 'ja' ? '일본어' : p.language === 'both' ? '한국어+일본어' : '한국어') + '\n';
-  out += '선호 말투: ' + (toneMap[p.tone]||'친근하게') + '\n';
-  if(p.channelName) out += '채널: ' + p.channelName + ' (타겟: ' + (p.target||'general') + ')\n';
-  if(p.categories && p.categories.length) out += '주요 관심: ' + p.categories.join(', ') + '\n';
-  if(p.styleAnalysis && p.styleAnalysis.summary){
-    out += '학습된 작성자 스타일:\n' + p.styleAnalysis.summary + '\n';
-  }
-  out += '→ 이 사람의 스타일/의도/언어에 맞게 작성.\n\n';
-  return out;
-}
+
 
 // APIAdapter 호출 래핑 — callWithFallback 과 callAI 모두에 프로필 정보 자동 prepend
 (function hookProfileInjection(){
@@ -5627,131 +5364,17 @@ const SET_HUB = [
 
 let setActive = null;
 
-function renderSettings(){
-  const stage = document.getElementById('settingStage') || createSettingStage();
-  stage.innerHTML = `
-    <div class="set-top">
-      <h2>⚙️ 설정 — 내 마음대로 꾸며요!</h2>
-      <p>어려운 말 없이 쉽게 알려드려요. 아래 6개 카드 중 하나를 눌러주세요 ✨</p>
-    </div>
-    <div class="set-hub">${SET_HUB.map(c => `
-      <button class="set-hub-card ${setActive===c.id?'on':''}" onclick="setOpen('${c.id}')">
-        <span class="ico">${c.ico}</span>
-        <strong>${c.title}</strong>
-        <span>${c.desc}</span>
-      </button>`).join('')}
-    </div>
-    <div id="set-content"></div>
-    <!-- 의도반영: 프로필 & 스타일 관리 (조용히) -->
-    <div style="margin-top:18px;padding:14px 18px;background:#fff;border:1px solid var(--line);border-radius:18px">
-      <div id="intentMgrRoot"></div>
-    </div>
-  `;
-  setTimeout(()=>{ if(window.IntentSystem) window.IntentSystem.renderProfileManager('intentMgrRoot'); }, 20);
-  if (setActive) renderSetSection(setActive);
-}
 
-function createSettingStage(){
-  const stage = document.createElement('div');
-  stage.id = 'settingStage';
-  stage.className = 'set-stage hide';
-  document.querySelector('main.card .main').appendChild(stage);
-  return stage;
-}
 
-function setOpen(id){ setActive = id; renderSettings(); }
 
-function renderSetSection(id){
-  const c = document.getElementById('set-content');
-  c.innerHTML = ({
-    profile: renderSetProfile,
-    brand: renderSetBrand,
-    ai: renderSetAi, cost: renderSetCost, theme: renderSetTheme,
-    write: renderSetWrite, lock: renderSetLock, stats: renderSetStats
-  }[id] || (()=>''))();
-  if (typeof window._setInit === 'function') { window._setInit(); window._setInit = null; }
-  if (id === 'ai' && typeof _bindFallbackDnD === 'function') setTimeout(_bindFallbackDnD, 10);
-}
+
+
+
+
 
 /* ─── 섹션 1: 🔑 AI 연결 ─── */
 
-function renderSetAi(){
-  const keys = {
-    claude:  localStorage.getItem('uc_claude_key')||'',
-    openai:  localStorage.getItem('uc_openai_key')||'',
-    gemini:  localStorage.getItem('uc_gemini_key')||'',
-    minimax: localStorage.getItem('uc_minimax_key')||''
-  };
-  const models = {
-    claude:  ['claude-sonnet-4-5','claude-haiku-4-5-20251001'],
-    openai:  ['gpt-4o','gpt-4o-mini'],
-    gemini:  ['gemini-2.0-flash','gemini-2.5-pro-exp-03-25'],
-    minimax: ['abab6.5s-chat','abab6.5-chat']
-  };
-  const cur = {
-    claude:  'claude-sonnet-4-5',
-    openai:  localStorage.getItem('uc_openai_model')||'gpt-4o',
-    gemini:  localStorage.getItem('uc_gemini_model')||'gemini-2.0-flash',
-    minimax: localStorage.getItem('uc_minimax_model')||'abab6.5s-chat'
-  };
-  const card = (p, cls, title, tip, costHint, urlLabel, url) => {
-    const on = !!keys[p];
-    return `<div class="set-key-card ${cls}">
-      <div class="khead"><strong>${title}</strong>
-        <span class="set-status ${on?'on':'off'}">${on?'🟢 연결됨':'🔴 연결 안됨'}</span>
-      </div>
-      <p class="hint" style="margin:0 0 8px">${tip}</p>
-      <div class="set-row">
-        <div style="grid-column:1/3">
-          <label>API 키</label>
-          <input class="set-in" id="sk-${p}" type="password" placeholder="${p==='claude'?'sk-ant-api03-...':'sk-...'}" value="${keys[p]}">
-        </div>
-        <div>
-          <label>모델</label>
-          <select class="set-in" id="sm-${p}">${models[p].map(m=>`<option value="${m}" ${m===cur[p]?'selected':''}>${m}</option>`).join('')}</select>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="set-btn" onclick="saveProvKey('${p}')">💾 저장</button>
-        <button class="set-btn ghost" onclick="toggleKeyVis('sk-${p}')">👁️ 보기/숨기기</button>
-        <a class="set-linkbtn" href="${url}" target="_blank" style="margin-left:auto">${urlLabel} ↗</a>
-      </div>
-      <p class="hint" style="margin:8px 0 0;font-size:11px">💰 ${costHint}</p>
-    </div>`;
-  };
-  return `<div class="set-panel">
-    <h3>🔑 AI 연결 설정</h3>
-    <p class="hint">💡 "AI를 쓰려면 열쇠(키)가 필요해요. 게임 계정처럼 딱 한 번만 넣으면 계속 쓸 수 있어요!"</p>
-    ${card('claude','claude','🟣 Claude (글쓰기 최고!)','한국어 글쓰기 품질 1위. 긴 문서·감성적 글에 강해요.','글 1개 = 약 15~50원','콘솔에서 잔액 확인','https://console.anthropic.com/')}
-    ${card('openai','openai','🟢 OpenAI (다방면 최고!)','이미지·음성도 함께 써요. DALL-E와 키 공유 가능.','글 1개 = 약 5~20원 (mini) / 20~60원 (4o)','OpenAI에서 잔액 확인','https://platform.openai.com/usage')}
-    ${card('gemini','gemini','🔵 Gemini (검색·정보 최고!)','무료 할당량이 넉넉해요. 가장 저렴!','글 1개 = 약 1~5원','Google에서 잔액 확인','https://aistudio.google.com/')}
-    ${card('minimax','minimax','🔴 MiniMax (중국어·다국어 특화)','중국어/한·중·일 번역과 표현에 강해요. 긴 문서도 잘 처리해요.','글 1개 = 약 3~10원','MiniMax에서 키 받기','https://www.minimaxi.com/platform')}
 
-    <details class="gd-fold">
-      <summary>🎙 음성·🖼 이미지·🎬 영상·🎵 음악 키 (고급)</summary>
-      <div style="padding:10px 0">
-        <div class="set-row"><div style="grid-column:1/4"><label>🎙 ElevenLabs</label><input class="set-in" type="password" id="sk-11l" placeholder="sk_..." value="${localStorage.getItem('uc_elevenlabs_key')||''}"><button class="set-btn" onclick="saveMiscKey('11l','uc_elevenlabs_key')" style="margin-top:6px">저장</button><p class="hint" style="margin:6px 0 0;font-size:11px">💡 ElevenLabs에서 일본어 지원 음성을 선택하세요 (예: Yuki, Aria 등)</p></div></div>
-        <div class="set-row"><div style="grid-column:1/4"><label>🎬 InVideo</label><input class="set-in" type="password" id="sk-iv" placeholder="..." value="${localStorage.getItem('uc_invideo_key')||''}"><button class="set-btn" onclick="saveMiscKey('iv','uc_invideo_key')" style="margin-top:6px">저장</button></div></div>
-        <div class="set-row"><div style="grid-column:1/4"><label>🎵 Suno</label><input class="set-in" type="password" id="sk-suno" placeholder="..." value="${localStorage.getItem('uc_suno_key')||''}"><button class="set-btn" onclick="saveMiscKey('suno','uc_suno_key')" style="margin-top:6px">저장</button></div></div>
-        <p class="hint">🖼 DALL·E는 OpenAI 키를 자동으로 씁니다 (위에서 저장한 키 사용)</p>
-      </div>
-    </details>
-
-    <div class="set-budget-box" style="margin-top:12px">
-      <h4>💡 키가 없어요!</h4>
-      <p class="hint" style="margin:4px 0 10px">아직 키가 없어도 괜찮아요. 아래 버튼을 눌러서 무료로 받아요!</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <a class="set-linkbtn" href="https://aistudio.google.com/app/apikey" target="_blank">🔵 Gemini 키 받기 (무료!) ⭐</a>
-        <a class="set-linkbtn" href="https://console.anthropic.com/" target="_blank">🟣 Claude 키 받기</a>
-        <a class="set-linkbtn" href="https://platform.openai.com/api-keys" target="_blank">🟢 OpenAI 키 받기</a>
-      </div>
-    </div>
-
-    ${renderAiStatusDashboard()}
-    ${renderFallbackOrder()}
-    ${renderFeatureMatrix()}
-  </div>`;
-}
 
 /* ─── 🤖 AI 상태 대시보드 ─── */
 function renderAiStatusDashboard(){
@@ -5782,45 +5405,11 @@ function renderAiStatusDashboard(){
   '</div>';
 }
 
-async function testAiConnection(provider, btn){
-  if (typeof APIAdapter === 'undefined') { alert('api-adapter.js 미로드'); return; }
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = '⏳ 테스트 중...';
-  try{
-    const r = await APIAdapter.testConnection(provider);
-    if(r.ok) alert('🟢 정상 작동합니다!\n\n응답: ' + (r.response||''));
-    else {
-      const msgMap = { auth:'🔴 API 키가 틀렸거나 만료됐어요', credit:'🔴 크레딧이 부족해요', rate:'🔴 잠시 후 다시 시도해주세요', server:'🔴 서버에 문제가 있어요', network:'🔴 연결할 수 없어요' };
-      alert(msgMap[r.kind] || ('🔴 ' + r.message));
-    }
-  }catch(e){ alert('❌ ' + e.message); }
-  finally{ btn.disabled = false; btn.textContent = orig; renderSetSection('ai'); }
-}
+
 
 /* ─── ⚙️ 자동 전환 (폴백) 우선순위 ─── */
 
-function renderFallbackOrder(){
-  if (typeof APIAdapter === 'undefined') return '';
-  const order = APIAdapter.getFallbackOrder();
-  const enabled = APIAdapter.isFallbackEnabled();
-  const labelOf = id => ({claude:'🟣 Claude', openai:'🟢 ChatGPT', gemini:'🔵 Gemini', minimax:'🔴 MiniMax'}[id] || id);
-  return '<div class="set-budget-box" style="margin-top:14px;background:linear-gradient(135deg,#f7f4ff,#eff6ff);border-color:#bcd7f0">' +
-    '<h4>⚙️ 자동 전환 설정</h4>' +
-    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;padding:6px 0;cursor:pointer">' +
-      '<input type="checkbox" id="fallback-enabled" ' + (enabled?'checked':'') + ' onchange="APIAdapter.setFallbackEnabled(this.checked);renderSetSection(\'ai\')"> ' +
-      '오류 시 자동으로 다른 AI 사용' +
-    '</label>' +
-    '<p class="hint" style="margin:4px 0 10px">예: Claude 크레딧 부족 → OpenAI 로 즉시 전환 · 토스트 알림 표시</p>' +
-    '<div id="fallback-list" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px">' +
-      order.map((id, i) => '<div class="fallback-row" draggable="true" data-id="' + id + '" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border:1px solid transparent;border-radius:8px;cursor:grab;user-select:none">' +
-        '<span style="font-size:12px;color:var(--sub);width:36px">' + (i+1) + '순위</span>' +
-        '<span style="flex:1;font-weight:900">' + labelOf(id) + '</span>' +
-        '<span style="color:var(--muted);font-size:14px">☰</span>' +
-      '</div>').join('') +
-    '</div>' +
-    '<p class="hint" style="margin:8px 0 0;font-size:11px">↑↓ 드래그로 순서 변경 · 저장은 자동</p>' +
-  '</div>';
-}
+
 
 // DnD 바인딩 (렌더 후 DOM 준비 시점에 실행)
 function _bindFallbackDnD(){
@@ -5964,172 +5553,18 @@ function _featureRow(category, item, choices){
   </tr>`;
 }
 
-function renderFeatureMatrix(){
-  const textRows  = FEATURE_MATRIX_TEXT.map(x => _featureRow('text',  x, TEXT_PROVIDER_CHOICES)).join('');
-  const imageRows = FEATURE_MATRIX_IMAGE.map(x => _featureRow('image', x, IMAGE_PROVIDER_CHOICES)).join('');
-  const ttsRows   = FEATURE_MATRIX_TTS.map(x => _featureRow('tts',   x, TTS_PROVIDER_CHOICES)).join('');
-  return `<div class="set-budget-box" style="margin-top:16px;background:linear-gradient(135deg,#fff5fa,#eef6ff);border-color:#e0c5d8">
-    <h4 style="margin:0">🤖 기능별 최적 AI 조합</h4>
-    <p class="hint" style="margin:4px 0 10px">전문가가 설정한 최적 조합이에요. 바꾸고 싶으면 언제든지 변경 가능!</p>
 
-    <table class="set-table" style="font-size:13px">
-      <tr><th>기능</th><th>기본 AI</th><th>이유</th><th>변경</th></tr>
-      ${textRows}
-      <tr><td colspan="4" style="background:#f6eff7;font-weight:600">🎨 이미지</td></tr>
-      ${imageRows}
-      <tr><td colspan="4" style="background:#f6eff7;font-weight:600">🎙 음성</td></tr>
-      ${ttsRows}
-    </table>
 
-    <div class="set-budget-box" style="margin-top:12px;background:#fff;border-color:#eadff1">
-      <h4 style="margin:0 0 6px">💡 이 설정의 의미</h4>
-      <ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.8">
-        <li><b>Claude</b> = 한국어/일본어 글쓰기 최강</li>
-        <li><b>GPT-4o</b> = 영어 번역 최강</li>
-        <li><b>Gemini</b> = 빠르고 저렴한 요약</li>
-        <li><b>Ideogram</b> = 텍스트 포함 이미지 무료</li>
-        <li><b>DALL-E 3</b> = 실사/캐릭터 품질 최강</li>
-        <li><b>ElevenLabs</b> = 감성 목소리 최강</li>
-        <li><b>Nijivoice</b> = 일본어 목소리 최강</li>
-      </ul>
-    </div>
 
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
-      <button class="set-btn" onclick="saveFeatureMatrix()">✅ 이 설정으로 저장</button>
-      <button class="set-btn ghost" onclick="resetFeatureMatrix()">↩️ 전문가 추천으로 되돌리기</button>
-    </div>
-  </div>`;
-}
 
-function saveFeatureMatrix(){
-  if (typeof ProviderConfig === 'undefined') { alert('providers.js 미로드'); return; }
-  const CHOICE_BANK = { text:TEXT_PROVIDER_CHOICES, image:IMAGE_PROVIDER_CHOICES, tts:TTS_PROVIDER_CHOICES };
-  const nodes = document.querySelectorAll('.feat-sel');
-  let missing = [];
-  nodes.forEach(sel => {
-    const cat = sel.getAttribute('data-cat');
-    const id  = sel.getAttribute('data-id');
-    const sig = sel.value;
-    const pick = (CHOICE_BANK[cat]||[]).find(c => _featureSignature(c) === sig);
-    if(!pick) return;
-    const base = ProviderConfig.getFeatureDefault(cat, id) || {};
-    const merged = Object.assign({}, base, pick);
-    ProviderConfig.setFeatureDefault(cat, id, merged);
-    // API 키 미연결 체크 (텍스트만)
-    if (cat === 'text' && typeof APIAdapter !== 'undefined' && !APIAdapter.hasApiKey(pick.provider)) {
-      if (!missing.includes(pick.provider)) missing.push(pick.provider);
-    }
-  });
-  if (missing.length) {
-    const labels = missing.map(p => ({claude:'Claude',openai:'ChatGPT',gemini:'Gemini'}[p]||p)).join(', ');
-    if (confirm('💾 저장 완료!\n\n🔑 [' + labels + '] 키가 아직 없어요. 지금 입력할까요?')) {
-      document.querySelector('#sk-' + missing[0])?.focus();
-      return;
-    }
-  } else {
-    alert('✅ 기능별 AI 조합이 저장됐어요!');
-  }
-  renderSetSection('ai');
-}
 
-function resetFeatureMatrix(){
-  if (typeof ProviderConfig === 'undefined') return;
-  if (!confirm('모든 기능을 전문가 추천 기본값으로 되돌릴까요?')) return;
-  ['text','image','tts'].forEach(cat => ProviderConfig.clearFeatureDefault(cat));
-  alert('↩️ 전문가 추천으로 돌렸어요.');
-  renderSetSection('ai');
-}
 
-function saveProvKey(p){
-  const key = document.getElementById('sk-'+p).value.trim();
-  const model = document.getElementById('sm-'+p).value;
-  localStorage.setItem('uc_'+p+'_key', key);
-  if (p === 'openai')  localStorage.setItem('uc_openai_model', model);
-  if (p === 'gemini')  localStorage.setItem('uc_gemini_model', model);
-  if (p === 'minimax') localStorage.setItem('uc_minimax_model', model);
-  if (typeof APIAdapter !== 'undefined' && APIAdapter.setApiKey) {
-    try { APIAdapter.setApiKey(p, key); } catch(_) { /* minimax may not be in STORAGE_KEYS yet */ }
-  }
-  alert('💾 '+p+' 키 저장됨');
-  updateCostBar();
-}
-function saveMiscKey(id, key){ localStorage.setItem(key, document.getElementById('sk-'+id).value.trim()); alert('💾 저장됨'); }
-function toggleKeyVis(id){ const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
+
+
+
 
 /* ─── 섹션 2: 💰 비용 관리 ─── */
-function renderSetCost(){
-  const s = CostTracker.getStatus();
-  const t = CostTracker.getToday();
-  const m = CostTracker.getMonth();
-  const b = CostTracker.getBudget();
-  const fx = CostTracker.getFxRate();
-  const lvl = s.level;
-  return `<div class="set-panel">
-    <h3>💰 실시간 비용 관리</h3>
-    <p class="hint">💡 "얼마나 쓰고 있는지 한눈에 봐요"</p>
 
-    <div class="set-budget-box">
-      <h4>☀️ 오늘 사용한 비용</h4>
-      <ul style="font-size:13px;list-style:none;padding:0;margin:8px 0">
-        <li>🟣 Claude: 약 ${Math.round(t.byProvider?.claude||0).toLocaleString()}원</li>
-        <li>🟢 OpenAI: 약 ${Math.round(t.byProvider?.openai||0).toLocaleString()}원</li>
-        <li>🔵 Gemini: 약 ${Math.round(t.byProvider?.gemini||0).toLocaleString()}원</li>
-      </ul>
-      <hr style="border:none;border-top:1px dashed #e8a6c6;margin:8px 0">
-      <strong style="font-size:16px">합계: 약 ${Math.round(s.todayKRW).toLocaleString()}원</strong>
-    </div>
-
-    <div class="set-budget-box" style="background:linear-gradient(135deg,#eff6ff,#fff5fa);border-color:#bcd7f0">
-      <h4>📅 이번달 사용 현황</h4>
-      <p>사용: 약 <b>${Math.round(s.monthKRW).toLocaleString()}원</b> <span class="pill">${Math.round(s.usedPct)}%</span></p>
-      <p>예산: ${b.monthly.toLocaleString()}원</p>
-      <div class="set-progress ${lvl==='warn'?'warn':lvl==='block'?'block':''}"><div style="width:${Math.min(100,s.usedPct)}%"></div></div>
-      <p>남은 예산: 약 ${Math.round(s.remaining).toLocaleString()}원</p>
-      <p>이 속도면 이번달 예상: <b>약 ${Math.round(s.projected).toLocaleString()}원</b></p>
-    </div>
-
-    <h4>📊 예산 설정</h4>
-    <div class="set-row">
-      <div><label>이번달 예산 (원)</label><input class="set-in" type="number" id="set-bud-m" value="${b.monthly}"></div>
-      <div><label>⚠️ 경고 시점 (%)</label><input class="set-in" type="number" id="set-bud-w" value="${b.warnAt}"></div>
-      <div><label>🚫 차단 시점 (%)</label><input class="set-in" type="number" id="set-bud-b" value="${b.blockAt}"></div>
-    </div>
-    <button class="set-btn" onclick="saveBudget()">💾 예산 저장</button>
-
-    <h4>💳 잔액 확인하기</h4>
-    <p class="hint">정확한 잔액은 각 사이트에서 확인해주세요.</p>
-    <a class="set-linkbtn" href="https://console.anthropic.com/" target="_blank">🟣 Claude 잔액 확인 → console.anthropic.com</a>
-    <a class="set-linkbtn" href="https://platform.openai.com/usage" target="_blank">🟢 OpenAI 잔액 확인 → platform.openai.com/usage</a>
-    <a class="set-linkbtn" href="https://aistudio.google.com/" target="_blank">🔵 Gemini 잔액 확인 → aistudio.google.com</a>
-
-    <h4>📋 모델별 비용 비교표</h4>
-    <table class="set-table">
-      <tr><th>모델</th><th>품질</th><th>속도</th><th>글 1개 비용</th></tr>
-      <tr><td>🟣 Claude Sonnet</td><td>⭐⭐⭐</td><td>보통</td><td>약 15~50원</td></tr>
-      <tr><td>🟣 Claude Haiku</td><td>⭐⭐</td><td>빠름</td><td>약 2~8원</td></tr>
-      <tr><td>🟢 GPT-4o</td><td>⭐⭐⭐</td><td>보통</td><td>약 20~60원</td></tr>
-      <tr><td>🟢 GPT-4o-mini</td><td>⭐⭐</td><td>빠름</td><td>약 1~5원</td></tr>
-      <tr><td>🔵 Gemini Flash</td><td>⭐⭐</td><td>아주 빠름</td><td>약 1~3원</td></tr>
-    </table>
-
-    <h4>⚡ 절약 모드</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${localStorage.getItem('uc_thrift')==='off'||!localStorage.getItem('uc_thrift')?'on':''}" onclick="setThrift('off')">⭕ 끄기 (설정한 모델 그대로)</button>
-      <button class="set-pill ${localStorage.getItem('uc_thrift')==='on'?'on':''}" onclick="setThrift('on')">✅ 켜기 (자동으로 저렴한 모델 선택)</button>
-    </div>
-
-    <h4>💱 환율 설정</h4>
-    <div class="set-row">
-      <div><label>1달러 = ? 원</label><input class="set-in" type="number" id="set-fx" value="${fx}"></div>
-      <div style="display:flex;align-items:flex-end"><button class="set-btn" onclick="saveFx()">💾 환율 저장</button></div>
-      <div><label style="opacity:.6">마지막 업데이트</label><input class="set-in" value="${new Date().toLocaleDateString('ko-KR')}" readonly></div>
-    </div>
-
-    <h4>🤖 기능별 AI 선택</h4>
-    <p class="hint">전문가 추천 조합은 <b>설정 → 🔑 AI 연결</b> 탭의 "기능별 최적 AI 조합" 표에서 관리해요.</p>
-    <button class="set-btn" onclick="setOpen('ai')">🔑 AI 연결 탭으로 이동</button>
-  </div>`;
-}
 function featureModelRow(id, label, def){
   const cur = localStorage.getItem('uc_fmodel_'+id) || def;
   return `<div class="set-row" style="grid-template-columns:1fr 2fr">
@@ -6141,286 +5576,30 @@ function featureModelRow(id, label, def){
     </select>
   </div>`;
 }
-function saveBudget(){
-  CostTracker.setBudget(
-    parseFloat(document.getElementById('set-bud-m').value),
-    parseFloat(document.getElementById('set-bud-w').value),
-    parseFloat(document.getElementById('set-bud-b').value)
-  );
-  alert('💾 예산 저장됨'); renderSetSection('cost');
-}
-function saveFx(){
-  CostTracker.setFxRate(parseFloat(document.getElementById('set-fx').value)||1350);
-  alert('💾 환율 저장됨'); renderSetSection('cost');
-}
-function setThrift(v){ localStorage.setItem('uc_thrift', v); renderSetSection('cost'); }
-function recommendModels(){
-  localStorage.setItem('uc_fmodel_script','claude');
-  localStorage.setItem('uc_fmodel_translate','openai');
-  localStorage.setItem('uc_fmodel_summary','gemini');
-  localStorage.setItem('uc_fmodel_public','claude');
-  localStorage.setItem('uc_fmodel_image','openai');
-  alert('✨ 추천 설정 적용됨'); renderSetSection('cost');
-}
+
+
+
+
 
 /* ─── 섹션 3: 🎨 꾸미기 ─── */
-function renderSetTheme(){
-  const t = localStorage.getItem('uc_theme')||'light';
-  const col = localStorage.getItem('uc_color')||'pink';
-  const fs  = localStorage.getItem('uc_fontsize')||'mid';
-  const mp  = localStorage.getItem('uc_menupos')||'left';
-  return `<div class="set-panel">
-    <h3>🎨 화면 꾸미기</h3>
-    <p class="hint">내 마음대로 꾸며봐요!</p>
 
-    <h4>☀️ 테마</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${t==='light'?'on':''}" onclick="setTheme('light')">☀️ 밝게</button>
-      <button class="set-pill ${t==='dark'?'on':''}" onclick="setTheme('dark')">🌙 어둡게</button>
-      <button class="set-pill ${t==='auto'?'on':''}" onclick="setTheme('auto')">🔄 자동</button>
-    </div>
 
-    <h4>🌈 색깔</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${col==='pink'?'on':''}" onclick="setColor('pink')">💜 핑크-보라</button>
-      <button class="set-pill ${col==='blue'?'on':''}" onclick="setColor('blue')">💙 파랑</button>
-      <button class="set-pill ${col==='orange'?'on':''}" onclick="setColor('orange')">🧡 주황</button>
-      <button class="set-pill ${col==='mono'?'on':''}" onclick="setColor('mono')">🖤 흑백</button>
-    </div>
 
-    <h4>🔤 글자 크기</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${fs==='sm'?'on':''}" onclick="setFontSize('sm')">작게</button>
-      <button class="set-pill ${fs==='mid'?'on':''}" onclick="setFontSize('mid')">보통</button>
-      <button class="set-pill ${fs==='lg'?'on':''}" onclick="setFontSize('lg')">크게</button>
-      <button class="set-pill ${fs==='xl'?'on':''}" onclick="setFontSize('xl')">아주 크게</button>
-    </div>
-    <p style="padding:12px;background:#fff5fa;border-radius:12px;margin-top:6px;font-size:${fs==='sm'?'11':fs==='lg'?'18':fs==='xl'?'22':'14'}px;font-weight:800">미리보기: "이 크기예요!"</p>
 
-    <h4>📍 메뉴 위치</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${mp==='left'?'on':''}" onclick="setMenuPos('left')">◀️ 왼쪽</button>
-      <button class="set-pill ${mp==='right'?'on':''}" onclick="setMenuPos('right')">오른쪽 ▶️</button>
-    </div>
 
-    <h4>✨ 특별</h4>
-    <label class="set-check"><input type="checkbox" id="chk-noanim" ${localStorage.getItem('uc_noanim')==='1'?'checked':''} onchange="localStorage.setItem('uc_noanim',this.checked?'1':'0')">움직이는 효과 끄기 (배터리 절약)</label>
-    <label class="set-check"><input type="checkbox" id="chk-hc" ${localStorage.getItem('uc_highcontrast')==='1'?'checked':''} onchange="localStorage.setItem('uc_highcontrast',this.checked?'1':'0')">눈 편한 모드 (고대비)</label>
-
-    <h4 style="margin-top:20px">🌐 언어 설정</h4>
-    <p class="hint">화면 언어</p>
-    <div class="set-pill-row">
-      <button class="set-pill on">🇰🇷 한국어</button>
-      <button class="set-pill" onclick="alert('준비중 🚧')">🇯🇵 日本語 🚧</button>
-      <button class="set-pill" onclick="alert('준비중 🚧')">🇺🇸 English 🚧</button>
-    </div>
-
-    <p class="hint" style="margin-top:10px">만들어지는 글</p>
-    <select class="set-in" onchange="localStorage.setItem('uc_gen_lang',this.value)">
-      <option value="ko" ${(localStorage.getItem('uc_gen_lang')||'kojp')==='ko'?'selected':''}>한국어만</option>
-      <option value="jp" ${localStorage.getItem('uc_gen_lang')==='jp'?'selected':''}>일본어만</option>
-      <option value="kojp" ${(localStorage.getItem('uc_gen_lang')||'kojp')==='kojp'?'selected':''}>한국어+일본어 동시</option>
-      <option value="all" ${localStorage.getItem('uc_gen_lang')==='all'?'selected':''}>한·일·영 동시</option>
-    </select>
-
-    <p class="hint" style="margin-top:10px">말투</p>
-    <div class="set-row">
-      <div><label>한국어</label><select class="set-in" onchange="localStorage.setItem('uc_ko_speech',this.value)"><option value="formal" ${(localStorage.getItem('uc_ko_speech')||'formal')==='formal'?'selected':''}>존댓말</option><option value="casual" ${localStorage.getItem('uc_ko_speech')==='casual'?'selected':''}>반말</option></select></div>
-      <div><label>일본어</label><select class="set-in" onchange="localStorage.setItem('uc_jp_speech',this.value)"><option value="keitai" ${(localStorage.getItem('uc_jp_speech')||'keitai')==='keitai'?'selected':''}>정중체</option><option value="jotai" ${localStorage.getItem('uc_jp_speech')==='jotai'?'selected':''}>보통체</option></select></div>
-      <div><label>날짜 형식</label><select class="set-in" onchange="localStorage.setItem('uc_date_fmt',this.value)">
-        <option value="ko" ${(localStorage.getItem('uc_date_fmt')||'ko')==='ko'?'selected':''}>2025년 4월 20일</option>
-        <option value="jp" ${localStorage.getItem('uc_date_fmt')==='jp'?'selected':''}>2025年4月20日</option>
-        <option value="en" ${localStorage.getItem('uc_date_fmt')==='en'?'selected':''}>April 20, 2025</option>
-      </select></div>
-    </div>
-  </div>`;
-}
-function setTheme(v){ localStorage.setItem('uc_theme',v); document.body.dataset.theme=v; renderSetSection('theme'); }
-function setColor(v){ localStorage.setItem('uc_color',v); renderSetSection('theme'); }
-function setFontSize(v){ localStorage.setItem('uc_fontsize',v); renderSetSection('theme'); }
-function setMenuPos(v){ localStorage.setItem('uc_menupos',v); renderSetSection('theme'); }
 
 /* ─── 섹션 4: ✍️ 글쓰기 기본값 ─── */
-function renderSetWrite(){
-  const tone = localStorage.getItem('uc_def_tone')||'pro';
-  const len  = localStorage.getItem('uc_def_len')||'mid';
-  return `<div class="set-panel">
-    <h3>✍️ 글쓰기 기본값</h3>
-    <p class="hint">💡 "한 번 설정하면 매번 자동으로 적용돼요!"</p>
 
-    <h4>🎭 기본 말투</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${tone==='friendly'?'on':''}" onclick="setDefTone('friendly')">😊 친근하게</button>
-      <button class="set-pill ${tone==='pro'?'on':''}" onclick="setDefTone('pro')">💼 전문적으로</button>
-      <button class="set-pill ${tone==='emo'?'on':''}" onclick="setDefTone('emo')">🌸 감성적으로</button>
-      <button class="set-pill ${tone==='fun'?'on':''}" onclick="setDefTone('fun')">😄 재미있게</button>
-    </div>
 
-    <h4>📏 기본 길이</h4>
-    <div class="set-pill-row">
-      <button class="set-pill ${len==='short'?'on':''}" onclick="setDefLen('short')">짧게</button>
-      <button class="set-pill ${len==='mid'?'on':''}" onclick="setDefLen('mid')">중간</button>
-      <button class="set-pill ${len==='long'?'on':''}" onclick="setDefLen('long')">길게</button>
-    </div>
 
-    <h4>✅ 항상 포함할 것</h4>
-    <label class="set-check"><input type="checkbox" onchange="localStorage.setItem('uc_inc_hash',this.checked?'1':'0')" ${localStorage.getItem('uc_inc_hash')==='1'?'checked':''}>#️⃣ 해시태그</label>
-    <label class="set-check"><input type="checkbox" onchange="localStorage.setItem('uc_inc_emoji',this.checked?'1':'0')" ${localStorage.getItem('uc_inc_emoji')==='1'?'checked':''}>😊 이모지</label>
-    <label class="set-check"><input type="checkbox" onchange="localStorage.setItem('uc_inc_en',this.checked?'1':'0')" ${localStorage.getItem('uc_inc_en')==='1'?'checked':''}>🇺🇸 영어 번역</label>
-    <label class="set-check"><input type="checkbox" onchange="localStorage.setItem('uc_inc_br',this.checked?'1':'0')" ${localStorage.getItem('uc_inc_br')!=='0'?'checked':''}>↵ 줄바꿈</label>
-
-    <h4>🚫 절대 쓰면 안 되는 단어</h4>
-    <input class="set-in" id="set-banned" placeholder="쉼표로 구분. 예: 경쟁사이름, 민감한단어" value="${localStorage.getItem('uc_banned_words')||''}">
-    <button class="set-btn" onclick="localStorage.setItem('uc_banned_words',document.getElementById('set-banned').value);alert('💾 저장됨')" style="margin-top:6px">💾 저장</button>
-  </div>`;
-}
-function setDefTone(v){ localStorage.setItem('uc_def_tone',v); renderSetSection('write'); }
-function setDefLen(v){ localStorage.setItem('uc_def_len',v); renderSetSection('write'); }
 
 /* ─── 섹션 5: 🔒 보안 & 어린이 보호 ─── */
-function renderSetLock(){
-  const al = localStorage.getItem('uc_autolock')||'10';
-  const kt = localStorage.getItem('uc_kids_timelimit')||'2h';
-  const hist = localStorage.getItem('uc_hist_retention')||'month';
-  return `<div class="set-panel">
-    <h3>🔒 보안 & 어린이 보호</h3>
-    <p class="hint">💡 "내 정보를 안전하게 지켜요"</p>
 
-    <h4>🔐 내 정보 보호</h4>
-    <label class="set-check"><input type="checkbox" onchange="if(this.checked){const p=prompt('비밀번호 4자리:');if(p&&p.length===4)localStorage.setItem('uc_app_lock',p);}else localStorage.removeItem('uc_app_lock')" ${localStorage.getItem('uc_app_lock')?'checked':''}>앱 잠금 비밀번호 사용</label>
-    <label>자동 잠금</label>
-    <div class="set-pill-row">
-      <button class="set-pill ${al==='off'?'on':''}" onclick="localStorage.setItem('uc_autolock','off');renderSetSection('lock')">안 함</button>
-      <button class="set-pill ${al==='10'?'on':''}" onclick="localStorage.setItem('uc_autolock','10');renderSetSection('lock')">10분 후</button>
-      <button class="set-pill ${al==='30'?'on':''}" onclick="localStorage.setItem('uc_autolock','30');renderSetSection('lock')">30분 후</button>
-    </div>
-    <label class="set-check"><input type="checkbox" onchange="localStorage.setItem('uc_hide_key',this.checked?'1':'0')" ${localStorage.getItem('uc_hide_key')!=='0'?'checked':''}>🔐 API 키 별표로 숨기기</label>
 
-    <h4>🧒 어린이 보호 설정</h4>
-    <button class="set-btn" onclick="kParentMode()">🔒 어린이 모드 비밀번호 설정</button>
-    <p class="hint" style="margin-top:10px">하루 사용 시간</p>
-    <div class="set-pill-row">
-      <button class="set-pill ${kt==='30m'?'on':''}" onclick="localStorage.setItem('uc_kids_timelimit','30m');renderSetSection('lock')">30분</button>
-      <button class="set-pill ${kt==='1h'?'on':''}" onclick="localStorage.setItem('uc_kids_timelimit','1h');renderSetSection('lock')">1시간</button>
-      <button class="set-pill ${kt==='2h'?'on':''}" onclick="localStorage.setItem('uc_kids_timelimit','2h');renderSetSection('lock')">2시간</button>
-      <button class="set-pill ${kt==='off'?'on':''}" onclick="localStorage.setItem('uc_kids_timelimit','off');renderSetSection('lock')">제한 없음</button>
-    </div>
-    <p class="hint" style="margin-top:10px">허용 카테고리</p>
-    ${['edu','kids','psy','smb','monetize','public','trans','shorts'].map(c=>{
-      const cur = localStorage.getItem('uc_allow_'+c)!=='0';
-      const label = {edu:'📚 학습/교육',kids:'🌈 어린이 모드',psy:'🔮 심리/운세 (숨기기)',smb:'🏪 소상공인',monetize:'💰 수익형',public:'🏛️ 공공기관',trans:'🌐 번역',shorts:'📱 자동숏츠'}[c];
-      return `<label class="set-check"><input type="checkbox" ${cur?'checked':''} onchange="localStorage.setItem('uc_allow_${c}',this.checked?'1':'0')">${label}</label>`;
-    }).join('')}
 
-    <h4 style="margin-top:20px">💾 저장 & 백업</h4>
-    <p class="hint">기록 보관 기간</p>
-    <div class="set-pill-row">
-      <button class="set-pill ${hist==='7d'?'on':''}" onclick="localStorage.setItem('uc_hist_retention','7d');renderSetSection('lock')">7일</button>
-      <button class="set-pill ${hist==='month'?'on':''}" onclick="localStorage.setItem('uc_hist_retention','month');renderSetSection('lock')">한 달</button>
-      <button class="set-pill ${hist==='3m'?'on':''}" onclick="localStorage.setItem('uc_hist_retention','3m');renderSetSection('lock')">3달</button>
-      <button class="set-pill ${hist==='forever'?'on':''}" onclick="localStorage.setItem('uc_hist_retention','forever');renderSetSection('lock')">영원히</button>
-    </div>
-    <p class="hint" style="margin-top:10px">localStorage 용량</p>
-    <div class="set-progress"><div id="set-storage-bar" style="width:0%"></div></div>
-    <p class="hint" id="set-storage-text">계산 중...</p>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
-      <button class="set-btn" onclick="exportSettings()">📥 내 설정 저장하기</button>
-      <button class="set-btn ghost" onclick="importSettings()">📤 저장한 설정 불러오기</button>
-    </div>
-
-    <h4 style="margin-top:20px">⚠️ 초기화</h4>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="set-btn ghost" onclick="if(confirm('설정만 초기화할까요?')){Object.keys(localStorage).filter(k=>k.startsWith('uc_')&&!k.startsWith('uc_kids_')).forEach(k=>localStorage.removeItem(k));alert('✅ 초기화 완료');location.reload();}">설정만 초기화</button>
-      <button class="set-btn danger" onclick="if(confirm('⚠️ 전체 데이터를 지울까요? 되돌릴 수 없어요!')){localStorage.clear();alert('✅ 전체 초기화');location.reload();}">전체 초기화</button>
-    </div>
-  </div>`;
-}
-function exportSettings(){
-  const data = {};
-  Object.keys(localStorage).filter(k=>k.startsWith('uc_')||k.startsWith('cost_')).forEach(k=>data[k]=localStorage.getItem(k));
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'uc_settings_'+Date.now()+'.json'; a.click();
-  URL.revokeObjectURL(a.href);
-}
-function importSettings(){
-  const f = document.createElement('input'); f.type = 'file'; f.accept = '.json';
-  f.onchange = e => {
-    const r = new FileReader();
-    r.onload = () => {
-      try{
-        const data = JSON.parse(r.result);
-        Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
-        alert('✅ 불러오기 완료'); location.reload();
-      }catch(err){ alert('❌ 파일 오류: '+err.message); }
-    };
-    r.readAsText(e.target.files[0]);
-  };
-  f.click();
-}
 
 /* ─── 섹션 6: 📊 현황 ─── */
-function renderSetStats(){
-  const m = CostTracker.getMonth();
-  const features = m.byFeature||{};
-  const sorted = Object.entries(features).sort((a,b)=>b[1].count-a[1].count);
-  const medals = ['🥇','🥈','🥉'];
-  const savedMinutes = (m.count||0) * 30;
-  const savedMoney   = (m.count||0) * 50000;
 
-  return `<div class="set-panel">
-    <h3>📊 내 사용 통계</h3>
-    <p class="hint">💡 "이번달 얼마나 썼고, 얼마나 절약했는지 봐요!"</p>
-
-    <div class="set-budget-box">
-      <h4>✨ 이번달 만든 것들</h4>
-      <p style="font-size:16px;line-height:2">
-        총 생성: <b>${m.count||0}개</b><br>
-        💰 AI 비용: 약 <b>${Math.round(m.total).toLocaleString()}원</b>
-      </p>
-    </div>
-
-    <h4>🏆 가장 많이 쓴 기능 TOP 3</h4>
-    ${sorted.slice(0,3).map(([id, v], i) => `<p style="font-size:14px;padding:8px 12px;background:#fff5fa;border-radius:10px;margin:4px 0">${medals[i]} ${id}: ${v.count}회 (약 ${Math.round(v.krw).toLocaleString()}원)</p>`).join('') || '<p class="hint">아직 사용 기록이 없어요. 한번 써보세요! ✨</p>'}
-
-    <h4>💎 절약 현황</h4>
-    <div class="set-budget-box" style="background:linear-gradient(135deg,#effbf7,#fff7ee);border-color:#c8ebd9">
-      <p style="font-size:15px;line-height:2">
-        ⏰ 이번달 절약한 시간: 약 <b>${Math.floor(savedMinutes/60)}시간 ${savedMinutes%60}분</b><br>
-        💰 이번달 절약한 비용: 약 <b>${savedMoney.toLocaleString()}원</b>
-        <small style="display:block;color:var(--sub);font-size:11px;margin-top:6px">※ 평균 1개당 30분 · 전문가 5만원 기준 추정</small>
-      </p>
-    </div>
-
-    <h4 style="margin-top:20px">📱 앱 정보</h4>
-    <div class="set-key-card">
-      <p><b>현재 버전:</b> v1.0.0</p>
-      <p><b>내 플랜:</b> 🌟 소상공인 패키지 이용중 (예시)</p>
-      <p><b>만료일:</b> 30일 후 (예시)</p>
-      <button class="set-btn" style="margin-top:6px">다른 패키지로 바꾸기</button>
-    </div>
-
-    <h4>🆕 새로운 기능</h4>
-    <p>🆕 감동스토리 롱폼 추가됨</p>
-    <p>🆕 자동숏츠 8단계 파이프라인</p>
-    <p>🆕 어린이 모드 (무지개 UI + 뱃지)</p>
-
-    <h4>🔜 다음에 추가될 기능</h4>
-    <p>🔜 유튜브 자동 업로드</p>
-    <p>🔜 이미지 직접 생성</p>
-    <p>🔜 모바일 앱 출시</p>
-
-    <h4>💬 도움 & 지원</h4>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
-      <button class="set-btn ghost" onclick="alert('💬 support@example.com')">💬 채팅 문의</button>
-      <button class="set-btn ghost" onclick="alert('📧 support@example.com')">📧 이메일</button>
-      <button class="set-btn ghost" onclick="alert('📹 youtube.com')">📹 유튜브 강의</button>
-      <button class="set-btn ghost" onclick="alert('💡 새 기능 제안 감사해요!')">💡 기능 제안</button>
-      <button class="set-btn ghost" onclick="alert('🐛 버그 신고 감사해요!')">🐛 버그 신고</button>
-      <button class="set-btn ghost" onclick="alert('⭐ 후기 감사해요!')">⭐ 후기</button>
-    </div>
-  </div>`;
-}
 
 /* ─── setting 모드: renderGrid에서 토글 ─── */
 (function hookSettingMode(){
@@ -8941,19 +8120,7 @@ API 크레딧이 있는 한 계속 만들 수 있어요.`},
   setInterval(_refreshNavAiStatus, 5000);
 })();
 
-function _refreshNavAiStatus(){
-  const el = document.getElementById('navAiStatus'); if(!el) return;
-  const hasKey = ['claude','openai','gemini'].some(p => localStorage.getItem('uc_' + p + '_key'));
-  if(!hasKey){ el.textContent = '🔴 API 키 없음'; el.style.color = 'var(--err)'; return; }
-  try{
-    const st = APIAdapter.getConnectionStatus();
-    const ok = Object.values(st||{}).some(x => x && x.state === 'ok');
-    const anyErr = Object.values(st||{}).some(x => x && x.state === 'error');
-    if(ok && !anyErr){ el.textContent = '🟢 AI 연결됨'; el.style.color = 'var(--ok)'; }
-    else if(anyErr){ el.textContent = '🟡 일부 오류'; el.style.color = 'var(--warn)'; }
-    else{ el.textContent = '🟡 키 있음 (미확인)'; el.style.color = 'var(--warn)'; }
-  }catch(_){ el.textContent = '🟡 연결 확인 중'; }
-}
+
 
 /* 검색 */
 const NAV_SEARCH_INDEX = [
@@ -9016,56 +8183,12 @@ const NAV_SEARCH_INDEX = [
   // state.category 변경 감지 (주기적 갱신)
   setInterval(_bcUpdate, 800);
 })();
-function _bcUpdate(){
-  const el = document.getElementById('bcPath'); if(!el) return;
-  const cat = (typeof state !== 'undefined' && state.category) ? categories.find(c => c.id === state.category) : null;
-  const parts = ['<span class="bc-crumb" onclick="bcGoHome()">🏠 홈</span>'];
-  if(cat){
-    parts.push('<span class="bc-sep">›</span>');
-    parts.push('<span class="bc-crumb current">' + cat.icon + ' ' + cat.title + '</span>');
-    // 세부 단계 (숏츠 스튜디오 STUDIO.project.step)
-    if(cat.id === 'shorts' && typeof STUDIO !== 'undefined' && STUDIO.project && STUDIO.project.step > 0){
-      parts.push('<span class="bc-sep">›</span>');
-      parts.push('<span class="bc-crumb current">Step ' + STUDIO.project.step + '/6</span>');
-    }
-  }
-  el.innerHTML = parts.join(' ');
-}
-function bcGoHome(){
-  // 작업 중이면 확인
-  if(_hasUnsavedWork()){
-    showLeaveModal(() => { bcReallyGoHome(); }, () => { bcReallyGoHome(); });
-    return;
-  }
-  bcReallyGoHome();
-}
-function bcReallyGoHome(){
-  if(typeof state !== 'undefined'){ state.category = null; if(typeof renderAll === 'function') renderAll(); }
-  const main = document.querySelector('.main'); if(main){ main.classList.remove('anim-slide-r','anim-slide-l'); main.classList.add('anim-fade'); }
-  window.mocaToast('🏠 홈으로 이동', 'info');
-}
-function bcGoBack(){
-  // 숏츠 스튜디오에서 step > 0 이면 step--
-  if(typeof STUDIO !== 'undefined' && STUDIO.project && STUDIO.project.step > 0 && state.category === 'shorts'){
-    STUDIO.project.step = Math.max(0, STUDIO.project.step - 1);
-    if(typeof studioSave === 'function') studioSave();
-    if(typeof renderStudio === 'function') renderStudio();
-    return;
-  }
-  bcGoHome();
-}
-function _hasUnsavedWork(){
-  if(typeof STUDIO !== 'undefined' && STUDIO.project && STUDIO.project.step > 0 && STUDIO.project.s1 && STUDIO.project.s1.topic){
-    return true;
-  }
-  return false;
-}
-function setBcSaveState(state){
-  const el = document.getElementById('bcSave'); if(!el) return;
-  el.classList.remove('saving','saved');
-  if(state === 'saving'){ el.textContent = '저장중...'; el.classList.add('saving'); }
-  else { el.textContent = '✓ 저장됨'; el.classList.add('saved'); }
-}
+
+
+
+
+
+
 
 /* ─── 3. 사이드바 sticky + 활성 카테고리 + 뱃지 ─── */
 (function enhanceSidebar(){
@@ -9110,22 +8233,8 @@ function setBcSaveState(state){
     '<button class="fab-btn primary" title="홈"     onclick="bcGoHome()">🏠 <span class="fab-tip">홈</span></button>';
   document.body.appendChild(menu);
 })();
-function fabSave(){
-  try{
-    if(typeof studioSave === 'function' && STUDIO && STUDIO.project) studioSave();
-    if(typeof saveBrandkit === 'function') { /* 이미 auto */ }
-    window.mocaToast('✅ 자동저장 완료', 'ok');
 
-setBcSaveState('saved');
 
-}catch(e){ window.mocaToast('❌ ' + e.message, 'err'); }
-}
-function fabResume(){
-  const lastCat = localStorage.getItem('uc_last_category');
-  if(!lastCat){ window.mocaToast('저장된 이전 작업이 없어요', 'warn'); return; }
-  if(typeof state !== 'undefined'){ state.category = lastCat; if(typeof renderAll==='function') renderAll(); }
-  window.mocaToast('↩ 마지막 위치로 복귀', 'info');
-}
 
 /* ─── 10. 자동 복귀 모달 (재접속 시) ─── */
 document.addEventListener('DOMContentLoaded', function(){
@@ -9149,32 +8258,7 @@ document.addEventListener('DOMContentLoaded', function(){
     _showResumeModal(info, lastCat);
   }, 800);
 });
-function _showResumeModal(info, catId){
-  let m = document.getElementById('resumeModal');
-  if(!m){
-    m = document.createElement('div');
-    m.id = 'resumeModal';
-    m.className = 'resume-modal';
-    document.body.appendChild(m);
-  }
-  m.innerHTML = '<div class="rm-body">' +
-    '<h3>↩ 이어서 할까요?</h3>' +
-    '<p>지난번 작업이 남아있어요. 바로 이어서 하시거나 처음부터 시작할 수 있어요.</p>' +
-    '<div class="rm-info">' + info + '</div>' +
-    '<div class="rm-btns">' +
-      '<button class="pri" id="rmResume">▶ 이어하기</button>' +
-      '<button class="ghost" id="rmHome">🏠 처음부터</button>' +
-    '</div></div>';
-  m.classList.add('on');
-  const close = () => m.classList.remove('on');
-  document.getElementById('rmResume').onclick = () => {
-    close();
-    if(typeof state !== 'undefined'){ state.category = catId; if(typeof renderAll==='function') renderAll(); }
-    window.mocaToast('↩ 이어하기: ' + info, 'info');
-  };
-  document.getElementById('rmHome').onclick = () => { close(); };
-  m.onclick = (e) => { if(e.target === m) close(); };
-}
+
 
 /* ─── 저장 상태 실시간 동기화 (브레드크럼 ↔ 토스트) ─── */
 (function hookAutoSave(){
@@ -9297,178 +8381,27 @@ if(ld && !ld.contains(e.target)) ld.classList.remove('open');
 })();
 
 /* 탭 클릭 → 기존 toptab 연동 */
-function uchClickTab(mode){
-  const btn = document.querySelector('.toptab[data-mode="' + mode + '"]');
-  if(btn){ btn.click(); }
-  document.querySelectorAll('#uchTabs button').forEach(b => b.classList.toggle('on', b.getAttribute('data-mode') === mode));
-  window.mocaToast && window.mocaToast('📍 ' + ({normal:'일반',kids:'어린이',guide:'가이드',setting:'설정',about:'소개',qna:'Q&A'}[mode] || mode), 'info');
-}
+
 /* 언어 드롭다운 → 기존 lang toptab 연동 */
-function uchPickLang(lang){
-  document.getElementById('uchLangDd').classList.remove('open');
-  document.getElementById('uchLangCur').textContent = {ko:'🇰🇷', ja:'🇯🇵', en:'🇺🇸'}[lang] || '🇰🇷';
-  const btn = document.querySelector('.toptab.lang[data-lang="' + lang + '"]');
-  if(btn){ btn.click(); return; }
-  if(typeof selectLang === 'function') selectLang(lang);
-}
+
 /* 홈 복귀 */
-function uchGoHome(){
-  if(typeof state !== 'undefined') state.category = null;
-  if(typeof renderAll === 'function') renderAll();
-  window.mocaToast && window.mocaToast('🏠 홈', 'info');
-}
+
 
 /* 날짜 */
-function uchSyncDate(){
-  const d = new Date();
-  const dow = ['일','월','화','수','목','금','토'][d.getDay()];
-  const el = document.getElementById('uchDateStr');
-  if(el) el.textContent = (d.getMonth()+1) + '월 ' + d.getDate() + '일 (' + dow + ')';
-}
+
 
 /* 날씨 — Open-Meteo 무료 API (서울) */
-async function uchFetchWeather(){
-  const wEl = document.getElementById('uchWeather'); if(!wEl) return;
-  const icon = document.getElementById('uchWIcon');
-  const temp = document.getElementById('uchWTemp');
-  const desc = document.getElementById('uchWDesc');
-  try{
-    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.57&longitude=126.98&current=temperature_2m,weathercode&timezone=Asia%2FSeoul', {
-      headers:{ 'Accept':'application/json' }
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const t = Math.round(data.current?.temperature_2m ?? 0);
-    const code = data.current?.weathercode ?? 0;
-    const map = {
-      0:['☀️','맑음'], 1:['🌤','대체로 맑음'], 2:['⛅','구름 조금'], 3:['☁️','흐림'],
-      45:['🌫','안개'], 48:['🌫','짙은 안개'],
-      51:['🌦','약한 이슬비'], 53:['🌦','이슬비'], 55:['🌦','강한 이슬비'],
-      56:['🌨','얼음 이슬비'], 57:['🌨','강한 얼음 이슬비'],
-      61:['🌧','약한 비'], 63:['🌧','비'], 65:['🌧','강한 비'],
-      66:['🌨','얼음 비'], 67:['🌨','강한 얼음 비'],
-      71:['🌨','약한 눈'], 73:['🌨','눈'], 75:['❄️','폭설'], 77:['❄️','싸락눈'],
-      80:['🌦','소나기'], 81:['🌧','강한 소나기'], 82:['⛈','매우 강한 소나기'],
-      85:['🌨','약한 소낙눈'], 86:['❄️','강한 소낙눈'],
-      95:['⛈','뇌우'], 96:['⛈','뇌우+약한 우박'], 99:['⛈','뇌우+강한 우박']
-    };
-    const w = map[code] || ['🌤','흐림'];
-    wEl.classList.remove('err');
-    if(icon) icon.textContent = w[0];
-    if(temp) temp.textContent = t + '°';
-    if(desc) desc.textContent = w[1];
-  }catch(e){
-    wEl.classList.add('err');
-    if(icon) icon.textContent = '❓';
-    if(temp) temp.textContent = '';
-    if(desc) desc.textContent = '날씨 불가';
-  }
-}
+
 
 /* AI 상태 + 비용 동기화 */
-function uchSyncStatus(){
-  const dot = document.getElementById('uchAiDot');
-  const name = document.getElementById('uchAiName');
-  const oldDot = document.getElementById('cb-ai-dot');
-  const oldName = document.getElementById('cb-ai-name');
-  if(dot && oldDot && oldDot.textContent) dot.textContent = oldDot.textContent;
-  if(name && oldName && oldName.textContent) name.textContent = oldName.textContent;
-  // 기존 UI 미존재 시 직접 계산
-  if(name && (!oldName || !oldName.textContent)){
 
-try{
-      const hasKey = ['claude','openai','gemini'].some(p => localStorage.getItem('uc_' + p + '_key'));
-      if(!hasKey){ dot.textContent='🔴'; name.textContent='AI 미연결'; }
-      else if(typeof APIAdapter !== 'undefined'){
-        const cur = APIAdapter.getProvider();
-        const names = {claude:'🟣 Claude', openai:'🟢 ChatGPT', gemini:'🔵 Gemini', minimax:'🔴 MiniMax'};
-        dot.textContent='🟢'; name.textContent = (names[cur]||cur) + ' 연결';
-      }
-    }catch(_){}
-
-}
-  const today = document.getElementById('uchToday');
-  const month = document.getElementById('uchMonth');
-  const oldToday = document.getElementById('cb-today');
-  const oldMonth = document.getElementById('cb-month');
-  if(today && oldToday && oldToday.textContent) today.textContent = oldToday.textContent;
-  if(month && oldMonth && oldMonth.textContent) month.textContent = oldMonth.textContent;
-  if(today && (!oldToday || !oldToday.textContent) && typeof CostTracker !== 'undefined'){
-
-try{
-      const s = CostTracker.getStatus();
-      today.textContent = Math.round(s.todayKRW).toLocaleString() + '원';
-      month.textContent = Math.round(s.monthKRW).toLocaleString() + '원';
-    }catch(_){}
-
-}
-}
 
 /* 브레드크럼 + 활성 모드 반영 */
-function uchSyncBreadcrumb(){
-  const bc = document.getElementById('uchBreadcrumb');
-  const cur = document.getElementById('uchBcCurrent');
-  if(!bc || !cur || typeof state === 'undefined') return;
-  const cat = state.category ? (categories.find(c => c.id === state.category)) : null;
-  if(cat){
-    bc.classList.add('on');
-    let text = cat.icon + ' ' + cat.title;
-    if(cat.id === 'shorts' && typeof STUDIO !== 'undefined' && STUDIO.project && STUDIO.project.step > 0){
-      text += ' › Step ' + STUDIO.project.step + '/6';
-    } else if(cat.id === 'shorts' && typeof shState !== 'undefined' && shState.step > 0){
-      text += ' › Step ' + shState.step;
-    }
-    cur.textContent = text;
-  } else {
-    bc.classList.remove('on');
-  }
-  const activeMode = document.querySelector('.toptab.on:not(.lang)');
-  if(activeMode){
-    const m = activeMode.getAttribute('data-mode');
-    document.querySelectorAll('#uchTabs button').forEach(b => b.classList.toggle('on', b.getAttribute('data-mode') === m));
-  }
-}
+
 
 /* 검색 — 기존 NAV_SEARCH_INDEX 재사용 */
-function uchSearchUpdate(q){
-  const dd = document.getElementById('uchSearchDd');
-  if(!dd || typeof NAV_SEARCH_INDEX === 'undefined') return;
-  q = (q||'').trim().toLowerCase();
-  let items = [];
-  if(!q){
 
-items.push({group:'바로가기'});
 
-items = items.concat(NAV_SEARCH_INDEX.slice(0, 8));
-
-} else {
-
-items.push({group:'검색 결과'});
-
-const found = NAV_SEARCH_INDEX.filter(x => (x.t + x.d).toLowerCase().includes(q)).slice(0, 12);
-
-items = items.concat(found);
-
-if(!found.length){ dd.innerHTML = '<div class="sd-group">검색 결과 없음</div>'; dd.classList.add('open'); return; }
-
-}
-  dd.innerHTML = items.map(it => {
-
-if(it.group) return '<div class="sd-group">' + it.group + '</div>';
-
-return '<div class="sd-item" onclick="uchSearchPick(' + NAV_SEARCH_INDEX.indexOf(it) + ')">' +
-
-'<span>' + it.t + '</span><span class="sd-desc">' + it.d + '</span></div>';
-
-}).join('');
-  dd.classList.add('open');
-}
-function uchSearchPick(i){
-  const it = NAV_SEARCH_INDEX[i]; if(!it) return;
-  document.getElementById('uchSearchDd').classList.remove('open');
-  document.getElementById('uchSearchInput').value = '';
-  try{ it.go(); window.mocaToast && window.mocaToast('📍 ' + it.t + ' 이동', 'info'); }catch(e){}
-}
 
 /* 저장 상태 후킹 */
 (function hookUchSave(){
@@ -9492,103 +8425,13 @@ const LS_BRAND_PRESET = 'uc_brand_preset';
 const BRAND_FONTS_KO = ['나눔고딕Bold','여기어때잘난체','빙그레체','KBO다이아몬드','배민주아체','경기천년제목','카페24서라운드','넥슨Lv.1','Noto Sans KR','IBM Plex KR','제주고딕'];
 const BRAND_FONTS_JA = ['Noto Sans JP','源ノ角ゴシック','M PLUS Rounded','Kosugi Maru','Zen Kaku Gothic','DotGothic16','Sawarabi Gothic','游ゴシック','ヒラギノ角ゴ','明朝体클래식','手書き손글씨풍'];
 
-function loadBrandPreset(){
-  try{ const raw = localStorage.getItem(LS_BRAND_PRESET); if(raw) return JSON.parse(raw); }catch(_){}
-  return {
 
-channelName:'', logo:'',
 
-ko: { color:'#FF6B9D', titleFont:'Noto Sans KR', bodyFont:'Noto Sans KR', style:'따뜻하고 친근하게' },
 
-ja: { color:'#6A98E8', titleFont:'Noto Sans JP', bodyFont:'Noto Sans JP', style:'丁寧で親しみやすい' }
 
-};
-}
-function saveBrandPreset(p){
-  localStorage.setItem(LS_BRAND_PRESET, JSON.stringify(p));
-  window.mocaToast('✅ 브랜드 저장됨 — 이후 포장에 자동 적용', 'ok');
-}
 
-function renderSetBrand(){
-  const b = loadBrandPreset();
-  const fontOpts = (arr, cur) => arr.map(f => '<option value="' + f + '" ' + (f===cur?'selected':'') + '>' + f + '</option>').join('');
-  return '<div class="set-panel">' +
-    '<h3>🎨 내 채널 브랜드</h3>' +
-    '<p class="hint">최초 1회 설정하면 이후 포장 스튜디오에서 자동 적용됩니다.</p>' +
 
-    '<div class="set-row" style="align-items:flex-start">' +
-      '<div style="grid-column:1/3"><label>채널명</label><input class="set-in" id="brand-name" value="' + (b.channelName||'') + '" placeholder="예: 시니어라이프 TV"></div>' +
-      '<div>' +
-        '<label>로고</label>' +
-        '<div style="display:flex;gap:8px;align-items:center">' +
-          '<div class="brand-logo-preview" id="brand-logo-preview">' + (b.logo ? '<img src="' + b.logo + '">' : '🖼') + '</div>' +
-          '<input type="file" accept="image/*" id="brand-logo-file" style="display:none" onchange="brandUploadLogo(this)">' +
-          '<button class="set-btn ghost" onclick="document.getElementById(\'brand-logo-file\').click()">업로드</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
 
-    '<h4 style="margin-top:16px">🇰🇷 한국 채널</h4>' +
-    '<div class="set-row">' +
-      '<div><label>대표 색상</label><input class="set-in" type="color" id="brand-ko-color" value="' + b.ko.color + '"></div>' +
-      '<div><label>제목 폰트</label><select class="set-in" id="brand-ko-title">' + fontOpts(BRAND_FONTS_KO, b.ko.titleFont) + '</select></div>' +
-      '<div><label>본문 폰트</label><select class="set-in" id="brand-ko-body">' + fontOpts(BRAND_FONTS_KO, b.ko.bodyFont) + '</select></div>' +
-    '</div>' +
-    '<label style="margin-top:6px">스타일 키워드</label>' +
-    '<input class="set-in" id="brand-ko-style" value="' + b.ko.style + '" placeholder="예: 따뜻하고 친근하게 / 전문적으로 / 감성적으로">' +
-
-    '<h4 style="margin-top:16px">🇯🇵 일본 채널</h4>' +
-    '<div class="set-row">' +
-      '<div><label>代表色</label><input class="set-in" type="color" id="brand-ja-color" value="' + b.ja.color + '"></div>' +
-      '<div><label>見出しフォント</label><select class="set-in" id="brand-ja-title">' + fontOpts(BRAND_FONTS_JA, b.ja.titleFont) + '</select></div>' +
-      '<div><label>本文フォント</label><select class="set-in" id="brand-ja-body">' + fontOpts(BRAND_FONTS_JA, b.ja.bodyFont) + '</select></div>' +
-    '</div>' +
-    '<label style="margin-top:6px">スタイルキーワード</label>' +
-    '<input class="set-in" id="brand-ja-style" value="' + b.ja.style + '" placeholder="例: 丁寧で親しみやすい / プロフェッショナル">' +
-
-    '<div class="set-row" style="margin-top:18px">' +
-      '<div><button class="set-btn" onclick="brandSaveForm()">💾 브랜드 저장</button></div>' +
-      '<div><button class="set-btn ghost" onclick="brandResetForm()">↩ 초기화</button></div>' +
-    '</div>' +
-  '</div>';
-}
-function brandUploadLogo(input){
-  const f = input.files[0]; if(!f) return;
-  if(f.size > 500*1024){ alert('로고는 500KB 이하로 업로드해주세요'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    const prev = document.getElementById('brand-logo-preview');
-    if(prev) prev.innerHTML = '<img src="' + e.target.result + '">';
-    window._brandLogoTemp = e.target.result;
-  };
-  reader.readAsDataURL(f);
-}
-function brandSaveForm(){
-  const p = {
-    channelName: document.getElementById('brand-name').value.trim(),
-    logo: window._brandLogoTemp || loadBrandPreset().logo,
-    ko: {
-      color: document.getElementById('brand-ko-color').value,
-      titleFont: document.getElementById('brand-ko-title').value,
-      bodyFont: document.getElementById('brand-ko-body').value,
-      style: document.getElementById('brand-ko-style').value
-    },
-    ja: {
-      color: document.getElementById('brand-ja-color').value,
-      titleFont: document.getElementById('brand-ja-title').value,
-      bodyFont: document.getElementById('brand-ja-body').value,
-      style: document.getElementById('brand-ja-style').value
-    }
-  };
-  saveBrandPreset(p);
-  window._brandLogoTemp = null;
-}
-function brandResetForm(){
-  if(!confirm('브랜드 설정을 초기화할까요?')) return;
-  localStorage.removeItem(LS_BRAND_PRESET);
-  if(typeof renderSetSection === 'function') renderSetSection('brand');
-  window.mocaToast('↩ 브랜드 초기화됨', 'info');
-}
 
 /* ═══════════════════════════════════════════════════════════
    📦 콘텐츠 포장 스튜디오 (Part 3~4)
@@ -9715,33 +8558,12 @@ const PKG = {
   }
 };
 
-function pkgLoadState(){
-  try{ const raw = localStorage.getItem(LS_PACKAGING_STATE); if(raw) Object.assign(PKG, JSON.parse(raw)); }catch(_){}
-}
-function pkgSaveState(){
-  try{ localStorage.setItem(LS_PACKAGING_STATE, JSON.stringify(PKG)); }catch(_){}
-}
 
-function pkgOpen(text, category){
-  if(text) PKG.sourceText = text;
-  if(category) PKG.sourceCategory = category;
-  if(!PKG.step) PKG.step = 1;
-  PKG.open = true;
-  pkgSaveState();
-  pkgRender();
-  document.getElementById('pkgStudio').classList.add('on');
-}
-function pkgClose(){
-  PKG.open = false;
-  pkgSaveState();
-  const m = document.getElementById('pkgStudio'); if(m) m.classList.remove('on');
-}
-function pkgGoto(step){
-  if(step < 1 || step > 5) return;
-  PKG.step = step;
-  pkgSaveState();
-  pkgRender();
-}
+
+
+
+
+
 
 /* 마운트 */
 (function mountPkgStudio(){
@@ -9782,237 +8604,24 @@ document.body.appendChild(m);
 
 })();
 
-function pkgRender(){
 
-const steps = [
-
-{n:1, t:'①채널'}, {n:2, t:'②용도'}, {n:3, t:'③분석'},
-
-{n:4, t:'④편집+미리보기'}, {n:5, t:'⑤품질'}
-
-];
-
-const barEl = document.getElementById('pkgSteps');
-
-barEl.innerHTML = steps.map(s => '<button class="pkg-step-pill ' + (s.n<PKG.step?'done':s.n===PKG.step?'current':'') + '" onclick="pkgGoto(' + s.n + ')">' + s.t + '</button>').join('');
-
-const bodyEl = document.getElementById('pkgBody');
-
-bodyEl.innerHTML = ({
-    1: _pkgS1, 2: _pkgS2, 3: _pkgS3, 4: _pkgS4, 5: _pkgS5
-  }[PKG.step] || _pkgS1)();
-
-const outEl = document.getElementById('pkgOutput');
-
-if(PKG.step >= 4){ outEl.style.display = 'flex'; outEl.innerHTML = _pkgOutputBar(); }
-
-else outEl.style.display = 'none';
-
-if(PKG.step === 4) _pkgBindEditor();
-
-}
 
 /* ─── STEP 1 채널 ─── */
-function _pkgS1(){
-  return '<h3 style="margin:0 0 6px">STEP 1 · 채널 선택</h3>' +
-    '<p style="color:var(--sub);font-size:13px;margin:0 0 14px">언어·폰트·이미지 스타일이 이 선택에 따라 자동 분기돼요.</p>' +
-    '<div class="pkg-ch-row">' +
-      [['ko','🇰🇷 한국'],['ja','🇯🇵 日本'],['both','🌏 동시생성']].map(([id,l]) =>
-        '<button class="' + (PKG.channel===id?'on':'') + '" onclick="pkgPickChannel(\'' + id + '\')">' + l + '</button>'
-      ).join('') +
-    '</div>' +
-    '<div style="margin-top:20px;display:flex;justify-content:flex-end">' +
-      '<button class="pkg-step-pill current" onclick="pkgGoto(2)">다음: 용도 선택 →</button>' +
-    '</div>';
-}
-function pkgPickChannel(c){ PKG.channel = c; pkgSaveState(); pkgRender(); }
+
+
 
 /* ─── STEP 2 용도 ─── */
-function _pkgS2(){
 
-let html = '<h3 style="margin:0 0 6px">STEP 2 · 어디에 올릴 건가요?</h3>' +
 
-'<p style="color:var(--sub);font-size:13px;margin:0 0 14px">여러 용도 선택 가능 · 선택한 모든 것을 한 번에 생성합니다.</p>' +
-
-'<label style="display:flex;align-items:center;gap:6px;margin-bottom:14px;font-weight:900;font-size:13px">' +
-
-'<input type="checkbox" ' + (PKG.multi?'checked':'') + ' onchange="PKG.multi=this.checked;pkgSaveState()"> ' +
-
-'📦 여러 용도 동시 생성 (멀티 포장)' +
-
-'</label>';
-
-Object.keys(PKG_USES).forEach(group => {
-    html += '<div class="pkg-cat-group"><h4>' + group + '</h4><div class="pkg-use-grid">' +
-      PKG_USES[group].filter(u => !u.jaOnly || PKG.channel !== 'ko').map(u => {
-        const on = PKG.selectedUses.includes(u.id);
-        return '<div class="pkg-use' + (on?' on':'') + '" onclick="pkgToggleUse(\'' + u.id + '\')">' +
-          '<span class="chk">✓</span><b>' + u.label + '</b><span>' + u.size + '</span>' +
-        '</div>';
-      }).join('') +
-    '</div></div>';
-  });
-
-html += '<div style="display:flex;justify-content:space-between;margin-top:14px">' +
-
-'<button class="pkg-step-pill" onclick="pkgGoto(1)">← 이전</button>' +
-
-'<button class="pkg-step-pill current" onclick="pkgGoto(3)">다음: 분석 →</button>' +
-
-'</div>';
-
-return html;
-
-}
-function pkgToggleUse(id){
-
-const i = PKG.selectedUses.indexOf(id);
-
-if(PKG.multi){
-    if(i>=0) PKG.selectedUses.splice(i,1); else PKG.selectedUses.push(id);
-  } else {
-    PKG.selectedUses = [id];
-  }
-
-pkgSaveState(); pkgRender();
-
-}
 
 /* ─── STEP 3 AI 분석 ─── */
-function _pkgS3(){
-  setTimeout(() => _pkgRunAnalysis(), 200);
-  return '<h3 style="margin:0 0 6px">STEP 3 · AI 자동 포장 분석</h3>' +
-    '<p style="color:var(--sub);font-size:13px;margin:0 0 14px">마음에 안 드는 것만 바꾸면 됩니다 😊</p>' +
-    '<div class="pkg-analyze" id="pkgAnalyze"></div>' +
-    '<div style="display:flex;justify-content:space-between;margin-top:14px">' +
-      '<button class="pkg-step-pill" onclick="pkgGoto(2)">← 이전</button>' +
-      '<button class="pkg-step-pill current" onclick="pkgGoto(4)">다음: 편집 →</button>' +
-    '</div>';
-}
-function _pkgRunAnalysis(){
-  const el = document.getElementById('pkgAnalyze'); if(!el) return;
-  const steps = [
-    '✅ 글 길이·톤 분석 완료',
-    '✅ 핵심 문장 자동 추출',
-    '✅ 최적 비율 적용 (' + PKG.selectedUses.length + '개 용도)',
-    '✅ 내 브랜드 색상·폰트 자동 적용',
-    '✅ 이미지 스타일 자동 매칭 (' + PKG.edit.imageStyle + ')',
-    '✅ 해시태그 자동 생성',
-    '✅ 품질 검증 완료'
-  ];
-  // 브랜드 프리셋 자동 적용
-  const b = loadBrandPreset();
-  if(b){
-    if(PKG.channel !== 'ja'){ PKG.edit.fontKoTitle = b.ko.titleFont; PKG.edit.fontKoBody = b.ko.bodyFont; PKG.edit.fontColor = b.ko.color; }
-    if(PKG.channel !== 'ko'){ PKG.edit.fontJaTitle = b.ja.titleFont; PKG.edit.fontJaBody = b.ja.bodyFont; }
-  }
-  // 글에서 첫 줄 헤드라인, 두번째 줄 부제 추출
-  const lines = PKG.sourceText.split('\n').filter(l => l.trim());
-  PKG.edit.headline = (lines[0]||'').replace(/^#+\s*/,'').slice(0,50);
-  PKG.edit.subtitle = (lines[1]||lines[2]||'').slice(0,80);
-  pkgSaveState();
-  el.innerHTML = '';
-  steps.forEach((s, i) => {
 
-setTimeout(() => {
-      const div = document.createElement('div');
-      div.className = 'step-line';
-      div.style.animationDelay = '0s';
-      div.textContent = s;
-      el.appendChild(div);
-      if(i === steps.length-1){
-        PKG.analysisDone = true;
-        const tip = document.createElement('div');
-        tip.className = 'step-line';
-        tip.style.marginTop = '8px'; tip.style.color = 'var(--pink-deep)'; tip.style.fontStyle = 'italic';
-        tip.textContent = '마음에 안 드는 것만 바꾸면 됩니다 😊';
-        el.appendChild(tip);
-      }
-    }, i * 300);
 
-});
-}
 
 /* ─── STEP 4 편집 + 실시간 미리보기 ─── */
-function _pkgS4(){
-  const e = PKG.edit;
-  const imgStyleChips = PKG_IMAGE_STYLES.map(s => '<button class="pkg-chip' + (e.imageStyle===s?' on':'') + '" onclick="pkgSetEdit(\'imageStyle\',\'' + s + '\')">' + s + '</button>').join('');
-  const lightChips    = PKG_LIGHTINGS.map(s => '<button class="pkg-chip' + (e.lighting===s?' on':'') + '" onclick="pkgSetEdit(\'lighting\',\'' + s + '\')">' + s + '</button>').join('');
-  const layoutChips   = PKG_LAYOUTS.map(s => '<button class="pkg-chip' + (e.layout===s?' on':'') + '" onclick="pkgSetEdit(\'layout\',\'' + s + '\')">' + s + '</button>').join('');
-  const fontKoOpts    = BRAND_FONTS_KO.map(f => '<option value="' + f + '" ' + (e.fontKoTitle===f?'selected':'') + '>' + f + '</option>').join('');
-  const fontJaOpts    = BRAND_FONTS_JA.map(f => '<option value="' + f + '" ' + (e.fontJaTitle===f?'selected':'') + '>' + f + '</option>').join('');
-  const themeChips = Object.keys(PKG_COLOR_THEMES).map(g =>
-    '<h5 style="margin:6px 0 4px;font-size:11px;color:var(--sub)">' + g + '</h5>' +
-    '<div class="pkg-chips">' +
-      PKG_COLOR_THEMES[g].map(t => '<button class="pkg-chip' + (e.colorTheme===t?' on':'') + '" onclick="pkgSetEdit(\'colorTheme\',\'' + t + '\')">' + t + '</button>').join('') +
-    '</div>'
-  ).join('');
 
-  const brand = loadBrandPreset();
-  const brandBtn = brand && brand.channelName ? '<button class="pkg-chip on">브랜드 컬러 (' + brand.channelName + ')</button>' : '';
 
-  return '<div class="pkg-edit">' +
-    '<div class="pkg-left">' +
-      '<details open><summary>🖼 이미지</summary>' +
-        '<label style="font-size:11px">스타일 (18종)</label>' +
-        '<div class="pkg-chips">' + imgStyleChips + '</div>' +
-        '<label style="font-size:11px;margin-top:6px">조명·분위기 (9종)</label>' +
-        '<div class="pkg-chips">' + lightChips + '</div>' +
-        '<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">' +
-          '<button class="pkg-chip" onclick="pkgAiRegen()">🔄 AI 재생성</button>' +
-          '<button class="pkg-chip" onclick="pkgUploadImage()">📁 직접 업로드</button>' +
-          '<button class="pkg-chip" onclick="pkgStockSearch()">🔎 스톡 검색</button>' +
-        '</div>' +
-      '</details>' +
-      '<details><summary>🔤 텍스트</summary>' +
-        '<label style="font-size:11px">헤드라인</label>' +
-        '<input class="set-in" id="pkg-headline" value="' + (e.headline||'') + '">' +
-        '<label style="font-size:11px">부제</label>' +
-        '<input class="set-in" id="pkg-subtitle" value="' + (e.subtitle||'') + '">' +
-        (PKG.channel !== 'ja' ? '<label style="font-size:11px">한국어 제목 폰트</label><select class="set-in" id="pkg-ko-title">' + fontKoOpts + '</select>' : '') +
-        (PKG.channel !== 'ko' ? '<label style="font-size:11px">일본어 제목 폰트</label><select class="set-in" id="pkg-ja-title">' + fontJaOpts + '</select>' : '') +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">' +
-          '<div><label style="font-size:11px">크기 ' + e.fontSize + 'px</label><input type="range" id="pkg-size" min="10" max="48" value="' + e.fontSize + '"></div>' +
-          '<div><label style="font-size:11px">색상</label><input type="color" id="pkg-color" value="' + e.fontColor + '"></div>' +
-        '</div>' +
-      '</details>' +
-      '<details><summary>📐 레이아웃 (12종)</summary>' +
-        '<div class="pkg-chips">' + layoutChips + '</div>' +
-      '</details>' +
-      '<details><summary>🎨 색상 테마</summary>' + themeChips + (brandBtn?'<h5 style="margin:6px 0 4px;font-size:11px;color:var(--sub)">브랜드</h5><div class="pkg-chips">'+brandBtn+'</div>':'') + '</details>' +
 
-      (PKG.channel !== 'ko' ? '<details><summary>🇯🇵 일본어 전용</summary>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-jp-v" ' + (e.jpVertical?'checked':'') + '> 縦書き (세로쓰기)</label><br>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-jp-f" ' + (e.jpFurigana?'checked':'') + '> ふりがな 자동추가</label><br>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-jp-k" ' + (e.jpKeigo?'checked':'') + '> 敬語변환 (です・ます調)</label><br>' +
-        '<label style="font-size:11px;margin-top:6px">플랫폼 최적화</label>' +
-        '<select class="set-in" id="pkg-jp-p"><option>LINE</option><option>note</option><option>Yahoo!ニュース</option></select>' +
-      '</details>' : '') +
-
-      '<details><summary>➕ 추가 요소</summary>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-hashtag" ' + (e.hashtag?'checked':'') + '> 해시태그 자동생성</label><br>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-cta" ' + (e.cta?'checked':'') + '> CTA 문구 자동삽입</label><br>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-wm" ' + (e.watermark?'checked':'') + '> 채널명·로고 워터마크</label><br>' +
-        '<label style="font-size:12px"><input type="checkbox" id="pkg-sub" ' + (e.subscribe?'checked':'') + '> 구독 유도 문구</label>' +
-      '</details>' +
-    '</div>' +
-
-    '<div class="pkg-right">' +
-      '<div class="pkg-pv-tabs">' +
-        ['mobile','pc','print'].map(v => '<button class="' + (e.pvAspect===v?'on':'') + '" onclick="pkgSetPvAspect(\'' + v + '\')">' + ({mobile:'📱 모바일', pc:'💻 PC', print:'🖨 인쇄'}[v]) + '</button>').join('') +
-      '</div>' +
-      '<div id="pkgPreview" class="pkg-preview">' + _pkgRenderPreview() + '</div>' +
-      _pkgQcSection() +
-    '</div>' +
-  '</div>';
-}
-function pkgSetEdit(key, val){
-  PKG.edit[key] = val; pkgSaveState();
-  const prev = document.getElementById('pkgPreview');
-  if(prev) prev.innerHTML = _pkgRenderPreview();
-  pkgRender(); // 전체 재렌더 (chip active 반영)
-}
-function pkgSetPvAspect(v){ PKG.edit.pvAspect = v; pkgSaveState(); const prev = document.getElementById('pkgPreview'); if(prev) _applyPreviewAspect(prev); }
 function _applyPreviewAspect(el){
   el.classList.remove('aspect-1-1','aspect-4-5','aspect-9-16','aspect-16-9','aspect-a4');
   const firstUse = PKG.selectedUses[0];
@@ -10026,176 +8635,31 @@ function _applyPreviewAspect(el){
   el.classList.add('aspect-' + aspect);
 }
 
-function _pkgRenderPreview(){
-  const e = PKG.edit;
-  const b = loadBrandPreset();
-  const themeMap = {
-    '흰배경미니멀': {bg:'#fff', fg:'#2b2430', accent:e.fontColor},
-    '그레이모노톤': {bg:'#f5f5f5', fg:'#333', accent:'#666'},
-    '네이비전문': {bg:'#1a2752', fg:'#fff', accent:'#7cb2ff'},
-    '블랙럭셔리': {bg:'#111', fg:'#fff', accent:'#d4af37'},
-    '파스텔봄': {bg:'#fff5fa', fg:'#2b2430', accent:'#ef6fab'},
-    '크림따뜻': {bg:'#fff7ee', fg:'#3a2e24', accent:'#c19a6b'},
-    '코랄핑크': {bg:'#ffe5e0', fg:'#5a2828', accent:'#ff6b6b'},
-    '라벤더고급': {bg:'#f4eaff', fg:'#2a1a4a', accent:'#9181ff'},
-    '그라데이션': {bg:'linear-gradient(135deg,#ef6fab,#9181ff)', fg:'#fff', accent:'#fff'},
-    '네온다크': {bg:'#0a0a0a', fg:'#0ff', accent:'#f0f'},
-    '글래스모피즘': {bg:'rgba(255,255,255,.7)', fg:'#2b2430', accent:'#9181ff'},
-    '레트로빈티지': {bg:'#f4e6c8', fg:'#4a2c17', accent:'#b85a3a'}
-  };
-  const t = themeMap[e.colorTheme] || themeMap['흰배경미니멀'];
-  const font = (PKG.channel === 'ja') ? e.fontJaTitle : e.fontKoTitle;
-  const textBody = PKG.sourceText.split('\n').slice(0, 5).join('<br>');
-  const hashHtml = e.hashtag ? '<div style="margin-top:auto;font-size:' + Math.max(10,e.fontSize*0.6) + 'px;opacity:.7">#시니어 #건강 #일상</div>' : '';
-  const wmHtml = e.watermark && b && b.channelName ? '<div style="position:absolute;bottom:8px;right:12px;font-size:10px;opacity:.6">© ' + b.channelName + '</div>' : '';
-  return '<div style="background:' + t.bg + ';color:' + t.fg + ';width:100%;height:100%;padding:28px;' +
-    'display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden;' +
-    'font-family:' + font + ', sans-serif">' +
-    '<div style="font-size:' + (e.fontSize+6) + 'px;font-weight:900;line-height:1.3;color:' + t.accent + '">' + (e.headline||'제목 없음') + '</div>' +
-    (e.subtitle ? '<div style="font-size:' + e.fontSize + 'px;opacity:.85;line-height:1.5">' + e.subtitle + '</div>' : '') +
-    '<div style="font-size:' + Math.max(11,e.fontSize*0.8) + 'px;line-height:1.7;opacity:.9">' + (textBody||'본문이 여기에 표시됩니다') + '</div>' +
-    hashHtml + wmHtml +
-    '</div>';
-}
 
-function _pkgQcSection(){
-  // 품질 체크 — 간단 휴리스틱
-  const e = PKG.edit;
-  const hasText = (e.headline||'').length > 2;
-  const textSize = e.fontSize;
-  const checks = [
-    {k:'ok', t:'해상도 적합 (' + (PKG.selectedUses.length || 1) + '개 용도)'},
-    {k: hasText ? 'ok':'warn', t: hasText ? '텍스트 가독성 양호' : '헤드라인 너무 짧음', fix:'headline'},
-    {k: textSize>=14 ? 'ok':'warn', t: textSize>=14 ? '폰트 크기 적정' : '인쇄용 최소 글자크기 미달 (14px+)', fix:'size'},
-    {k:'ok', t:'여백·안전영역 준수'},
-    {k: PKG.edit.pvAspect==='print' ? 'warn':'ok', t: PKG.edit.pvAspect==='print' ? 'CMYK 색상모드 권장' : 'RGB 색상모드 OK'},
-    {k:'ok', t:'파일크기 적정'}
-  ];
-  return '<div class="pkg-qc">' +
-    '<h5>✅ 품질 보증 체크</h5>' +
-    checks.map(c => '<div class="qc-item ' + c.k + '">' +
-      (c.k==='ok'?'✅':c.k==='warn'?'⚠️':'❌') + ' ' + c.t +
-      (c.fix && c.k !== 'ok' ? '<button class="qc-fix" onclick="pkgQcFix(\'' + c.fix + '\')">자동 수정</button>' : '') +
-    '</div>').join('') +
-  '</div>';
-}
-function pkgQcFix(field){
-  if(field === 'headline'){ PKG.edit.headline = (PKG.sourceText.split('\n')[0]||'제목 없음').slice(0,50); }
-  if(field === 'size'){ PKG.edit.fontSize = Math.max(14, PKG.edit.fontSize); }
-  pkgSaveState(); pkgRender();
-  window.mocaToast('🔧 자동 수정 완료', 'ok');
-}
+
+
+
 
 /* 편집 패널 입력 디바운스 바인딩 */
 let _pkgDebounce = null;
-function _pkgBindEditor(){
-  const on = (id, key, type) => {
 
-const el = document.getElementById(id); if(!el) return;
 
-el.addEventListener(type||'input', () => {
-      clearTimeout(_pkgDebounce);
-      _pkgDebounce = setTimeout(() => {
-        let v = (type==='change' || el.type==='checkbox') ? (el.type==='checkbox'?el.checked:el.value) : el.value;
-        if(id === 'pkg-size') v = parseInt(v, 10);
-        PKG.edit[key] = v; pkgSaveState();
-        const prev = document.getElementById('pkgPreview');
-        if(prev) prev.innerHTML = _pkgRenderPreview();
-      }, 300);
-    });
 
-};
-  on('pkg-headline','headline');
-  on('pkg-subtitle','subtitle');
-  on('pkg-ko-title','fontKoTitle','change');
-  on('pkg-ja-title','fontJaTitle','change');
-  on('pkg-size','fontSize');
-  on('pkg-color','fontColor');
-  on('pkg-jp-v','jpVertical','change');
-  on('pkg-jp-f','jpFurigana','change');
-  on('pkg-jp-k','jpKeigo','change');
-  on('pkg-jp-p','jpPlatform','change');
-  on('pkg-hashtag','hashtag','change');
-  on('pkg-cta','cta','change');
-  on('pkg-wm','watermark','change');
-  on('pkg-sub','subscribe','change');
-}
 
-function pkgAiRegen(){ window.mocaToast('🔄 AI 이미지 재생성 (OpenAI 키 필요)', 'info'); }
-function pkgUploadImage(){ window.mocaToast('📁 이미지 업로드 UI (구현 예정)', 'info'); }
-function pkgStockSearch(){ window.mocaToast('🔎 스톡 검색 (Unsplash 연동 예정)', 'info'); }
+
 
 /* ─── STEP 5 품질 (분리 뷰) ─── */
-function _pkgS5(){
-  return '<h3 style="margin:0 0 6px">STEP 5 · 품질 보증 체크</h3>' +
-    '<p style="color:var(--sub);font-size:13px;margin:0 0 14px">모든 품질 기준 · ⚠️/❌ 항목은 자동 수정 가능</p>' +
-    _pkgQcSection() +
-    '<div style="display:flex;justify-content:space-between;margin-top:14px">' +
-      '<button class="pkg-step-pill" onclick="pkgGoto(4)">← 편집으로</button>' +
-      '<button class="pkg-step-pill current" onclick="pkgOutput()">✅ 출력하기 →</button>' +
-    '</div>';
-}
+
 
 /* ─── 출력 바 ─── */
-function _pkgOutputBar(){
-  const multi = PKG.selectedUses.length > 1;
-  return (multi
-    ? '<button class="pri" onclick="pkgSaveZip()">📦 전체 ZIP 다운로드</button>'
-    : '<button class="pri" onclick="pkgSaveImage()">📥 이미지 저장</button>' +
-      '<button onclick="pkgSavePdf()">📥 PDF</button>' +
-      '<button onclick="pkgCopyHtml()">📋 HTML 복사</button>' +
-      '<button onclick="pkgShare()">📤 바로 공유</button>') +
-  '<button onclick="pkgTempSave()">💾 임시저장</button>' +
-  '<span class="spacer"></span>' +
-  '<button onclick="pkgGoto(2)">+ 다른 용도로도</button>' +
-  '<button onclick="pkgClose()">🔄 글 수정 후 다시</button>';
-}
-function pkgOutput(){
-  window.mocaToast('🎉 포장 완료!', 'ok');
-}
-function pkgSaveImage(){
-  // DOM 을 그대로 다운로드 (html2canvas 없이 간이 버전 — HTML 파일)
-  const html = document.getElementById('pkgPreview')?.innerHTML || '';
-  const full = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:20px;font-family:sans-serif}</style></head><body>' + html + '</body></html>';
-  const blob = new Blob([full], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='package.html'; a.click(); URL.revokeObjectURL(url);
-  window.mocaToast('📥 HTML 파일로 저장 (스크린샷 툴 필요)', 'info');
-}
-function pkgSavePdf(){
-  const html = document.getElementById('pkgPreview')?.innerHTML || '';
-  const w = window.open('', '_blank');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;margin:0;padding:20px}</style></head><body>' + html + '</body></html>');
-  w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
-}
-function pkgCopyHtml(){
-  const html = document.getElementById('pkgPreview')?.innerHTML || '';
-  navigator.clipboard.writeText(html).then(() => window.mocaToast('📋 HTML 복사 완료', 'ok'));
-}
-function pkgShare(){
-  const text = (PKG.edit.headline||'') + '\n\n' + PKG.sourceText;
-  if(navigator.share){ navigator.share({title:PKG.edit.headline, text}).catch(()=>{}); }
-  else { navigator.clipboard.writeText(text).then(()=>window.mocaToast('📋 공유 텍스트 복사', 'ok')); }
-}
-function pkgSaveZip(){
-  // 용도별 HTML 묶음 — 실제 ZIP 라이브러리 없이 HTML 한 파일로
-  const parts = PKG.selectedUses.map(id => {
 
-const u = Object.values(PKG_USES).flat().find(x => x.id === id);
 
-return '<section><h2>' + (u?.label||id) + ' (' + (u?.size||'') + ')</h2>' +
 
-'<div style="border:1px solid #ccc;padding:20px;margin:10px 0">' + _pkgRenderPreview() + '</div></section>';
 
-}).join('');
-  const full = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;max-width:900px;margin:0 auto;padding:20px}</style></head><body>' +
-    '<h1>📦 ' + PKG.selectedUses.length + '개 용도 포장 결과</h1>' + parts + '</body></html>';
-  const blob = new Blob([full], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='package-all.html'; a.click(); URL.revokeObjectURL(url);
-  window.mocaToast('📦 전체 포장 HTML 저장 (ZIP은 jszip 연동 필요)', 'info');
-}
-function pkgTempSave(){ pkgSaveState(); window.mocaToast('💾 임시저장 완료', 'ok'); }
+
+
+
+
 
 /* ─── "🎨 이 글 포장하기" 버튼 자동 부착 ─── */
 (function autoAttachPkgTrigger(){
@@ -10238,6 +8702,18 @@ function pkgTempSave(){ pkgSaveState(); window.mocaToast('💾 임시저장 완�
   }, 1800);
 })();
 </script>
+  <script src="core/settings.js"></script>
+  <script src="core/profile.js"></script>
+  <script src="core/brand.js"></script>
+  <script src="core/pkg.js"></script>
+  <script src="core/library.js"></script>
+  <script src="core/onboarding.js"></script>
+  <script src="core/ab.js"></script>
+  <script src="core/share.js"></script>
+  <script src="core/about.js"></script>
+  <script src="core/uch.js"></script>
+  <script src="core/breadcrumb.js"></script>
+
 <script src="shared/api-settings.js"></script>
   <script src="modules/smb/index.js"></script>
   <script src="modules/smb/core.js"></script>
