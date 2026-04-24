@@ -843,7 +843,7 @@ function _studioS3(){
 
     '<div class="studio-section"><div class="studio-label">🤖 A. 이미지 API 선택</div>' +
     apiHtml +
-    '<div style="display:flex;gap:8px"><input id="s3-api-key" type="password" class="studio-in" style="flex:1" placeholder="API 키" value="'+savedKey+'"><button onclick="studioS3SaveKey()" class="studio-btn ghost">저장</button></div></div>' +
+    (function(){var keyStatus=(typeof ucApiKeyStatus==='function')?ucApiKeyStatus(api):{ok:false,label:'확인불가'};return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px">' +'<span style="font-size:12px;font-weight:700;color:'+(keyStatus.ok?'#27ae60':'#e74c3c')+'">'+keyStatus.label+'</span>' +'<span style="font-size:12px;color:var(--sub)">'+api+' API 키</span>' +'<button onclick="renderApiSettings()" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>' +'</div></div>';})() +
 
     '<div class="studio-section"><div class="studio-label">🎨 B. 화풍 선택</div>' +
     '<div class="studio-chips" id="s3-art">' +
@@ -1056,7 +1056,7 @@ async function studioS3GenScene(idx){
   var fullPrompt = prompt + (s3.artStyle?', '+s3.artStyle+' style':'') + (s3.lighting?', '+s3.lighting+' lighting':'') + ', high quality';
   try {
     if(api==='dalle3'||api==='dalle2'){
-      var key = localStorage.getItem('uc_openai_key')||'';
+      var key = (typeof ucGetApiKey==='function') ? ucGetApiKey('openai') : localStorage.getItem('uc_openai_key')||'';
       if(!key){ alert('OpenAI API 키를 입력해주세요'); return; }
       if(typeof ucShowToast==='function') ucShowToast('⏳ 이미지 생성 중...','info');
       var r = await fetch('https://api.openai.com/v1/images/generations',{
@@ -1251,7 +1251,7 @@ function studioS3ThumbStyle(val, btn){
 async function studioS3GenThumb(variant){
   var s3 = STUDIO.project.s3||{};
   var title = document.getElementById('s3-thumb-title')?.value||'';
-  var key = localStorage.getItem('uc_openai_key')||'';
+  var key = (typeof ucGetApiKey==='function') ? ucGetApiKey('openai') : localStorage.getItem('uc_openai_key')||'';
   if(!key){ alert('OpenAI API 키를 입력해주세요'); return; }
   if(!title){ alert('썸네일 제목을 입력해주세요'); return; }
   if(typeof ucShowToast==='function') ucShowToast('⏳ 썸네일 '+variant+'안 생성 중...','info');
@@ -1786,17 +1786,8 @@ function studioS3StockBar(){
     }).join('') +
     '</div>' +
 
-    /* API 키 */
-    '<div style="display:flex;gap:8px;margin-bottom:10px">' +
-      '<input id="s3-stock-key" type="password" class="studio-in" style="flex:1;font-size:12px" '+
-        'placeholder="API 키 (Pexels/Pixabay 무료 발급 가능)" '+
-        'value="'+(localStorage.getItem(STOCK_APIS.find(function(a){return a.id===stockApi})?.keyName||'')||'')+'">' +
-      '<button onclick="studioS3SaveStockKey()" class="studio-btn ghost" style="font-size:11px;white-space:nowrap">저장</button>' +
-      '<a href="'+studioS3StockSignupUrl(stockApi)+'" target="_blank" style="'+
-        'display:flex;align-items:center;border:1.5px solid #cce0f0;'+
-        'background:#fff;border-radius:8px;padding:0 10px;font-size:11px;'+
-        'color:#2271b1;text-decoration:none;white-space:nowrap;font-weight:700">무료 발급 →</a>' +
-    '</div>' +
+    /* API 키 상태 + 설정 버튼 */
+    (function(){var stKeyStatus=(typeof ucApiKeyStatus==='function')?ucApiKeyStatus(stockApi):{ok:false,label:'확인불가'};return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:#f8f8f8;border-radius:8px">' +'<span style="font-size:12px;font-weight:700;color:'+(stKeyStatus.ok?'#27ae60':'#e74c3c')+'">'+stKeyStatus.label+'</span>' +'<span style="font-size:12px;color:var(--sub)">'+stockApi+' API 키</span>' +'<button onclick="renderApiSettings()" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>' +'</div>';})() +
 
     /* 검색창 */
     '<div style="display:flex;gap:6px;margin-bottom:8px">' +
