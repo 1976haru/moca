@@ -1,0 +1,17 @@
+{
+  "name": "moca",
+  "version": "1.0.0",
+  "description": "MOCA — 통합콘텐츠 생성기 (MOCA Content Studio)",
+  "private": true,
+  "scripts": {
+    "lint": "eslint \"core/**/*.js\" \"modules/**/*.js\" \"shared/**/*.js\" \"engines/**/*.js\"",
+    "lint:fix": "eslint --fix \"core/**/*.js\" \"modules/**/*.js\" \"shared/**/*.js\" \"engines/**/*.js\"",
+    "format": "prettier --write \"**/*.{js,html,css,md,json}\"",
+    "format:check": "prettier --check \"**/*.{js,html,css,md,json}\"",
+    "check": "npm run lint && npm run format:check"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  }
+}
