@@ -2,6 +2,11 @@
    profile.js  -- profile system (system prefix + UI + hooks)
    ================================================== */
 
+/* 프로필 상수 (원래 bench.js 소스) */
+const LS_PROFILES    = 'uc_profiles';         // 프로필 목록
+const LS_PROFILE_ACT = 'uc_profile_active';   // 활성 프로필 ID
+const DEFAULT_EMOJIS = ['👴','👩','🧒','👧','👦','👵','🧑','🐰','☕','🌸'];
+
 /* ==================================================
    settings.js
    settings -- AI/cost/theme/write/lock/stats/brand/profile tabs
