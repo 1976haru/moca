@@ -2305,25 +2305,14 @@
         <!-- 프린트 전용 영역 (평소 숨김) -->
         <div class="print-only" id="printArea"></div>
 
-        <!-- ══════ 자동숏츠 8단계 파이프라인 ══════ -->
-        <div id="shortsDetail" class="mz-detail hide">
-          <button class="mz-back" onclick="closeShorts()">← 카드 목록으로</button>
-
-          <!-- 스텝바 -->
-          <div class="sh-stepper" id="sh-stepper"></div>
-
-          <!-- 단계별 콘텐츠 -->
-          <div id="sh-content"></div>
-
-          <!-- 이전/다음 -->
-          <div class="sh-nav">
-            <button class="mz-btn" id="sh-prev" onclick="shStep(-1)">← 이전 단계</button>
-            <button class="mz-btn" onclick="shSavePipeline()">💾 파이프라인 저장</button>
-            <button class="mz-btn" onclick="shLoadPipeline()">📥 불러오기</button>
-            <button class="mz-btn pri" id="sh-next" onclick="shStep(1)">다음 단계 →</button>
-          </div>
-        </div>
-      </div>
+        <!-- 자동숏츠 → engines/shorts/index.html 으로 이동 -->
+        <div id="shortsDetail" class="mz-detail hide" style="text-align:center;padding:60px 20px">
+          <div style="font-size:48px;margin-bottom:16px">📱</div>
+          <h2 style="margin:0 0 8px">자동숏츠 스튜디오</h2>
+          <p style="color:var(--sub);margin-bottom:24px">대시보드·단계별 제작·대량 생산·분석까지<br>전용 스튜디오로 이동합니다</p>
+          <button onclick="location.href='engines/shorts/index.html'" style="padding:16px 32px;border:none;border-radius:16px;background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;font-size:16px;font-weight:900;cursor:pointer">🚀 숏츠 스튜디오 열기</button>
+          <button onclick="closeShorts()" style="display:block;margin:16px auto 0;background:none;border:none;color:var(--sub);font-size:13px;cursor:pointer">← 돌아가기</button>
+        </div></div>
     </main>
   </div>
 </div>
