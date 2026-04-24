@@ -1,3 +1,322 @@
+
+/* ═══════════════════════════════════════════════════════════
+   STUDIO VOICE DATA  v2.0  (20+ 음성, 다자 화자, 장르 자동 배치)
+   ═══════════════════════════════════════════════════════════ */
+
+const STUDIO_VOICE_KO = [
+  /* ElevenLabs */
+  {id:'e_rachel',  provider:'elevenlabs', voice:'Rachel',   name:'Rachel',   gender:'female', mood:'warm',        lang:'ko', tags:['나레이션','감성','시니어']},
+  {id:'e_bella',   provider:'elevenlabs', voice:'Bella',    name:'Bella',    gender:'female', mood:'soft',        lang:'ko', tags:['나레이션','부드러움','명상']},
+  {id:'e_domi',    provider:'elevenlabs', voice:'Domi',     name:'Domi',     gender:'female', mood:'bright',      lang:'ko', tags:['캐릭터','밝음','티키타카']},
+  {id:'e_elli',    provider:'elevenlabs', voice:'Elli',     name:'Elli',     gender:'female', mood:'young',       lang:'ko', tags:['캐릭터','젊음','대화']},
+  {id:'e_grace',   provider:'elevenlabs', voice:'Grace',    name:'Grace',    gender:'female', mood:'cheerful',    lang:'ko', tags:['튜토리얼','설명','밝음']},
+  {id:'e_charlotte',provider:'elevenlabs',voice:'Charlotte',name:'Charlotte',gender:'female', mood:'authoritative',lang:'ko',tags:['뉴스','다큐','권위']},
+  {id:'e_adam',    provider:'elevenlabs', voice:'Adam',     name:'Adam',     gender:'male',   mood:'calm',        lang:'ko', tags:['나레이션','안정','롱폼']},
+  {id:'e_josh',    provider:'elevenlabs', voice:'Josh',     name:'Josh',     gender:'male',   mood:'deep',        lang:'ko', tags:['다큐','권위','진중']},
+  {id:'e_thomas',  provider:'elevenlabs', voice:'Thomas',   name:'Thomas',   gender:'male',   mood:'casual',      lang:'ko', tags:['티키타카','대화','자연']},
+  {id:'e_sam',     provider:'elevenlabs', voice:'Sam',      name:'Sam',      gender:'male',   mood:'friendly',    lang:'ko', tags:['튜토리얼','인터뷰','친근']},
+  {id:'e_ethan',   provider:'elevenlabs', voice:'Ethan',    name:'Ethan',    gender:'male',   mood:'storytelling',lang:'ko', tags:['드라마','스토리','감성']},
+  {id:'e_michael', provider:'elevenlabs', voice:'Michael',  name:'Michael',  gender:'male',   mood:'strong',      lang:'ko', tags:['뉴스','권위','강함']},
+  /* OpenAI TTS */
+  {id:'o_nova',    provider:'openai',     voice:'nova',     name:'Nova',     gender:'female', mood:'bright',      lang:'ko', tags:['나레이션','밝음','범용']},
+  {id:'o_shimmer', provider:'openai',     voice:'shimmer',  name:'Shimmer',  gender:'female', mood:'soft',        lang:'ko', tags:['나레이션','부드러움','명상']},
+  {id:'o_alloy',   provider:'openai',     voice:'alloy',    name:'Alloy',    gender:'neutral',mood:'calm',        lang:'ko', tags:['정보','안정','범용']},
+  {id:'o_echo',    provider:'openai',     voice:'echo',     name:'Echo',     gender:'male',   mood:'calm',        lang:'ko', tags:['나레이션','안정','남성']},
+  {id:'o_fable',   provider:'openai',     voice:'fable',    name:'Fable',    gender:'male',   mood:'storytelling',lang:'ko', tags:['스토리','드라마','감성']},
+  {id:'o_onyx',    provider:'openai',     voice:'onyx',     name:'Onyx',     gender:'male',   mood:'deep',        lang:'ko', tags:['다큐','딥','권위']},
+  /* Nijivoice (일본어) */
+  {id:'n_yuki',    provider:'nijivoice',  voice:'yuki',     name:'유키',     gender:'female', mood:'warm',        lang:'ja', tags:['일본어','시니어','감성']},
+  {id:'n_hana',    provider:'nijivoice',  voice:'hana',     name:'하나',     gender:'female', mood:'bright',      lang:'ja', tags:['일본어','밝음','캐릭터']},
+  {id:'n_sakura',  provider:'nijivoice',  voice:'sakura',   name:'사쿠라',   gender:'female', mood:'soft',        lang:'ja', tags:['일본어','부드러움','명상']},
+  {id:'n_ai',      provider:'nijivoice',  voice:'ai',       name:'아이',     gender:'female', mood:'young',       lang:'ja', tags:['일본어','젊음','티키타카']},
+  {id:'n_kenji',   provider:'nijivoice',  voice:'kenji',    name:'켄지',     gender:'male',   mood:'calm',        lang:'ja', tags:['일본어','안정','나레이션']},
+  {id:'n_taro',    provider:'nijivoice',  voice:'taro',     name:'타로',     gender:'male',   mood:'casual',      lang:'ja', tags:['일본어','대화','티키타카']},
+  {id:'n_ryu',     provider:'nijivoice',  voice:'ryu',      name:'류',       gender:'male',   mood:'deep',        lang:'ja', tags:['일본어','다큐','권위']},
+];
+
+/* 장르별 화자 자동 설정 맵 */
+const GENRE_VOICE_MAP = {
+  narration:   {count:1, pairs:[['female','warm']],                              label:'🎙 나레이션 1인',    scenes:'narration'},
+  tikitaka:    {count:2, pairs:[['female','bright'],['male','casual']],          label:'💬 티키타카 2인',    scenes:'tikitaka'},
+  drama:       {count:3, pairs:[['female','warm'],['male','calm'],['female','soft']], label:'🎭 드라마 3인',  scenes:'drama'},
+  longform:    {count:2, pairs:[['female','warm'],['male','calm']],              label:'📺 롱폼 진행자+게스트', scenes:'longform'},
+  documentary: {count:1, pairs:[['male','deep']],                               label:'🎬 다큐 나레이션',   scenes:'narration'},
+  interview:   {count:2, pairs:[['female','warm'],['male','friendly']],         label:'🎤 인터뷰 2인',      scenes:'interview'},
+  tutorial:    {count:1, pairs:[['female','bright']],                           label:'📚 튜토리얼 1인',    scenes:'tutorial'},
+  meditation:  {count:1, pairs:[['female','soft']],                             label:'🧘 명상 1인',        scenes:'narration'},
+  news:        {count:1, pairs:[['female','authoritative']],                    label:'📰 뉴스 앵커',       scenes:'news'},
+  character:   {count:2, pairs:[['female','young'],['male','casual']],          label:'🌟 캐릭터 2인',      scenes:'tikitaka'},
+};
+
+/* 씬별 구성 템플릿 (장르별 동적) */
+const SCENE_TEMPLATES = {
+  narration: [
+    {role:'narr', label:'인트로·도입'},
+    {role:'narr', label:'본론 핵심'},
+    {role:'narr', label:'심화·예시'},
+    {role:'narr', label:'정리·결론'},
+    {role:'narr', label:'CTA·마무리'},
+  ],
+  tikitaka: [
+    {role:'A', label:'🙋 A: 오프닝 질문'},
+    {role:'B', label:'💡 B: 첫 응답'},
+    {role:'A', label:'🙋 A: 심화 질문'},
+    {role:'B', label:'💡 B: 핵심 답변'},
+    {role:'A', label:'🙋 A: 공감·요약'},
+    {role:'B', label:'💡 B: 추가 팁'},
+    {role:'AB',label:'🤝 A+B: 마무리 CTA'},
+  ],
+  drama: [
+    {role:'narr', label:'📖 내레이션 도입'},
+    {role:'A',    label:'🎭 A: 상황 전개'},
+    {role:'B',    label:'🎭 B: 갈등 반응'},
+    {role:'A',    label:'🎭 A: 감정 클라이맥스'},
+    {role:'B',    label:'🎭 B: 전환점'},
+    {role:'narr', label:'📖 에필로그'},
+  ],
+  longform: [
+    {role:'A', label:'🎬 인트로 (0~1분)'},
+    {role:'A', label:'📌 주제 소개 (1~3분)'},
+    {role:'B', label:'👤 게스트 발언 1'},
+    {role:'A', label:'🔍 심화 질문'},
+    {role:'B', label:'👤 게스트 발언 2'},
+    {role:'A', label:'📊 데이터·사례'},
+    {role:'B', label:'👤 마지막 코멘트'},
+    {role:'A', label:'🏁 결론 + CTA'},
+  ],
+  interview: [
+    {role:'A', label:'🎤 인터뷰어 소개'},
+    {role:'A', label:'🎤 첫 번째 질문'},
+    {role:'B', label:'🙋 게스트 답변 1'},
+    {role:'A', label:'🎤 두 번째 질문'},
+    {role:'B', label:'🙋 게스트 답변 2'},
+    {role:'A', label:'🎤 마무리 질문'},
+    {role:'B', label:'🙋 마지막 말'},
+  ],
+  tutorial: [
+    {role:'narr', label:'🎯 목표 소개'},
+    {role:'narr', label:'📋 준비물·개요'},
+    {role:'narr', label:'🔧 Step 1'},
+    {role:'narr', label:'🔧 Step 2'},
+    {role:'narr', label:'🔧 Step 3'},
+    {role:'narr', label:'✅ 확인·마무리'},
+  ],
+  news: [
+    {role:'narr', label:'📢 헤드라인'},
+    {role:'narr', label:'📰 상세 내용'},
+    {role:'narr', label:'📊 배경·맥락'},
+    {role:'narr', label:'🔍 분석·전망'},
+    {role:'narr', label:'📌 마무리'},
+  ],
+};
+
+
+/* ════════════════════════════════════════════════════════
+   _studioS4  v2.0 — 다자 화자 + 자동 배치 + 컴팩트 UI
+   ════════════════════════════════════════════════════════ */
+function _studioS4(wrapId){
+  const wrap = document.getElementById(wrapId || 'studioS4Wrap');
+  if(!wrap) return;
+
+  /* 상태 초기화 */
+  if(!window._s4st){
+    window._s4st = {
+      api:'elevenlabs', genre:null,
+      speakers:[{id:1, voiceId:'e_rachel', role:'나레이터'}],
+      scenes:[], activeSp:0,
+      filterGender:'all', filterLang:'all',
+    };
+  }
+  const S = window._s4st;
+
+  /* 현재 API 필터로 음성 목록 */
+  function voicesForApi(api){
+    const pMap={elevenlabs:'elevenlabs',openai:'openai',nijivoice:'nijivoice'};
+    return STUDIO_VOICE_KO.filter(v=>v.provider===pMap[api]);
+  }
+  function filteredVoices(){
+    return STUDIO_VOICE_KO.filter(v=>{
+      if(S.filterGender!=='all' && v.gender!==S.filterGender) return false;
+      if(S.filterLang!=='all' && v.lang!==S.filterLang) return false;
+      return true;
+    });
+  }
+  function voiceById(id){ return STUDIO_VOICE_KO.find(v=>v.id===id)||STUDIO_VOICE_KO[0]; }
+  function genderIcon(g){ return g==='female'?'👩':g==='male'?'👨':'🎙'; }
+
+  /* HTML 렌더링 */
+  function render(){
+    const vlist = filteredVoices();
+    const apiVoices = voicesForApi(S.api);
+
+    const speakerHtml = S.speakers.map((sp,si)=>{
+      const v = voiceById(sp.voiceId);
+      const isActive = si===S.activeSp;
+      return `
+      <div class="s4-sp-card ${isActive?'active-sp':''}" onclick="window._s4st.activeSp=${si};_studioS4('${wrapId||'studioS4Wrap'}')">
+        <div class="s4-sp-badge">화자 ${si+1}</div>
+        <input class="s4-sp-role" value="${sp.role||'화자'+(si+1)}"
+          oninput="window._s4st.speakers[${si}].role=this.value"
+          placeholder="역할명 (예: 진행자)" onclick="event.stopPropagation()">
+        <div class="s4-sp-voice-name">${genderIcon(v.gender)} ${v.name}<span class="s4-sp-tag">${v.mood}</span></div>
+        <select class="s4-sp-sel" onclick="event.stopPropagation()"
+          onchange="window._s4st.speakers[${si}].voiceId=this.value;_studioS4('${wrapId||'studioS4Wrap'}')">
+          ${apiVoices.map(x=>`<option value="${x.id}"${x.id===sp.voiceId?' selected':''}>${x.name} · ${x.mood}</option>`).join('')}
+        </select>
+        ${isActive?'<div class="s4-sp-click-hint">✅ 현재 선택 화자</div>':'<div class="s4-sp-click-hint">클릭하여 선택</div>'}
+      </div>`;
+    }).join('');
+
+    const voiceGridHtml = vlist.map(v=>{
+      const isUsed = S.speakers.some(s=>s.voiceId===v.id);
+      return `
+      <div class="s4-vc ${isUsed?'active':''}" title="${v.tags.join(', ')}"
+        onclick="_s4AssignVoice('${v.id}','${wrapId||'studioS4Wrap'}')">
+        <div class="s4-vc-ico">${genderIcon(v.gender)}</div>
+        <div class="s4-vc-name">${v.name}</div>
+        <div class="s4-vc-mood">${v.mood}</div>
+        <div class="s4-vc-prov">${{elevenlabs:'EL',openai:'OA',nijivoice:'NJ'}[v.provider]}</div>
+      </div>`;
+    }).join('');
+
+    const sceneHtml = S.scenes.length ? S.scenes.map((sc,i)=>`
+      <div class="s4-scene-row">
+        <span class="s4-sc-num">씬${i+1}</span>
+        <span class="s4-sc-label" title="${sc.label}">${sc.label}</span>
+        <span class="s4-sc-role">${sc.role}</span>
+        <select class="s4-sc-sel"
+          onchange="window._s4st.scenes[${i}].spIdx=parseInt(this.value)">
+          <option value="">-- 미배정 --</option>
+          ${S.speakers.map((sp,si)=>`
+            <option value="${si}"${sc.spIdx===si?' selected':''}>${sp.role||'화자'+(si+1)}</option>
+          `).join('')}
+        </select>
+      </div>`).join('')
+    : '<div class="s4-empty-hint">⬆ 장르를 선택하면 씬이 자동 구성됩니다</div>';
+
+    const genreChips = Object.entries(GENRE_VOICE_MAP).map(([k,g])=>`
+      <button class="s4-chip ${S.genre===k?'on':''}"
+        onclick="_s4SetGenre('${k}','${wrapId||'studioS4Wrap'}')" title="${g.label}">${g.label}</button>
+    `).join('');
+
+    wrap.innerHTML = `
+    <div class="s4-panel">
+      <!-- ① API + AI추천 (한 줄) -->
+      <div class="s4-row s4-api-row">
+        <span class="s4-label">🎙 음성 API</span>
+        <div class="s4-seg">
+          ${['elevenlabs','openai','nijivoice'].map(p=>`
+            <button class="s4-seg-btn ${S.api===p?'on':''}"
+              onclick="window._s4st.api='${p}';_studioS4('${wrapId||'studioS4Wrap'}')">${
+                {elevenlabs:'🎵 ElevenLabs',openai:'🤖 OpenAI',nijivoice:'🌸 Nijivoice'}[p]
+              }</button>
+          `).join('')}
+        </div>
+        <button class="s4-ai-chip" onclick="_s4AiRecommend('${wrapId||'studioS4Wrap'}')">✨ AI추천조합</button>
+      </div>
+
+      <!-- ② 장르 자동 설정 -->
+      <div class="s4-row">
+        <span class="s4-label">📖 장르 자동</span>
+        <div class="s4-genre-chips">${genreChips}</div>
+      </div>
+
+      <!-- ③ 화자 설정 (다자) -->
+      <div class="s4-section-hd">
+        <span class="s4-section-title">👥 화자 설정 · ${S.speakers.length}인</span>
+        <div style="display:flex;gap:6px">
+          ${S.speakers.length<4?`<button class="s4-mini-btn primary" onclick="_s4AddSp('${wrapId||'studioS4Wrap'}')">+ 화자 추가</button>`:''}
+          ${S.speakers.length>1?`<button class="s4-mini-btn danger" onclick="_s4RemSp('${wrapId||'studioS4Wrap'}')">− 제거</button>`:''}
+        </div>
+      </div>
+      <div class="s4-speakers">${speakerHtml}</div>
+
+      <!-- ④ 전체 음성 목록 (컴팩트 그리드) -->
+      <div class="s4-section-hd">
+        <span class="s4-section-title">🗂 음성 선택 (클릭 → 현재 화자에 적용)</span>
+        <div class="s4-filter-bar">
+          <button class="s4-filter ${S.filterGender==='all'?'on':''}" onclick="_s4FG('all','${wrapId||'studioS4Wrap'}')">전체</button>
+          <button class="s4-filter ${S.filterGender==='female'?'on':''}" onclick="_s4FG('female','${wrapId||'studioS4Wrap'}')">👩여성</button>
+          <button class="s4-filter ${S.filterGender==='male'?'on':''}" onclick="_s4FG('male','${wrapId||'studioS4Wrap'}')">👨남성</button>
+          <span class="s4-fsep">|</span>
+          <button class="s4-filter ${S.filterLang==='all'?'on':''}" onclick="_s4FL('all','${wrapId||'studioS4Wrap'}')">전체어</button>
+          <button class="s4-filter ${S.filterLang==='ko'?'on':''}" onclick="_s4FL('ko','${wrapId||'studioS4Wrap'}')">🇰🇷한</button>
+          <button class="s4-filter ${S.filterLang==='ja'?'on':''}" onclick="_s4FL('ja','${wrapId||'studioS4Wrap'}')">🇯🇵일</button>
+        </div>
+      </div>
+      <div class="s4-voice-grid">${voiceGridHtml}</div>
+
+      <!-- ⑤ 씬별 화자 배치 (컴팩트) -->
+      <div class="s4-section-hd">
+        <span class="s4-section-title">🎬 씬별 화자 배치</span>
+        <button class="s4-mini-btn" onclick="_s4AutoScene('${wrapId||'studioS4Wrap'}')">⚡ 자동 배치</button>
+      </div>
+      <div class="s4-scene-grid">${sceneHtml}</div>
+    </div>`;
+  }
+
+  render();
+}
+
+/* ── 헬퍼 함수들 ── */
+window._s4SetGenre = function(genre, wid){
+  const S=window._s4st, g=GENRE_VOICE_MAP[genre];
+  if(!g) return;
+  S.genre=genre;
+  /* 화자 자동 구성 */
+  const apiVoices=STUDIO_VOICE_KO.filter(v=>
+    (S.api==='nijivoice'?v.provider==='nijivoice':
+     S.api==='openai'?v.provider==='openai':v.provider==='elevenlabs'));
+  S.speakers=g.pairs.map(([gender,mood],i)=>{
+    const v=apiVoices.find(v=>v.gender===gender&&v.mood===mood)
+           ||apiVoices.find(v=>v.gender===gender)
+           ||apiVoices[i%apiVoices.length];
+    const roleNames=['나레이터','진행자','게스트','캐릭터A','캐릭터B','내레이션'];
+    return{id:i+1,voiceId:v.id,role:roleNames[i]||'화자'+(i+1)};
+  });
+  /* 씬 자동 구성 */
+  const tmplKey=g.scenes;
+  const tmpl=(SCENE_TEMPLATES[tmplKey]||SCENE_TEMPLATES.narration).map((sc,i)=>({
+    ...sc, spIdx:i%S.speakers.length
+  }));
+  S.scenes=tmpl;
+  _studioS4(wid);
+};
+
+window._s4AssignVoice=function(voiceId,wid){
+  const S=window._s4st;
+  if(!S.speakers[S.activeSp]) return;
+  S.speakers[S.activeSp].voiceId=voiceId;
+  _studioS4(wid);
+};
+window._s4AddSp=function(wid){
+  const S=window._s4st; if(S.speakers.length>=4) return;
+  const v=STUDIO_VOICE_KO[S.speakers.length%STUDIO_VOICE_KO.length];
+  S.speakers.push({id:S.speakers.length+1,voiceId:v.id,role:'화자'+(S.speakers.length+1)});
+  _studioS4(wid);
+};
+window._s4RemSp=function(wid){
+  const S=window._s4st; if(S.speakers.length<=1) return;
+  S.speakers.pop(); if(S.activeSp>=S.speakers.length) S.activeSp=S.speakers.length-1;
+  _studioS4(wid);
+};
+window._s4FG=function(v,wid){window._s4st.filterGender=v;_studioS4(wid);};
+window._s4FL=function(v,wid){window._s4st.filterLang=v;_studioS4(wid);};
+window._s4AutoScene=function(wid){
+  const S=window._s4st;
+  S.scenes.forEach((sc,i)=>{sc.spIdx=i%S.speakers.length;});
+  _studioS4(wid);
+};
+window._s4AiRecommend=function(wid){
+  const S=window._s4st;
+  const g=S.genre?GENRE_VOICE_MAP[S.genre]:null;
+  const msg=g
+    ?`✨ [${g.label}] AI 추천 조합\n\n화자 ${g.count}인 구성\n장르별 최적 음성 자동 배치\n\n지금 적용할까요?`
+    :'장르를 먼저 선택하면 AI가 최적 음성 조합을 추천해드려요!\n\n장르 선택 후 다시 눌러주세요.';
+  if(g && confirm(msg)) _s4SetGenre(S.genre,wid);
+  else if(!g) alert(msg);
+};
+
 /* modules/studio.js — index.html에서 분리된 숏츠 스튜디오 모듈
    의존: APIAdapter (core/api-adapter.js), window.mocaToast (shared/ui.js)
 */
@@ -32,16 +351,6 @@ const STUDIO_ART_STYLES = [
 const STUDIO_LIGHTING = [
   'soft natural','dramatic','cinematic','warm golden','cool blue',
   'studio portrait','backlit silhouette','neon','fog/mist'
-];
-const STUDIO_VOICE_KO = [
-  {id:'senior-m', label:'시니어 남성', speed:0.9},
-  {id:'senior-f', label:'시니어 여성', speed:0.9},
-  {id:'mid-m',    label:'중년 남성',   speed:1.0},
-  {id:'mid-f',    label:'중년 여성',   speed:1.0},
-  {id:'young-m',  label:'청년 남성',   speed:1.05},
-  {id:'young-f',  label:'청년 여성',   speed:1.05},
-  {id:'anchor',   label:'아나운서',     speed:1.0},
-  {id:'narrator', label:'내레이터',     speed:0.95}
 ];
 const STUDIO_VOICE_JA = [
   {id:'yuki',     label:'Yuki (女性·温かみ)',  speed:0.92},
@@ -1287,242 +1596,7 @@ async function studioS3GenThumbs(){ studioS3GenThumb('A'); }
 function studioS3Regen(i){ studioS3RegenScene(i); }
 
 /* ═════════════ STEP 4 음성·BGM ═════════════ */
-function _studioS4(){
-  var p  = STUDIO.project;
-  var s4 = p.s4 || {};
-  var s2 = p.s2 || {};
-  var ch = p.channel || 'ko';
-  var mode = (p.s1 && p.s1.mode) || 'shorts';
-  var script = s2.scriptKo || s2.scriptJa || p.script || '';
 
-  /* AI 추천 목소리 계산 */
-  var genre  = (p.s1 && p.s1.genre) || '';
-  var recommended = studioS4GetRecommended(genre, ch, mode);
-
-  /* 음성 API 목록 */
-  var voiceApis = [
-    { id:'clova',      name:'ClovaVoice',    lang:'ko',   price:'₩3/분',  badge:'한국어 최적', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('clova'):{ok:false,label:'미설정'} },
-    { id:'elevenlabs', name:'ElevenLabs',    lang:'both', price:'₩15/분', badge:'감정연기 최고', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('elevenlabs'):{ok:false,label:'미설정'} },
-    { id:'openai',     name:'OpenAI TTS',    lang:'both', price:'₩2/분',  badge:'저렴·무난', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('openai'):{ok:false,label:'미설정'} },
-    { id:'voicevox',   name:'VoiceVox',      lang:'ja',   price:'무료',   badge:'일본어 전용', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('voicevox'):{ok:true,label:'🆓 무료'} },
-    { id:'google',     name:'Google TTS',    lang:'both', price:'무료',   badge:'다국어', status:{ok:true,label:'🆓 무료'} },
-  ];
-
-  /* 화자 수 결정 */
-  var speakerCount = mode==='tiki'?2:mode==='drama'?3:1;
-  var speakers = s4.speakers || studioS4DefaultSpeakers(mode, ch, genre);
-
-  /* 씬 목록 */
-  var scenes = (p.s3 && p.s3.scenes) || (p.s2 && _studioS3ParseScenes(script)) || [];
-
-  /* API 선택 UI */
-  var curApi = s4.voiceApi || recommended.api;
-  var apiHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
-    voiceApis.filter(function(a){ return a.lang==='both'||(ch!=='ja'&&a.lang==='ko')||(ch!=='ko'&&a.lang==='ja'); }).map(function(a){
-      var on = curApi===a.id;
-      return '<button onclick="studioS4SetApi(\''+a.id+'\')" style="border:2px solid '+(on?'var(--pink)':'var(--line)')+';background:'+(on?'var(--pink-soft)':'#fff')+';border-radius:12px;padding:8px 12px;cursor:pointer;font-family:inherit;min-width:110px;transition:.15s;text-align:left">'+
-        '<div style="font-size:12px;font-weight:800;color:'+(on?'var(--pink)':'var(--text)')+'">'+a.name+'</div>'+
-        '<div style="font-size:11px;color:var(--sub)">'+a.price+'</div>'+
-        '<div style="display:flex;align-items:center;gap:4px;margin-top:2px">'+
-          '<span style="font-size:10px;background:'+(on?'var(--pink)':'#eee')+';color:'+(on?'#fff':'#666')+';border-radius:999px;padding:1px 6px">'+a.badge+'</span>'+
-          '<span style="font-size:10px;color:'+(a.status.ok?'#27ae60':'#e74c3c')+';font-weight:700">'+a.status.label+'</span>'+
-        '</div>'+
-      '</button>';
-    }).join('') +
-  '</div>' +
-  '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px;margin-bottom:4px">'+
-    '<span style="font-size:12px;color:var(--sub)">API 키는 통합설정에서 관리</span>'+
-    '<button onclick="renderApiSettings()" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>'+
-  '</div>';
-
-  /* AI 추천 배너 */
-  var recHtml = '<div style="background:linear-gradient(135deg,#fff5fa,#f7f4ff);border:1.5px solid var(--pink);border-radius:14px;padding:14px;margin-bottom:14px">' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
-      '<span style="font-size:16px">🤖</span>'+
-      '<div style="font-size:13px;font-weight:900;color:var(--pink)">AI 추천 조합</div>'+
-    '</div>'+
-    '<div style="display:flex;flex-direction:column;gap:6px">'+
-    recommended.list.map(function(r,i){
-      var on = curApi===r.api && (s4.voiceKo===r.voice||s4.voiceJa===r.voice);
-      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border-radius:10px;border:1.5px solid '+(i===0?'var(--pink)':'var(--line)')+'">' +
-        '<span style="font-size:18px">'+(i===0?'🥇':i===1?'🥈':'🥉')+'</span>'+
-        '<div style="flex:1">'+
-          '<div style="font-size:13px;font-weight:800">'+r.apiName+' · '+r.voiceName+'</div>'+
-          '<div style="font-size:11px;color:var(--sub)">'+r.reason+'</div>'+
-        '</div>'+
-        '<div style="text-align:right">'+
-          '<div style="font-size:12px;font-weight:700;color:var(--pink)">'+r.price+'</div>'+
-          (i===0?'<button onclick="studioS4ApplyRecommended('+i+')" style="border:none;background:var(--pink);color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-top:4px">적용</button>':'')+ 
-        '</div>'+
-      '</div>';
-    }).join('')+
-    '</div>'+
-  '</div>';
-
-  /* 화자 설정 */
-  var speakerHtml = '<div class="studio-section">' +
-    '<div class="studio-label">👥 B. 화자 설정'+
-      (mode==='tiki'?' (티키타카 2인)':mode==='drama'?' (드라마 다인)':' (1인 나레이터)')+'</div>';
-
-  if(mode==='tiki'){
-    speakerHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-    ['A','B'].forEach(function(side,si){
-      var sp = speakers[si] || {};
-      speakerHtml += '<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px">'+
-        '<div style="font-size:13px;font-weight:900;margin-bottom:8px">화자 '+side+(si===0?' (주장측)':' (반박측)')+'</div>'+
-        studioS4VoiceSelect(si, sp, ch)+
-        '<div style="margin-top:8px"><label style="font-size:11px;font-weight:700;color:var(--sub)">감정</label>'+
-        studioS4EmotionSelect(si, sp.emotion||'중립')+
-        '</div>'+
-      '</div>';
-    });
-    speakerHtml += '</div>';
-  } else if(mode==='drama'){
-    var chars = studioS4ExtractCharacters(script);
-    speakerHtml += '<div style="display:flex;flex-direction:column;gap:8px">';
-    chars.forEach(function(char,ci){
-      var sp = speakers[ci] || {};
-      speakerHtml += '<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px">'+
-        '<div style="font-size:13px;font-weight:800;min-width:80px">'+char+'</div>'+
-        studioS4VoiceSelect(ci, sp, ch)+
-        studioS4EmotionSelect(ci, sp.emotion||'중립')+
-      '</div>';
-    });
-    speakerHtml += '<button onclick="studioS4AddChar()" class="studio-btn ghost" style="font-size:12px">+ 인물 추가</button>';
-    speakerHtml += '</div>';
-  } else {
-    /* 1인 */
-    var sp0 = speakers[0] || {};
-    speakerHtml += studioS4VoiceSelect(0, sp0, ch);
-  }
-  speakerHtml += '</div>';
-
-  /* 씬별 감정·속도 자동 설정 */
-  var sceneEmotions = s4.sceneEmotions || studioS4AutoEmotions(scenes);
-  var sceneHtml = '';
-  if(scenes.length){
-    sceneHtml = '<div class="studio-section">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-        '<div class="studio-label" style="margin:0">🎭 C. 씬별 감정·속도</div>'+
-        '<button onclick="studioS4AutoSetEmotions()" class="studio-btn ghost" style="font-size:12px">🤖 AI 자동 설정</button>'+
-      '</div>'+
-      '<div style="display:flex;flex-direction:column;gap:8px">'+
-      scenes.slice(0,10).map(function(sc,i){
-        var se = sceneEmotions[i] || {emotion:'중립',speed:1.0,pause:0.3};
-        return '<div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px">'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-            '<div style="font-size:12px;font-weight:800;min-width:80px">씬'+(i+1)+' '+sc.label+'</div>'+
-            '<select onchange="studioS4SetSceneEmotion('+i+',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:4px;font-size:11px">'+
-              ['중립','따뜻함','강함','밝음','감동','긴장','충격','차분'].map(function(e){
-                return '<option '+(se.emotion===e?'selected':'')+'>'+e+'</option>';
-              }).join('')+
-            '</select>'+
-            '<div style="display:flex;align-items:center;gap:4px">'+
-              '<span style="font-size:11px;color:var(--sub)">속도</span>'+
-              '<input type="range" min="0.7" max="1.3" step="0.05" value="'+se.speed+'" '+
-                'oninput="studioS4SetSceneSpeed('+i+',this.value)" '+
-                'style="width:70px;accent-color:var(--pink)">'+
-              '<span style="font-size:11px;font-weight:700">'+se.speed+'x</span>'+
-            '</div>'+
-            '<div style="display:flex;align-items:center;gap:4px">'+
-              '<span style="font-size:11px;color:var(--sub)">침묵</span>'+
-              '<input type="range" min="0" max="1.5" step="0.1" value="'+se.pause+'" '+
-                'oninput="studioS4SetScenePause('+i+',this.value)" '+
-                'style="width:60px;accent-color:var(--pink)">'+
-              '<span style="font-size:11px;font-weight:700">'+se.pause+'s</span>'+
-            '</div>'+
-            (s4.audios&&s4.audios[i]?
-              '<button onclick="studioS4PlayScene('+i+')" style="border:none;background:#27ae60;color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">▶ 듣기</button>'+
-              '<button onclick="studioS4RegenScene('+i+')" style="border:none;background:#eee;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">🔄</button>'+
-              '<button onclick="studioS4SaveScene('+i+')" style="border:none;background:#4a90c4;color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">💾</button>'
-            :'<button onclick="studioS4GenScene('+i+')" style="border:none;background:var(--pink);color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">⚡ 생성</button>')+
-          '</div>'+
-        '</div>';
-      }).join('')+
-      (scenes.length>10?'<div style="font-size:12px;color:var(--sub);text-align:center">... 외 '+(scenes.length-10)+'개 씬</div>':'')+
-      '</div>'+
-    '</div>';
-  }
-
-  /* BGM */
-  var bgmHtml = '<div class="studio-section">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-      '<div class="studio-label" style="margin:0">🎵 D. BGM</div>'+
-      '<button onclick="studioS4AutoBgm()" class="studio-btn ghost" style="font-size:12px">🤖 분위기 자동매칭</button>'+
-    '</div>'+
-    '<div class="studio-chips" id="s4-bgm">' +
-    STUDIO_BGM.map(function(b){
-      return '<button class="studio-chip'+(s4.bgm===b?' on':'')+'" onclick="studioS4Bgm(\''+b+'\',this)">'+b+'</button>';
-    }).join('')+
-    '</div>'+
-    '<label onclick="studioS4UploadBgm()" style="cursor:pointer;display:inline-block;margin-top:8px">'+
-      '<span class="studio-btn ghost" style="font-size:12px">📁 내 BGM 업로드</span>'+
-      '<input type="file" accept="audio/*" style="display:none" onchange="studioS4HandleBgm(this)">'+
-    '</label>'+
-    '<div style="margin-top:10px">'+
-      '<label style="font-size:12px;font-weight:700">볼륨 균형</label>'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'+
-        '<span style="font-size:11px;color:var(--sub)">음성</span>'+
-        '<input type="range" min="50" max="100" value="'+(s4.voiceVol||100)+'" '+
-          'oninput="STUDIO.project.s4.voiceVol=parseInt(this.value);studioSave()" '+
-          'style="flex:1;accent-color:var(--pink)">'+
-        '<span style="font-size:11px;font-weight:700">'+(s4.voiceVol||100)+'%</span>'+
-        '<span style="font-size:11px;color:var(--sub);margin-left:8px">BGM</span>'+
-        '<input type="range" min="0" max="50" value="'+(s4.bgmVolume||15)+'" '+
-          'oninput="STUDIO.project.s4.bgmVolume=parseInt(this.value);studioSave()" '+
-          'style="flex:1;accent-color:var(--pink)">'+
-        '<span style="font-size:11px;font-weight:700">'+(s4.bgmVolume||15)+'%</span>'+
-      '</div>'+
-    '</div>'+
-    '<button onclick="studioS4SearchBgm()" class="studio-btn ghost" style="font-size:11px;margin-top:6px">🔍 Pixabay BGM 자동검색</button>'+
-  '</div>';
-
-  /* 전체 생성·저장 */
-  var totalSecs = scenes.reduce(function(acc,s){ return acc+(parseFloat(s.time)||3); }, 0) || (script.length/5);
-  var hasAudio = s4.audios && s4.audios.some(function(a){ return !!a; });
-
-  var actionHtml = '<div class="studio-section">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-      '<div>'+
-        '<div style="font-size:13px;font-weight:900">🎙 E. 생성·저장</div>'+
-        '<div style="font-size:11px;color:var(--sub)">예상 길이: ~'+Math.round(totalSecs)+'초</div>'+
-      '</div>'+
-      '<div style="text-align:right">'+
-        '<div style="font-size:11px;color:var(--sub)">예상 비용</div>'+
-        '<div style="font-size:18px;font-weight:900;color:var(--pink)">'+studioS4EstCost(curApi, totalSecs)+'</div>'+
-      '</div>'+
-    '</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-      '<button onclick="studioS4GenAll()" class="studio-btn pri" style="font-size:12px">⚡ 전체 음성 생성</button>'+
-      (hasAudio?
-        '<button onclick="studioS4PlayAll()" class="studio-btn ghost" style="font-size:12px">▶ 전체 듣기</button>'+
-        '<button onclick="studioS4DownloadAll()" class="studio-btn ghost" style="font-size:12px">💾 MP3 다운로드</button>'
-      :'')+
-    '</div>'+
-    (hasAudio?'<div style="margin-top:10px"><audio id="s4-player" controls style="width:100%;border-radius:8px"></audio></div>':'')+
-  '</div>';
-
-  return '<div class="studio-panel">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
-      '<div><h4 style="margin:0 0 2px">③ 음성·BGM</h4>'+
-      '<div style="font-size:12px;color:var(--sub)">API 선택 → AI 추천 → 화자 설정 → 씬별 감정</div></div>'+
-    '</div>'+
-
-    '<div class="studio-section"><div class="studio-label">🤖 A. 음성 API 선택</div>'+apiHtml+'</div>'+
-    recHtml+
-    speakerHtml+
-    sceneHtml+
-    bgmHtml+
-    pronuncHtml+
-    studioS4BuildPreviewSection(scenes, s4)+
-    actionHtml+
-
-    '<div class="studio-actions" style="justify-content:space-between;margin-top:14px">'+
-      '<button class="studio-btn ghost" onclick="studioGoto(2)">← 이미지</button>'+
-      '<button class="studio-btn pri" onclick="studioGoto(4)">다음: 편집 →</button>'+
-    '</div>'+
-  '</div>';
-}
 
 /* 보조 함수들 */
 function studioS4GetRecommended(genre, ch, mode){
