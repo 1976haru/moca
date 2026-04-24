@@ -46,7 +46,7 @@ let _s5ApiKeys   = {};
 /* ════════════════════════════════════════════════
    메인 렌더 함수
    ════════════════════════════════════════════════ */
-function _studioS5(wrapId) {
+function _studioS6(wrapId) {
   const wrap = document.getElementById(wrapId || 'studioS5Wrap');
   if (!wrap) return;
 
@@ -597,17 +597,17 @@ function _esc(str) {
 /* ── 이벤트 핸들러 ── */
 window._s5SetTab = function(tab, wid) {
   _s5Tab = tab;
-  _studioS5(wid);
+  _studioS6(wid);
 };
 
 window._s5SetMode = function(mode, wid) {
   _s5Mode = mode;
-  _studioS5(wid);
+  _studioS6(wid);
 };
 
 window._s5SetPlatform = function(plat, wid) {
   _s5Platform = plat;
-  _studioS5(wid);
+  _studioS6(wid);
 };
 
 window._s5Copy = function(btn, text) {
@@ -685,7 +685,7 @@ window._s5SaveRecord = function() {
   const records = JSON.parse(localStorage.getItem(S5_LS)||'[]');
   records.push(record);
   localStorage.setItem(S5_LS, JSON.stringify(records));
-  _studioS5('studioS5Wrap');
+  _studioS6('studioS5Wrap');
 };
 
 window._s5DelRecord = function(id) {
@@ -693,7 +693,7 @@ window._s5DelRecord = function(id) {
   const records = JSON.parse(localStorage.getItem(S5_LS)||'[]')
     .filter(r => r.id !== id);
   localStorage.setItem(S5_LS, JSON.stringify(records));
-  _studioS5('studioS5Wrap');
+  _studioS6('studioS5Wrap');
 };
 
 window._s5UseIdea = function(idea) {

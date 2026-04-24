@@ -196,7 +196,8 @@ const STUDIO_STEPS = [
   { n:2, label:'② 이미지 생성' },
   { n:3, label:'③ 음성·BGM' },
   { n:4, label:'④ 편집' },
-  { n:5, label:'⑤ 최종검수·업로드' }
+  { n:5, label:'⑤ 최종검수·업로드' },
+  { n:6, label:'⑥ 📤 최종검수·출력' }
 ];
 function _studioStepperShell(){
   const cur = STUDIO.project.step;
@@ -205,23 +206,30 @@ function _studioStepperShell(){
   '</div></div>';
 }
 function studioGoto(n){
-  if(n < 0 || n > 5) return;
+  if(n < 0 || n > 6) return;
   STUDIO.project.step = n;
   studioSave();
   renderStudio();
 }
 function _studioStepBody(){
   const n = STUDIO.project.step;
+  /* STEP 6 은 wrap div 만 반환, 콘텐츠는 _studioBindStep 의 _studioS5(wrapId) 로 주입 */
+  if(n === 6) return '<div id="studioS5Wrap"></div>';
   return ({
     0: _studioS0,   // 🏠 대시보드
     1: _studioS2,   // ① 대본 생성 (iframe 기반 script engine)
     2: _studioS3,   // ② 이미지 생성
     3: _studioS4,   // ③ 음성·BGM
     4: _studioS5,   // ④ 편집
-    5: _studioS7    // ⑤ 최종검수·업로드
+    5: _studioS7    // ⑤ 최종검수·업로드 (legacy)
   }[n] || (()=>''))();
 }
 function _studioBindStep(){
+  /* STEP 6: s5-upload.js 의 _studioS6(wrapId) 로 패널 주입 (타 step 들과 다른 패턴) */
+  if(STUDIO.project.step === 6){
+    if(typeof _studioS6 === 'function') _studioS6('studioS5Wrap');
+    return;
+  }
   const fn = {
     0: (typeof _studioBindS0 !== 'undefined' ? _studioBindS0 : null),
     1: _studioBindS2,
