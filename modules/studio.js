@@ -1288,49 +1288,517 @@ function studioS3Regen(i){ studioS3RegenScene(i); }
 
 /* ═════════════ STEP 4 음성·BGM ═════════════ */
 function _studioS4(){
-  const p = STUDIO.project;
-  const ch = p.channel;
-  const s4 = p.s4;
-  return '<div class="studio-panel">' +
-    '<h4>④ 음성 · BGM</h4>' +
-    (ch!=='ja' ? '<label class="studio-label">🇰🇷 한국어 나레이터 (8종)</label>' +
-      '<div class="studio-chips">' +
-        STUDIO_VOICE_KO.map(v => '<button class="studio-chip' + (s4.voiceKo===v.id?' on':'') + '" onclick="studioS4VoiceKo(\'' + v.id + '\',this)">' + v.label + '</button>').join('') +
-      '</div>' : '') +
+  var p  = STUDIO.project;
+  var s4 = p.s4 || {};
+  var s2 = p.s2 || {};
+  var ch = p.channel || 'ko';
+  var mode = (p.s1 && p.s1.mode) || 'shorts';
+  var script = s2.scriptKo || s2.scriptJa || p.script || '';
 
-    (ch!=='ko' ? '<label class="studio-label">🇯🇵 일본어 나레이터 (6종)</label>' +
-      '<div class="studio-chips">' +
-        STUDIO_VOICE_JA.map(v => '<button class="studio-chip' + (s4.voiceJa===v.id?' on':'') + '" onclick="studioS4VoiceJa(\'' + v.id + '\',this)">' + v.label + '</button>').join('') +
-      '</div>' : '') +
+  /* AI 추천 목소리 계산 */
+  var genre  = (p.s1 && p.s1.genre) || '';
+  var recommended = studioS4GetRecommended(genre, ch, mode);
 
-    '<div class="studio-row" style="margin-top:10px">' +
-      '<div><label class="studio-label">속도 (' + s4.speed + 'x)</label><input type="range" min="0.7" max="1.3" step="0.05" value="' + s4.speed + '" oninput="STUDIO.project.s4.speed=parseFloat(this.value);studioSave();document.querySelector(\'#s4-speed-lbl\').textContent=this.value+\'x\'" style="width:100%"><span id="s4-speed-lbl" style="font-size:11px;color:var(--sub)">' + s4.speed + 'x</span></div>' +
-      '<div><label class="studio-label">감정</label><select class="studio-in" id="s4-emotion">' +
-        ['중립','따뜻함','강함','밝음','감동','긴장'].map(x => '<option ' + (s4.emotion===x?'selected':'') + '>' + x + '</option>').join('') +
-      '</select></div>' +
-      '<div><label class="studio-label">음높이</label><input type="range" min="-5" max="5" step="1" value="' + s4.pitch + '" oninput="STUDIO.project.s4.pitch=parseInt(this.value,10);studioSave()" style="width:100%"></div>' +
-    '</div>' +
+  /* 음성 API 목록 */
+  var voiceApis = [
+    { id:'clova',      name:'ClovaVoice',    lang:'ko',   price:'₩3/분',  badge:'한국어 최적', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('clova'):{ok:false,label:'미설정'} },
+    { id:'elevenlabs', name:'ElevenLabs',    lang:'both', price:'₩15/분', badge:'감정연기 최고', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('elevenlabs'):{ok:false,label:'미설정'} },
+    { id:'openai',     name:'OpenAI TTS',    lang:'both', price:'₩2/분',  badge:'저렴·무난', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('openai'):{ok:false,label:'미설정'} },
+    { id:'voicevox',   name:'VoiceVox',      lang:'ja',   price:'무료',   badge:'일본어 전용', status: typeof ucApiKeyStatus==='function'?ucApiKeyStatus('voicevox'):{ok:true,label:'🆓 무료'} },
+    { id:'google',     name:'Google TTS',    lang:'both', price:'무료',   badge:'다국어', status:{ok:true,label:'🆓 무료'} },
+  ];
 
-    '<label class="studio-label">🎵 BGM (12종)</label>' +
-    '<div class="studio-chips">' +
-      STUDIO_BGM.map(b => '<button class="studio-chip' + (s4.bgm===b?' on':'') + '" onclick="studioS4Bgm(\'' + b + '\',this)">' + b + '</button>').join('') +
-    '</div>' +
-    '<label class="studio-label">BGM 볼륨 (' + s4.bgmVolume + '%)</label>' +
-    '<input type="range" min="0" max="50" value="' + s4.bgmVolume + '" oninput="STUDIO.project.s4.bgmVolume=parseInt(this.value,10);studioSave()" style="width:100%">' +
+  /* 화자 수 결정 */
+  var speakerCount = mode==='tiki'?2:mode==='drama'?3:1;
+  var speakers = s4.speakers || studioS4DefaultSpeakers(mode, ch, genre);
 
-    '<div class="studio-actions" style="justify-content:space-between">' +
-      '<button class="studio-btn ghost" onclick="studioGoto(2)">← 이전</button>' +
-      '<button class="studio-btn pri" onclick="studioGoto(4)">다음: 편집 →</button>' +
-    '</div>' +
+  /* 씬 목록 */
+  var scenes = (p.s3 && p.s3.scenes) || (p.s2 && _studioS3ParseScenes(script)) || [];
+
+  /* API 선택 UI */
+  var curApi = s4.voiceApi || recommended.api;
+  var apiHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
+    voiceApis.filter(function(a){ return a.lang==='both'||(ch!=='ja'&&a.lang==='ko')||(ch!=='ko'&&a.lang==='ja'); }).map(function(a){
+      var on = curApi===a.id;
+      return '<button onclick="studioS4SetApi(\''+a.id+'\')" style="border:2px solid '+(on?'var(--pink)':'var(--line)')+';background:'+(on?'var(--pink-soft)':'#fff')+';border-radius:12px;padding:8px 12px;cursor:pointer;font-family:inherit;min-width:110px;transition:.15s;text-align:left">'+
+        '<div style="font-size:12px;font-weight:800;color:'+(on?'var(--pink)':'var(--text)')+'">'+a.name+'</div>'+
+        '<div style="font-size:11px;color:var(--sub)">'+a.price+'</div>'+
+        '<div style="display:flex;align-items:center;gap:4px;margin-top:2px">'+
+          '<span style="font-size:10px;background:'+(on?'var(--pink)':'#eee')+';color:'+(on?'#fff':'#666')+';border-radius:999px;padding:1px 6px">'+a.badge+'</span>'+
+          '<span style="font-size:10px;color:'+(a.status.ok?'#27ae60':'#e74c3c')+';font-weight:700">'+a.status.label+'</span>'+
+        '</div>'+
+      '</button>';
+    }).join('') +
+  '</div>' +
+  '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px;margin-bottom:4px">'+
+    '<span style="font-size:12px;color:var(--sub)">API 키는 통합설정에서 관리</span>'+
+    '<button onclick="renderApiSettings()" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>'+
+  '</div>';
+
+  /* AI 추천 배너 */
+  var recHtml = '<div style="background:linear-gradient(135deg,#fff5fa,#f7f4ff);border:1.5px solid var(--pink);border-radius:14px;padding:14px;margin-bottom:14px">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+      '<span style="font-size:16px">🤖</span>'+
+      '<div style="font-size:13px;font-weight:900;color:var(--pink)">AI 추천 조합</div>'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:6px">'+
+    recommended.list.map(function(r,i){
+      var on = curApi===r.api && (s4.voiceKo===r.voice||s4.voiceJa===r.voice);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border-radius:10px;border:1.5px solid '+(i===0?'var(--pink)':'var(--line)')+'">' +
+        '<span style="font-size:18px">'+(i===0?'🥇':i===1?'🥈':'🥉')+'</span>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:13px;font-weight:800">'+r.apiName+' · '+r.voiceName+'</div>'+
+          '<div style="font-size:11px;color:var(--sub)">'+r.reason+'</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--pink)">'+r.price+'</div>'+
+          (i===0?'<button onclick="studioS4ApplyRecommended('+i+')" style="border:none;background:var(--pink);color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-top:4px">적용</button>':'')+ 
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+  '</div>';
+
+  /* 화자 설정 */
+  var speakerHtml = '<div class="studio-section">' +
+    '<div class="studio-label">👥 B. 화자 설정'+
+      (mode==='tiki'?' (티키타카 2인)':mode==='drama'?' (드라마 다인)':' (1인 나레이터)')+'</div>';
+
+  if(mode==='tiki'){
+    speakerHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+    ['A','B'].forEach(function(side,si){
+      var sp = speakers[si] || {};
+      speakerHtml += '<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px">'+
+        '<div style="font-size:13px;font-weight:900;margin-bottom:8px">화자 '+side+(si===0?' (주장측)':' (반박측)')+'</div>'+
+        studioS4VoiceSelect(si, sp, ch)+
+        '<div style="margin-top:8px"><label style="font-size:11px;font-weight:700;color:var(--sub)">감정</label>'+
+        studioS4EmotionSelect(si, sp.emotion||'중립')+
+        '</div>'+
+      '</div>';
+    });
+    speakerHtml += '</div>';
+  } else if(mode==='drama'){
+    var chars = studioS4ExtractCharacters(script);
+    speakerHtml += '<div style="display:flex;flex-direction:column;gap:8px">';
+    chars.forEach(function(char,ci){
+      var sp = speakers[ci] || {};
+      speakerHtml += '<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px">'+
+        '<div style="font-size:13px;font-weight:800;min-width:80px">'+char+'</div>'+
+        studioS4VoiceSelect(ci, sp, ch)+
+        studioS4EmotionSelect(ci, sp.emotion||'중립')+
+      '</div>';
+    });
+    speakerHtml += '<button onclick="studioS4AddChar()" class="studio-btn ghost" style="font-size:12px">+ 인물 추가</button>';
+    speakerHtml += '</div>';
+  } else {
+    /* 1인 */
+    var sp0 = speakers[0] || {};
+    speakerHtml += studioS4VoiceSelect(0, sp0, ch);
+  }
+  speakerHtml += '</div>';
+
+  /* 씬별 감정·속도 자동 설정 */
+  var sceneEmotions = s4.sceneEmotions || studioS4AutoEmotions(scenes);
+  var sceneHtml = '';
+  if(scenes.length){
+    sceneHtml = '<div class="studio-section">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+        '<div class="studio-label" style="margin:0">🎭 C. 씬별 감정·속도</div>'+
+        '<button onclick="studioS4AutoSetEmotions()" class="studio-btn ghost" style="font-size:12px">🤖 AI 자동 설정</button>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px">'+
+      scenes.slice(0,10).map(function(sc,i){
+        var se = sceneEmotions[i] || {emotion:'중립',speed:1.0,pause:0.3};
+        return '<div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+            '<div style="font-size:12px;font-weight:800;min-width:80px">씬'+(i+1)+' '+sc.label+'</div>'+
+            '<select onchange="studioS4SetSceneEmotion('+i+',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:4px;font-size:11px">'+
+              ['중립','따뜻함','강함','밝음','감동','긴장','충격','차분'].map(function(e){
+                return '<option '+(se.emotion===e?'selected':'')+'>'+e+'</option>';
+              }).join('')+
+            '</select>'+
+            '<div style="display:flex;align-items:center;gap:4px">'+
+              '<span style="font-size:11px;color:var(--sub)">속도</span>'+
+              '<input type="range" min="0.7" max="1.3" step="0.05" value="'+se.speed+'" '+
+                'oninput="studioS4SetSceneSpeed('+i+',this.value)" '+
+                'style="width:70px;accent-color:var(--pink)">'+
+              '<span style="font-size:11px;font-weight:700">'+se.speed+'x</span>'+
+            '</div>'+
+            '<div style="display:flex;align-items:center;gap:4px">'+
+              '<span style="font-size:11px;color:var(--sub)">침묵</span>'+
+              '<input type="range" min="0" max="1.5" step="0.1" value="'+se.pause+'" '+
+                'oninput="studioS4SetScenePause('+i+',this.value)" '+
+                'style="width:60px;accent-color:var(--pink)">'+
+              '<span style="font-size:11px;font-weight:700">'+se.pause+'s</span>'+
+            '</div>'+
+            (s4.audios&&s4.audios[i]?
+              '<button onclick="studioS4PlayScene('+i+')" style="border:none;background:#27ae60;color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">▶ 듣기</button>'+
+              '<button onclick="studioS4RegenScene('+i+')" style="border:none;background:#eee;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">🔄</button>'+
+              '<button onclick="studioS4SaveScene('+i+')" style="border:none;background:#4a90c4;color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">💾</button>'
+            :'<button onclick="studioS4GenScene('+i+')" style="border:none;background:var(--pink);color:#fff;border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer">⚡ 생성</button>')+
+          '</div>'+
+        '</div>';
+      }).join('')+
+      (scenes.length>10?'<div style="font-size:12px;color:var(--sub);text-align:center">... 외 '+(scenes.length-10)+'개 씬</div>':'')+
+      '</div>'+
+    '</div>';
+  }
+
+  /* BGM */
+  var bgmHtml = '<div class="studio-section">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+      '<div class="studio-label" style="margin:0">🎵 D. BGM</div>'+
+      '<button onclick="studioS4AutoBgm()" class="studio-btn ghost" style="font-size:12px">🤖 분위기 자동매칭</button>'+
+    '</div>'+
+    '<div class="studio-chips" id="s4-bgm">' +
+    STUDIO_BGM.map(function(b){
+      return '<button class="studio-chip'+(s4.bgm===b?' on':'')+'" onclick="studioS4Bgm(\''+b+'\',this)">'+b+'</button>';
+    }).join('')+
+    '</div>'+
+    '<label onclick="studioS4UploadBgm()" style="cursor:pointer;display:inline-block;margin-top:8px">'+
+      '<span class="studio-btn ghost" style="font-size:12px">📁 내 BGM 업로드</span>'+
+      '<input type="file" accept="audio/*" style="display:none" onchange="studioS4HandleBgm(this)">'+
+    '</label>'+
+    '<div style="margin-top:10px">'+
+      '<label style="font-size:12px;font-weight:700">볼륨 균형</label>'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'+
+        '<span style="font-size:11px;color:var(--sub)">음성</span>'+
+        '<input type="range" min="50" max="100" value="'+(s4.voiceVol||100)+'" '+
+          'oninput="STUDIO.project.s4.voiceVol=parseInt(this.value);studioSave()" '+
+          'style="flex:1;accent-color:var(--pink)">'+
+        '<span style="font-size:11px;font-weight:700">'+(s4.voiceVol||100)+'%</span>'+
+        '<span style="font-size:11px;color:var(--sub);margin-left:8px">BGM</span>'+
+        '<input type="range" min="0" max="50" value="'+(s4.bgmVolume||15)+'" '+
+          'oninput="STUDIO.project.s4.bgmVolume=parseInt(this.value);studioSave()" '+
+          'style="flex:1;accent-color:var(--pink)">'+
+        '<span style="font-size:11px;font-weight:700">'+(s4.bgmVolume||15)+'%</span>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+
+  /* 전체 생성·저장 */
+  var totalSecs = scenes.reduce(function(acc,s){ return acc+(parseFloat(s.time)||3); }, 0) || (script.length/5);
+  var hasAudio = s4.audios && s4.audios.some(function(a){ return !!a; });
+
+  var actionHtml = '<div class="studio-section">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+      '<div>'+
+        '<div style="font-size:13px;font-weight:900">🎙 E. 생성·저장</div>'+
+        '<div style="font-size:11px;color:var(--sub)">예상 길이: ~'+Math.round(totalSecs)+'초</div>'+
+      '</div>'+
+      '<div style="text-align:right">'+
+        '<div style="font-size:11px;color:var(--sub)">예상 비용</div>'+
+        '<div style="font-size:18px;font-weight:900;color:var(--pink)">'+studioS4EstCost(curApi, totalSecs)+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button onclick="studioS4GenAll()" class="studio-btn pri" style="font-size:12px">⚡ 전체 음성 생성</button>'+
+      (hasAudio?
+        '<button onclick="studioS4PlayAll()" class="studio-btn ghost" style="font-size:12px">▶ 전체 듣기</button>'+
+        '<button onclick="studioS4DownloadAll()" class="studio-btn ghost" style="font-size:12px">💾 MP3 다운로드</button>'
+      :'')+
+    '</div>'+
+    (hasAudio?'<div style="margin-top:10px"><audio id="s4-player" controls style="width:100%;border-radius:8px"></audio></div>':'')+
+  '</div>';
+
+  return '<div class="studio-panel">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
+      '<div><h4 style="margin:0 0 2px">③ 음성·BGM</h4>'+
+      '<div style="font-size:12px;color:var(--sub)">API 선택 → AI 추천 → 화자 설정 → 씬별 감정</div></div>'+
+    '</div>'+
+
+    '<div class="studio-section"><div class="studio-label">🤖 A. 음성 API 선택</div>'+apiHtml+'</div>'+
+    recHtml+
+    speakerHtml+
+    sceneHtml+
+    bgmHtml+
+    actionHtml+
+
+    '<div class="studio-actions" style="justify-content:space-between;margin-top:14px">'+
+      '<button class="studio-btn ghost" onclick="studioGoto(2)">← 이미지</button>'+
+      '<button class="studio-btn pri" onclick="studioGoto(4)">다음: 편집 →</button>'+
+    '</div>'+
   '</div>';
 }
-function _studioBindS4(){
-  const el = document.getElementById('s4-emotion');
-  if(el) el.addEventListener('change', e => { STUDIO.project.s4.emotion = e.target.value; studioSave(); });
+
+/* 보조 함수들 */
+function studioS4GetRecommended(genre, ch, mode){
+  var map = {
+    '시니어건강': [{api:'clova',apiName:'ClovaVoice',voice:'senior-f',voiceName:'시니어 여성',reason:'시니어 채널 최적화·따뜻한 신뢰감',price:'₩3/분'},
+                  {api:'elevenlabs',apiName:'ElevenLabs',voice:'bella',voiceName:'Bella',reason:'감정 연기 최고',price:'₩15/분'},
+                  {api:'openai',apiName:'OpenAI TTS',voice:'nova',voiceName:'Nova',reason:'저렴·무난',price:'₩2/분'}],
+    '재테크':     [{api:'clova',apiName:'ClovaVoice',voice:'mid-m',voiceName:'중년 남성',reason:'신뢰감·전문성',price:'₩3/분'},
+                  {api:'elevenlabs',apiName:'ElevenLabs',voice:'adam',voiceName:'Adam',reason:'권위있는 목소리',price:'₩15/분'},
+                  {api:'openai',apiName:'OpenAI TTS',voice:'onyx',voiceName:'Onyx',reason:'저렴·남성적',price:'₩2/분'}],
+    '유머':       [{api:'clova',apiName:'ClovaVoice',voice:'young-m',voiceName:'청년 남성',reason:'밝고 경쾌한 톤',price:'₩3/분'},
+                  {api:'elevenlabs',apiName:'ElevenLabs',voice:'sam',voiceName:'Sam',reason:'자연스러운 유머',price:'₩15/분'},
+                  {api:'openai',apiName:'OpenAI TTS',voice:'alloy',voiceName:'Alloy',reason:'중성·무난',price:'₩2/분'}],
+  };
+  var def = [{api:'clova',apiName:'ClovaVoice',voice:'narrator',voiceName:'내레이터',reason:'범용·안정적',price:'₩3/분'},
+             {api:'elevenlabs',apiName:'ElevenLabs',voice:'bella',voiceName:'Bella',reason:'자연스러운 감정',price:'₩15/분'},
+             {api:'openai',apiName:'OpenAI TTS',voice:'nova',voiceName:'Nova',reason:'저렴·무난',price:'₩2/분'}];
+  var list = map[genre] || def;
+  if(ch==='ja') list = [{api:'voicevox',apiName:'VoiceVox',voice:'yukari',voiceName:'紫(ゆかり)',reason:'일본어 무료·자연스러움',price:'무료'},
+                        {api:'google',apiName:'Google TTS',voice:'ja-JP-Neural2-B',voiceName:'일본어 여성',reason:'다국어·무료',price:'무료'},
+                        {api:'elevenlabs',apiName:'ElevenLabs',voice:'bella',voiceName:'Bella',reason:'감정 연기',price:'₩15/분'}];
+  return { api: list[0].api, voice: list[0].voice, list: list };
 }
-function studioS4VoiceKo(id, btn){ STUDIO.project.s4.voiceKo=id; btn.parentElement.querySelectorAll('.studio-chip').forEach(x=>x.classList.remove('on')); btn.classList.add('on'); studioSave(); }
-function studioS4VoiceJa(id, btn){ STUDIO.project.s4.voiceJa=id; btn.parentElement.querySelectorAll('.studio-chip').forEach(x=>x.classList.remove('on')); btn.classList.add('on'); studioSave(); }
-function studioS4Bgm(b, btn){ STUDIO.project.s4.bgm=b; btn.parentElement.querySelectorAll('.studio-chip').forEach(x=>x.classList.remove('on')); btn.classList.add('on'); studioSave(); }
+
+function studioS4DefaultSpeakers(mode, ch, genre){
+  var rec = studioS4GetRecommended(genre, ch, mode);
+  if(mode==='tiki') return [
+    {api:rec.api, voice:'mid-m', emotion:'강함', speed:1.0},
+    {api:rec.api, voice:'mid-f', emotion:'강함', speed:1.0}
+  ];
+  if(mode==='drama') return [
+    {api:rec.api, voice:'senior-f', emotion:'감동', speed:0.9},
+    {api:rec.api, voice:'young-m',  emotion:'밝음', speed:1.05},
+    {api:rec.api, voice:'narrator', emotion:'중립', speed:0.95},
+  ];
+  return [{api:rec.api, voice:rec.voice, emotion:'중립', speed:1.0}];
+}
+
+function studioS4ExtractCharacters(script){
+  if(!script) return ['화자A','화자B','나레이터'];
+  var chars = {};
+  var lines = script.split('\n');
+  lines.forEach(function(l){
+    var m = l.match(/^([가-힣a-zA-Z]{1,8})\s*[:：]/);
+    if(m) chars[m[1]] = true;
+  });
+  var list = Object.keys(chars).slice(0,5);
+  return list.length ? list : ['화자A','화자B','나레이터'];
+}
+
+function studioS4AutoEmotions(scenes){
+  var map = {훅:'충격', 설명:'차분', 핵심:'강함', 강조:'감동', CTA:'밝음', 주장:'강함', 반박:'긴장', 결론:'감동'};
+  return scenes.map(function(s){
+    var key = Object.keys(map).find(function(k){ return s.label&&s.label.includes(k); });
+    return { emotion: key?map[key]:'중립', speed: key==='훅'?1.1:key==='CTA'?0.9:1.0, pause: 0.3 };
+  });
+}
+
+function studioS4EstCost(api, secs){
+  var perMin = {clova:3, elevenlabs:15, openai:2, voicevox:0, google:0}[api] || 3;
+  return '₩'+Math.ceil(secs/60*perMin);
+}
+
+function studioS4VoiceSelect(idx, sp, ch){
+  var voices = ch==='ja' ? STUDIO_VOICE_JA : STUDIO_VOICE_KO;
+  return '<select onchange="studioS4SetSpeakerVoice('+idx+',this.value)" '+
+    'style="border:1.5px solid var(--line);border-radius:8px;padding:6px;font-size:12px;font-family:inherit">'+
+    voices.map(function(v){
+      return '<option value="'+v.id+'" '+(sp.voice===v.id?'selected':'')+'>'+v.label+'</option>';
+    }).join('')+
+  '</select>';
+}
+
+function studioS4EmotionSelect(idx, cur){
+  return '<select onchange="studioS4SetSpeakerEmotion('+idx+',this.value)" '+
+    'style="border:1.5px solid var(--line);border-radius:8px;padding:6px;font-size:12px;font-family:inherit">'+
+    ['중립','따뜻함','강함','밝음','감동','긴장','충격','차분'].map(function(e){
+      return '<option '+(cur===e?'selected':'')+'>'+e+'</option>';
+    }).join('')+
+  '</select>';
+}
+
+function studioS4SetApi(api){
+  STUDIO.project.s4 = STUDIO.project.s4||{};
+  STUDIO.project.s4.voiceApi = api;
+  studioSave(); renderStudio();
+}
+
+function studioS4ApplyRecommended(idx){
+  var p=STUDIO.project; var s4=p.s4||{};
+  var ch=(p.channel||'ko'); var genre=(p.s1&&p.s1.genre)||'';
+  var mode=(p.s1&&p.s1.mode)||'shorts';
+  var rec = studioS4GetRecommended(genre,ch,mode);
+  var r = rec.list[idx]; if(!r) return;
+  s4.voiceApi=r.api; s4.voiceKo=r.voice; s4.voiceJa=r.voice;
+  STUDIO.project.s4=s4; studioSave(); renderStudio();
+  if(typeof ucShowToast==='function') ucShowToast('✅ '+r.apiName+' · '+r.voiceName+' 적용됨','success');
+}
+
+function studioS4SetSpeakerVoice(idx,val){
+  var s4=STUDIO.project.s4||{};
+  s4.speakers=s4.speakers||[]; s4.speakers[idx]=s4.speakers[idx]||{};
+  s4.speakers[idx].voice=val; STUDIO.project.s4=s4; studioSave();
+}
+
+function studioS4SetSpeakerEmotion(idx,val){
+  var s4=STUDIO.project.s4||{};
+  s4.speakers=s4.speakers||[]; s4.speakers[idx]=s4.speakers[idx]||{};
+  s4.speakers[idx].emotion=val; STUDIO.project.s4=s4; studioSave();
+}
+
+function studioS4SetSceneEmotion(idx,val){
+  var s4=STUDIO.project.s4||{};
+  s4.sceneEmotions=s4.sceneEmotions||[];
+  s4.sceneEmotions[idx]=s4.sceneEmotions[idx]||{emotion:'중립',speed:1.0,pause:0.3};
+  s4.sceneEmotions[idx].emotion=val; STUDIO.project.s4=s4; studioSave();
+}
+
+function studioS4SetSceneSpeed(idx,val){
+  var s4=STUDIO.project.s4||{};
+  s4.sceneEmotions=s4.sceneEmotions||[];
+  s4.sceneEmotions[idx]=s4.sceneEmotions[idx]||{emotion:'중립',speed:1.0,pause:0.3};
+  s4.sceneEmotions[idx].speed=parseFloat(val); STUDIO.project.s4=s4; studioSave();
+}
+
+function studioS4SetScenePause(idx,val){
+  var s4=STUDIO.project.s4||{};
+  s4.sceneEmotions=s4.sceneEmotions||[];
+  s4.sceneEmotions[idx]=s4.sceneEmotions[idx]||{emotion:'중립',speed:1.0,pause:0.3};
+  s4.sceneEmotions[idx].pause=parseFloat(val); STUDIO.project.s4=s4; studioSave();
+}
+
+async function studioS4AutoSetEmotions(){
+  var scenes=(STUDIO.project.s3&&STUDIO.project.s3.scenes)||[];
+  if(!scenes.length){ alert('씬이 없어요. 이미지 단계에서 씬을 먼저 생성하세요.'); return; }
+  var sys='유튜브 숏츠 음성 감정 분석가. JSON만 출력.';
+  var user='아래 씬 목록에 맞는 감정·속도·침묵을 배정해줘.\n'+
+    '형식: [{"emotion":"중립","speed":1.0,"pause":0.3}]\n'+
+    '감정 옵션: 중립,따뜻함,강함,밝음,감동,긴장,충격,차분\n'+
+    '씬 목록:\n'+scenes.map(function(s,i){ return i+': '+s.label; }).join('\n');
+  try {
+    var res=await APIAdapter.callWithFallback(sys,user,{maxTokens:500});
+    var m=res.match(/\[[\s\S]*\]/);
+    if(m){
+      var arr=JSON.parse(m[0]);
+      STUDIO.project.s4=STUDIO.project.s4||{};
+      STUDIO.project.s4.sceneEmotions=arr;
+      studioSave(); renderStudio();
+      if(typeof ucShowToast==='function') ucShowToast('✅ AI 감정 자동 설정 완료','success');
+    }
+  } catch(e){ alert('오류: '+e.message); }
+}
+
+async function studioS4AutoBgm(){
+  var genre=(STUDIO.project.s1&&STUDIO.project.s1.genre)||'';
+  var map={'시니어건강':'soft piano','재테크':'cinematic orchestral','유머':'playful comedy','감동':'nostalgic piano','히스토리':'cinematic orchestral'};
+  var bgm=map[genre]||'ambient calm';
+  STUDIO.project.s4=STUDIO.project.s4||{};
+  STUDIO.project.s4.bgm=bgm; studioSave(); renderStudio();
+  if(typeof ucShowToast==='function') ucShowToast('✅ BGM 자동 매칭: '+bgm,'success');
+}
+
+function studioS4HandleBgm(input){
+  var file=input.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    STUDIO.project.s4=STUDIO.project.s4||{};
+    STUDIO.project.s4.bgmCustom=e.target.result;
+    studioSave(); renderStudio();
+    if(typeof ucShowToast==='function') ucShowToast('✅ BGM 업로드 완료','success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function studioS4Bgm(b,btn){
+  STUDIO.project.s4=STUDIO.project.s4||{};
+  STUDIO.project.s4.bgm=b;
+  document.querySelectorAll('#s4-bgm .studio-chip').forEach(function(x){x.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  studioSave();
+}
+
+function studioS4VoiceKo(id,btn){
+  STUDIO.project.s4=STUDIO.project.s4||{};
+  STUDIO.project.s4.voiceKo=id;
+  if(btn){btn.parentElement.querySelectorAll('.studio-chip').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
+  studioSave();
+}
+
+function studioS4VoiceJa(id,btn){
+  STUDIO.project.s4=STUDIO.project.s4||{};
+  STUDIO.project.s4.voiceJa=id;
+  if(btn){btn.parentElement.querySelectorAll('.studio-chip').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
+  studioSave();
+}
+
+async function studioS4GenScene(idx){
+  var s4=STUDIO.project.s4||{};
+  var scenes=(STUDIO.project.s3&&STUDIO.project.s3.scenes)||[];
+  var sc=scenes[idx]; if(!sc) return;
+  var text=sc.desc||sc.label||'';
+  if(typeof ucShowToast==='function') ucShowToast('⏳ 씬'+(idx+1)+' 음성 생성 중...','info');
+  /* TTS API 호출 (OpenAI 기준) */
+  var api=s4.voiceApi||'openai';
+  var key=(typeof ucGetApiKey==='function')?ucGetApiKey('openai'):localStorage.getItem('uc_openai_key')||'';
+  if(!key){ alert('API 키를 설정해주세요'); return; }
+  try {
+    var r=await fetch('https://api.openai.com/v1/audio/speech',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'tts-1',input:text,voice:s4.voiceKo||'nova',speed:parseFloat((s4.sceneEmotions&&s4.sceneEmotions[idx]&&s4.sceneEmotions[idx].speed)||1.0)})
+    });
+    var blob=await r.blob();
+    var url=URL.createObjectURL(blob);
+    s4.audios=s4.audios||[]; s4.audios[idx]=url;
+    STUDIO.project.s4=s4; studioSave(); renderStudio();
+    if(typeof ucShowToast==='function') ucShowToast('✅ 씬'+(idx+1)+' 음성 완료','success');
+  } catch(e){ alert('음성 생성 오류: '+e.message); }
+}
+
+function studioS4PlayScene(idx){
+  var s4=STUDIO.project.s4||{};
+  var url=(s4.audios||[])[idx]; if(!url) return;
+  var player=document.getElementById('s4-player');
+  if(player){player.src=url;player.play();}
+  else { var a=new Audio(url); a.play(); }
+}
+
+function studioS4RegenScene(idx){
+  var s4=STUDIO.project.s4||{};
+  s4.audios=s4.audios||[]; s4.audios[idx]=null;
+  STUDIO.project.s4=s4; studioSave();
+  studioS4GenScene(idx);
+}
+
+function studioS4SaveScene(idx){
+  var s4=STUDIO.project.s4||{};
+  var url=(s4.audios||[])[idx]; if(!url) return;
+  var a=document.createElement('a');
+  a.href=url; a.download='scene_'+(idx+1)+'.mp3'; a.click();
+}
+
+async function studioS4GenAll(){
+  var scenes=(STUDIO.project.s3&&STUDIO.project.s3.scenes)||[];
+  for(var i=0;i<scenes.length;i++){
+    await studioS4GenScene(i);
+    await new Promise(function(r){setTimeout(r,500);});
+  }
+}
+
+function studioS4PlayAll(){
+  var s4=STUDIO.project.s4||{};
+  var first=(s4.audios||[]).find(function(a){return !!a;});
+  if(!first){alert('먼저 음성을 생성해주세요');return;}
+  var player=document.getElementById('s4-player');
+  if(player){player.src=first;player.play();}
+}
+
+function studioS4DownloadAll(){
+  var s4=STUDIO.project.s4||{};
+  (s4.audios||[]).forEach(function(url,i){
+    if(!url) return;
+    var a=document.createElement('a');
+    a.href=url; a.download='scene_'+(i+1)+'.mp3'; a.click();
+  });
+}
+
+function studioS4AddChar(){
+  var name=prompt('인물 이름 입력:');
+  if(!name) return;
+  var s4=STUDIO.project.s4||{};
+  s4.speakers=s4.speakers||[];
+  s4.speakers.push({name:name,voice:'narrator',emotion:'중립',speed:1.0});
+  STUDIO.project.s4=s4; studioSave(); renderStudio();
+}
+
+function _studioBindS4(){
+  /* 기존 호환 유지 */
+}
 
 /* ═════════════ STEP 5 편집 ═════════════ */
 function _studioS5(){
