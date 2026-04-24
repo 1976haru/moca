@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>소상공인 패키지 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 소상공인 패키지 ══ -->
+<div id="smbDetail" class="mz-detail">
+          <button class="mz-back" onclick="closeSmb()">← 카드 목록으로</button>
+          <div class="mz-head">
+            <span class="mz-ico" id="sm-ico">🏪</span>
+            <div>
+              <h3 id="sm-title">소상공인 패키지</h3>
+              <p id="sm-desc" class="mz-sub">업종·언어·세부 유형을 선택한 뒤 입력하세요.</p>
+            </div>
+          </div>
+
+          <div class="mz-form" style="margin-bottom:10px">
+            <div class="mz-row">
+              <div>
+                <label>🏢 업종 (자동 맞춤 반영)</label>
+                <select class="mz-in" id="sm-industry">
+                  <option value="restaurant" selected>외식업 (식당)</option>
+                  <option value="cafe">카페/베이커리</option>
+                  <option value="beauty">미용실/네일/피부</option>
+                  <option value="shop">쇼핑몰/의류</option>
+                  <option value="academy">학원/교습소</option>
+                  <option value="clinic">병원/의원/약국</option>
+                  <option value="realestate">부동산</option>
+                  <option value="interior">인테리어/시공</option>
+                  <option value="pet">펫샵/동물병원</option>
+                  <option value="fitness">헬스/요가/필라테스</option>
+                  <option value="mart">편의점/마트</option>
+                  <option value="lodging">숙박/게스트하우스</option>
+                  <option value="etc">기타</option>
+                </select>
+              </div>
+              <div>
+                <label>🌐 언어 (다국어 원클릭 변환)</label>
+                <select class="mz-in" id="sm-lang">
+                  <option value="ko" selected>🇰🇷 한국어만</option>
+                  <option value="ko+en">🇰🇷 + 🇺🇸 영어</option>
+                  <option value="ko+ja">🇰🇷 + 🇯🇵 일본어</option>
+                  <option value="ko+zh">🇰🇷 + 🇨🇳 중국어</option>
+                  <option value="all4">🇰🇷+🇺🇸+🇯🇵+🇨🇳 4개국어</option>
+                </select>
+              </div>
+              <div>
+                <label>길이</label>
+                <select class="mz-in" id="sm-length">
+                  <option value="short">간결 (500자)</option>
+                  <option value="mid" selected>표준 (1,500자)</option>
+                  <option value="long">상세 (3,000자)</option>
+                  <option value="xl">풀 패키지 (5,000자+)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="mz-subs" id="sm-subs"></div>
+
+          <div class="mz-form">
+            <div class="mz-row">
+              <div><label>주제 / 상호 / 품목</label>
+                <input class="mz-in" id="sm-topic" placeholder="예: 분식집 '엄마손' 신메뉴 / 미용실 봄 이벤트">
+              </div>
+              <div><label>핵심 정보 (쉼표)</label>
+                <input class="mz-in" id="sm-keywords" placeholder="예: 가성비, 친절, 배달 30분, 위생 1등급">
+              </div>
+            </div>
+            <div class="mz-row">
+              <div><label>타깃 고객</label>
+                <input class="mz-in" id="sm-target" placeholder="예: 30~40대 직장인 / 동네 주민 / 일본 관광객">
+              </div>
+              <div><label>피하고 싶은 표현</label>
+                <input class="mz-in" id="sm-avoid" placeholder="예: 과장 표현, 경쟁사 비교">
+              </div>
+            </div>
+
+            <!-- ⭐ 지원금 신청서 자동완성 마법사 -->
+            <div id="sm-fund-box" style="display:none;padding:12px;background:#effbf7;border:1px solid #c8ebd9;border-radius:14px;margin-top:10px">
+              <label style="color:#1a7a5a">💰 지원금 신청서 자동완성 마법사</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>지원금 종류</label>
+                  <select class="mz-in" id="sm-fund-type">
+                    <option value="gov">정부 지원금</option>
+                    <option value="policy">정책자금 융자</option>
+                    <option value="card-refund">카드수수료 환급</option>
+                    <option value="noran">노란우산공제</option>
+                    <option value="local">지자체 지원금</option>
+                  </select>
+                </div>
+                <div><label>업력</label>
+                  <select class="mz-in" id="sm-fund-years">
+                    <option value="pre">개업 준비 중</option>
+                    <option value="1">1년 미만</option>
+                    <option value="1-3">1~3년</option>
+                    <option value="3-5">3~5년</option>
+                    <option value="5+">5년 이상</option>
+                  </select>
+                </div>
+              </div>
+              <label style="margin-top:8px">사업 현황 · 신청 이유</label>
+              <textarea class="mz-in" id="sm-fund-reason" style="min-height:80px" placeholder="매출 변화, 현 어려움, 자금 사용 계획 등을 구체적으로 쓰면 심사위원 관점의 신청서로 자동 작성됩니다."></textarea>
+            </div>
+
+            <!-- ⭐ 월간 SNS 캘린더 -->
+            <div id="sm-calendar-box" style="display:none;padding:12px;background:#fff5fa;border:1px solid #f2cfe0;border-radius:14px;margin-top:10px">
+              <label style="color:#b14d82">📅 월간 SNS 캘린더 자동생성</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>플랫폼</label>
+                  <select class="mz-in" id="sm-cal-platform">
+                    <option value="ig">인스타그램</option>
+                    <option value="naver">네이버 블로그</option>
+                    <option value="kakao">카카오채널</option>
+                    <option value="mix" selected>복합 (자동 배분)</option>
+                  </select>
+                </div>
+                <div><label>포스팅 빈도</label>
+                  <select class="mz-in" id="sm-cal-freq">
+                    <option value="daily">매일 (30개)</option>
+                    <option value="every-2" selected>격일 (15개)</option>
+                    <option value="weekly">주 2회 (8~9개)</option>
+                  </select>
+                </div>
+                <div><label>시즌/이벤트 반영</label>
+                  <input class="mz-in" id="sm-cal-season" placeholder="예: 어버이날, 여름휴가, 추석">
+                </div>
+              </div>
+            </div>
+
+            <!-- ⭐ 다국어 메뉴판 -->
+            <div id="sm-menu-box" style="display:none;padding:12px;background:#fff7ee;border:1px solid #f1e0c4;border-radius:14px;margin-top:10px">
+              <label style="color:#9a5a1a">🌍 다국어 메뉴판 (한/영/일/중)</label>
+              <label style="margin-top:8px">메뉴 목록 (한 줄에 하나씩: 메뉴명 · 가격 · 간단 설명)</label>
+              <textarea class="mz-in" id="sm-menu-list" style="min-height:120px" placeholder="예)&#10;김치찌개 · 9,000원 · 묵은지로 끓인 진한 국물&#10;제육볶음 · 11,000원 · 매콤달콤 돼지고기볶음&#10;비빔밥 · 10,000원 · 7가지 나물과 계란후라이"></textarea>
+              <div class="mz-sub" style="margin-top:6px;font-size:11px;color:#9a5a1a">ℹ️ 알레르기 표시·원산지 표기도 자동 포함됩니다.</div>
+            </div>
+
+            <!-- ⭐ 정부지원금 레이더 -->
+            <div id="sm-subsidy-box" style="display:none;padding:14px;background:linear-gradient(135deg,#fef3c7,#fef9e7);border:2px solid #f59e0b;border-radius:14px;margin-top:10px">
+              <label style="color:#92400e;font-weight:800;font-size:14px">🔍 내 조건 맞춤 지원금 레이더</label>
+              <div class="mz-sub" style="margin:4px 0 10px;font-size:11px;color:#92400e">내 조건을 선택하면 Claude가 2026년 기준 받을 수 있는 지원금을 찾아드립니다.</div>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>지역</label>
+                  <select class="mz-in" id="sm-sub-region">
+                    <option value="전국">전국 공통</option>
+                    <option value="서울">서울특별시</option>
+                    <option value="부산">부산광역시</option>
+                    <option value="대구">대구광역시</option>
+                    <option value="인천">인천광역시</option>
+                    <option value="광주">광주광역시</option>
+                    <option value="대전">대전광역시</option>
+                    <option value="울산">울산광역시</option>
+                    <option value="세종">세종특별자치시</option>
+                    <option value="경기">경기도</option>
+                    <option value="강원">강원특별자치도</option>
+                    <option value="충북">충청북도</option>
+                    <option value="충남">충청남도</option>
+                    <option value="전북">전북특별자치도</option>
+                    <option value="전남">전라남도</option>
+                    <option value="경북">경상북도</option>
+                    <option value="경남">경상남도</option>
+                    <option value="제주">제주특별자치도</option>
+                  </select>
+                </div>
+                <div><label>연령</label>
+                  <select class="mz-in" id="sm-sub-age">
+                    <option value="전체">전체</option>
+                    <option value="20대 이하">20대 이하 (청년)</option>
+                    <option value="30대">30대 (청년)</option>
+                    <option value="40대">40대</option>
+                    <option value="50대">50대 (신중년)</option>
+                    <option value="60대 이상">60대 이상 (시니어)</option>
+                  </select>
+                </div>
+                <div><label>창업 단계</label>
+                  <select class="mz-in" id="sm-sub-status">
+                    <option value="예비창업">예비창업자 (준비 중)</option>
+                    <option value="1년 이내">창업 1년 이내</option>
+                    <option value="1-3년">창업 1~3년</option>
+                    <option value="3-7년">창업 3~7년</option>
+                    <option value="7년 이상">창업 7년 이상</option>
+                    <option value="재창업">재창업</option>
+                    <option value="폐업 준비">폐업 준비 중</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mz-row" style="margin-top:8px">
+                <div><label>업종</label>
+                  <select class="mz-in" id="sm-sub-industry">
+                    <option value="전체">전체 업종</option>
+                    <option value="외식업">외식업 (음식점·카페)</option>
+                    <option value="도소매">도소매업</option>
+                    <option value="서비스">서비스업 (미용·세탁)</option>
+                    <option value="제조">제조업</option>
+                    <option value="건설">건설/인테리어</option>
+                    <option value="IT">IT/콘텐츠</option>
+                    <option value="교육">교육/학원</option>
+                    <option value="의료">의료/돌봄</option>
+                    <option value="관광">관광/숙박</option>
+                    <option value="농업">농업/수산</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                <div><label>지원 종류</label>
+                  <select class="mz-in" id="sm-sub-type">
+                    <option value="전체">전체</option>
+                    <option value="자금지원">자금 지원 (보조금·융자)</option>
+                    <option value="교육">교육/컨설팅</option>
+                    <option value="판로지원">판로 지원 (온라인·수출)</option>
+                    <option value="R&D">R&amp;D/기술개발</option>
+                    <option value="시설지원">시설/공간 지원</option>
+                    <option value="세제혜택">세제 혜택</option>
+                    <option value="인건비">인건비 지원 (일자리안정자금 등)</option>
+                  </select>
+                </div>
+                <div><label>특별 조건</label>
+                  <select class="mz-in" id="sm-sub-special">
+                    <option value="없음">없음</option>
+                    <option value="여성">여성 기업</option>
+                    <option value="장애인">장애인 기업</option>
+                    <option value="청년">청년 (만 39세 이하)</option>
+                    <option value="시니어">시니어 (만 50세 이상)</option>
+                    <option value="북한이탈">북한이탈주민</option>
+                    <option value="한부모">한부모 가정</option>
+                    <option value="사회적기업">사회적 기업</option>
+                  </select>
+                </div>
+              </div>
+              <div style="margin-top:10px;text-align:center">
+                <button class="mz-btn pri" onclick="smbDoSubsidySearch()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800">🔍 내 조건 지원금 검색</button>
+                <button class="mz-btn" onclick="smbSaveSubsidyCondition()" style="margin-left:6px">💾 내 조건 저장 (알림 받기)</button>
+              </div>
+            </div>
+
+            <!-- 고객 응대 특화 -->
+            <div id="sm-cs-box" style="display:none;padding:12px;background:#eff6ff;border:1px solid #bcd7f0;border-radius:14px;margin-top:10px">
+              <label style="color:#1f4a80">💬 고객 응대 입력</label>
+              <label style="margin-top:8px">고객이 남긴 내용 (리뷰·클레임 원문)</label>
+              <textarea class="mz-in" id="sm-cs-original" style="min-height:80px" placeholder="받은 리뷰·클레임 내용을 그대로 붙여넣으세요."></textarea>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>유형</label>
+                  <select class="mz-in" id="sm-cs-type">
+                    <option value="good">좋은 리뷰 답글</option>
+                    <option value="neutral">보통 리뷰 답글</option>
+                    <option value="bad">나쁜 리뷰 답글</option>
+                    <option value="malicious">악성/허위 리뷰 대응</option>
+                    <option value="refund">환불 거절 답변</option>
+                    <option value="quality">품질 클레임</option>
+                    <option value="delivery">배달 사고</option>
+                    <option value="legal">법적 대응 초안</option>
+                  </select>
+                </div>
+                <div><label>답변 톤</label>
+                  <select class="mz-in" id="sm-cs-tone">
+                    <option value="warm">따뜻·공감</option>
+                    <option value="pro" selected>전문·정중</option>
+                    <option value="firm">단호·정중</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="mz-actions">
+              <button class="mz-btn pri" id="sm-gen" onclick="generateSmb()">✨ AI로 생성</button>
+              <button class="mz-btn" onclick="smCopy()">📋 복사</button>
+              <button class="mz-btn" onclick="smSave()">💾 저장</button>
+              <button class="mz-btn snd" onclick="smSendToMedia()">🎬 미디어 엔진 (포스터·이미지)</button>
+            </div>
+            <div id="sm-status" class="mz-status"></div>
+            <textarea id="sm-out" class="mz-out" readonly placeholder="생성 결과가 여기에 표시됩니다."></textarea>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../modules/smb/core.js"></script>
+  <script src="../../modules/smb/index.js"></script>
+  <script src="../../modules/smb/subsidy.js"></script>
+  <script src="../../core/hub.js"></script>
+</body>
+</html>

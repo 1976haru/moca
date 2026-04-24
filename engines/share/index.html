@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>공유 센터 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 공유 센터 ══ -->
+<div id="shareDetail" class="mz-detail">
+          <div class="sh-wrap">
+            <div class="sh-hero">
+              <h2>📤 공유 & 내보내기</h2>
+              <p>만든 것을 팀원과 나눠요! · 카카오톡 · 라인 · X · PDF · TXT · 묶음 내보내기</p>
+            </div>
+
+            <!-- ─── 섹션1: 빠른 공유 ─── -->
+            <section class="sh-section">
+              <h3>⚡ 빠른 공유</h3>
+              <p class="sub">보관함 최근 20개 중에서 공유할 결과를 선택하세요</p>
+              <select class="sh-pick" id="sh-quick-pick"></select>
+              <div class="sh-methods">
+                <div class="sh-method ka"><h4>💬 카카오톡으로 보내기</h4><p>팀원/지인에게 바로 전송 (앱 미설치 시 내용 자동 복사 후 안내)</p><button onclick="shShare('kakao')">카카오톡 공유</button></div>
+                <div class="sh-method li"><h4>📱 라인으로 보내기</h4><p>일본 팀원에게 전송 · LINE Social Plugin 활용</p><button onclick="shShare('line')">라인 공유</button></div>
+                <div class="sh-method x"><h4>🐦 X(트위터) 공유</h4><p>요약 280자 자동 생성 → 새 글 작성 창으로</p><button onclick="shShare('x')">X로 공유</button></div>
+                <div class="sh-method pdf"><h4>📄 PDF로 저장</h4><p>깔끔한 흰 배경 레이아웃, 페이지 번호 자동</p><button onclick="shShare('pdf')">PDF 만들기</button></div>
+                <div class="sh-method txt"><h4>📝 텍스트 파일로 저장</h4><p>메모장/워드에서 열 수 있어요</p><button onclick="shShare('txt')">TXT 저장</button></div>
+                <div class="sh-method"><h4>🔗 링크 텍스트 복사</h4><p>제목+요약+날짜가 담긴 공유용 텍스트</p><button onclick="shShare('link')">링크 텍스트 복사</button></div>
+              </div>
+            </section>
+
+            <!-- ─── 섹션2: 묶음 내보내기 ─── -->
+            <section class="sh-section">
+              <h3>📦 여러 개 묶어서 내보내기</h3>
+              <p class="sub">여러 결과를 한번에 PDF/TXT로 내보내요</p>
+              <div class="sh-bulk-list" id="sh-bulk-list"></div>
+              <div class="sh-fmt">
+                <label class="on"><input type="radio" name="shFmt" value="pdf-one" checked>하나의 PDF로 합치기</label>
+                <label><input type="radio" name="shFmt" value="txt-each">각각 따로 TXT로</label>
+                <label><input type="radio" name="shFmt" value="txt-one">하나의 TXT로 합치기</label>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                <div style="flex:1;font-size:12px;color:var(--sub)" id="sh-bulk-count">선택한 것: 0개</div>
+                <button class="ab-go" style="width:auto;padding:10px 18px" onclick="shBulkExport()">📦 선택한 것 내보내기</button>
+              </div>
+            </section>
+
+            <!-- ─── 섹션3: PDF 스타일 설정 ─── -->
+            <section class="sh-section">
+              <h3>🎨 PDF 스타일 설정</h3>
+              <p class="sub">PDF 미리보기/생성 시 이 설정이 적용돼요</p>
+              <div class="ab-field"><label>PDF 제목 (비워두면 자동 생성)</label>
+                <input id="sh-pdf-title" placeholder="예: 통합콘텐츠 생성 결과">
+              </div>
+              <div class="sh-pdf-opts">
+                <label><input type="checkbox" id="sh-pdf-date" checked> 생성 날짜/시간 포함</label>
+                <label><input type="checkbox" id="sh-pdf-cat" checked> 카테고리 표시</label>
+                <label><input type="checkbox" id="sh-pdf-bothlang" checked> 한국어+일본어 나란히</label>
+                <label><input type="checkbox" id="sh-pdf-logo"> 로고 포함</label>
+                <label><input type="checkbox" id="sh-pdf-page" checked> 페이지 번호</label>
+              </div>
+              <div class="sh-fmt">
+                <label class="on"><input type="radio" name="shLayout" value="plain" checked>깔끔한 흰 배경</label>
+                <label><input type="radio" name="shLayout" value="color">컬러 헤더 포함</label>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="ab-go" style="width:auto;padding:10px 18px" onclick="shPdfPreview()">👁 PDF 미리보기</button>
+                <button class="ab-go" style="width:auto;padding:10px 18px;background:#fff;color:#b14d82;border:1px solid var(--line-strong)" onclick="shShare('pdf')">📄 PDF 생성</button>
+              </div>
+            </section>
+
+            <!-- ─── 섹션4: 팀 공유 템플릿 ─── -->
+            <section class="sh-section">
+              <h3>💌 팀 공유 템플릿</h3>
+              <p class="sub">자주 공유하는 형식을 저장해두면 버튼 한 번으로 완성돼요</p>
+
+              <div class="sh-tmpl">
+                <div style="font-size:12px;font-weight:800;color:#5a4a56;margin-bottom:4px">💬 카카오톡 템플릿 (한국어)</div>
+                <textarea id="sh-tmpl-kakao"></textarea>
+                <div class="acts">
+                  <button class="gh" onclick="shResetTemplate('kakao')">기본값 복원</button>
+                  <button class="gh" onclick="shSaveTemplate('kakao')">💾 저장</button>
+                  <button class="pri" onclick="shUseTemplate('kakao')">이 템플릿으로 공유</button>
+                </div>
+              </div>
+
+              <div class="sh-tmpl">
+                <div style="font-size:12px;font-weight:800;color:#5a4a56;margin-bottom:4px">📱 라인 템플릿 (일본어)</div>
+                <textarea id="sh-tmpl-line"></textarea>
+                <div class="acts">
+                  <button class="gh" onclick="shResetTemplate('line')">기본값 복원</button>
+                  <button class="gh" onclick="shSaveTemplate('line')">💾 저장</button>
+                  <button class="pri" onclick="shUseTemplate('line')">이 템플릿으로 공유</button>
+                </div>
+              </div>
+
+              <div style="font-size:11px;color:var(--sub);margin-top:8px">
+                사용 가능한 치환자: <code>{제목}</code>, <code>{날짜}</code>, <code>{내용}</code>, <code>{내용200}</code>, <code>{카테고리}</code>
+              </div>
+            </section>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../core/hub.js"></script>
+  <script src="../../core/share.js"></script>
+</body>
+</html>

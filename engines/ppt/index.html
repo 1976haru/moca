@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PPT 슬라이드 제작 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ PPT 슬라이드 제작 ══ -->
+<div id="pptDetail" class="mz-detail">
+          <button class="mz-back" onclick="closePptBuilder()">← 카드 목록으로</button>
+          <div class="mz-head">
+            <span class="mz-ico">🖥️</span>
+            <div>
+              <h3>PPT 슬라이드 제작</h3>
+              <p class="mz-sub">제도설명·정책발표·행사안내 PPT · 한국어+일본어 동시 생성</p>
+            </div>
+          </div>
+
+          <div class="mz-form">
+            <label style="margin-top:4px">📂 PPT 유형</label>
+            <div class="mz-subs" id="ppt-types">
+              <button class="mz-sub-btn on" data-ppt="policy">📋 제도/정책 설명 PPT<small>새 제도 도입, 정책 안내</small></button>
+              <button class="mz-sub-btn"    data-ppt="report">📊 업무 보고 PPT<small>주간/월간/연간 보고</small></button>
+              <button class="mz-sub-btn"    data-ppt="event">🎪 행사/이벤트 안내 PPT<small>주민 행사, 캠페인</small></button>
+              <button class="mz-sub-btn"    data-ppt="edu">📚 교육/연수 PPT<small>직원 교육, 주민 설명회</small></button>
+              <button class="mz-sub-btn"    data-ppt="perf">🏆 성과 보고 PPT<small>사업 성과, 예산 집행</small></button>
+              <button class="mz-sub-btn"    data-ppt="promo">📢 홍보 PPT<small>기관 소개, 사업 홍보</small></button>
+            </div>
+
+            <div class="mz-row" style="margin-top:12px">
+              <div>
+                <label>🏛️ 기관명</label>
+                <input class="mz-in" id="ppt-agency" placeholder="예: ○○시청 / ○○구청 / ○○부">
+              </div>
+              <div>
+                <label>📝 주제 / 제목</label>
+                <input class="mz-in" id="ppt-topic" placeholder="예: 2026 청년 주거 지원 제도">
+              </div>
+            </div>
+
+            <label style="margin-top:10px">📑 슬라이드 수</label>
+            <div class="set-pill-row" id="ppt-count-row">
+              <button class="set-pill"    data-slides="5">5장</button>
+              <button class="set-pill on" data-slides="10">10장</button>
+              <button class="set-pill"    data-slides="15">15장</button>
+              <button class="set-pill"    data-slides="20">20장</button>
+            </div>
+
+            <label style="margin-top:10px">👥 대상</label>
+            <div class="set-pill-row" id="ppt-aud-row">
+              <button class="set-pill on" data-aud="internal">내부직원</button>
+              <button class="set-pill"    data-aud="citizen">주민/시민</button>
+              <button class="set-pill"    data-aud="upper">상급기관</button>
+              <button class="set-pill"    data-aud="press">언론</button>
+            </div>
+
+            <label style="margin-top:10px">🗣️ 톤</label>
+            <div class="set-pill-row" id="ppt-tone-row">
+              <button class="set-pill on" data-ptone="formal">공식적으로</button>
+              <button class="set-pill"    data-ptone="friendly">친근하게</button>
+              <button class="set-pill"    data-ptone="persuasive">설득력있게</button>
+            </div>
+
+            <div class="mz-actions" style="margin-top:14px">
+              <button class="mz-btn pri" id="ppt-gen" onclick="generatePpt()">✨ PPT 생성 (한+일 동시)</button>
+              <button class="mz-btn" onclick="pptCopyAll()">📋 전체 복사</button>
+              <button class="mz-btn" onclick="pptSave()">💾 보관함 저장</button>
+              <button class="mz-btn snd" onclick="pptExportStructure()">🖥️ PowerPoint 구조로 내보내기</button>
+            </div>
+            <div id="ppt-status" class="mz-status"></div>
+
+            <div class="mz-row" style="margin-top:10px">
+              <div>
+                <label>🇰🇷 한국어 결과</label>
+                <textarea id="ppt-out-ko" class="mz-out" readonly placeholder="한국어 결과가 여기에 표시됩니다."></textarea>
+              </div>
+              <div>
+                <label>🇯🇵 日本語 結果</label>
+                <textarea id="ppt-out-ja" class="mz-out" readonly placeholder="日本語の結果がここに表示されます。"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../core/hub.js"></script>
+  <script src="../../core/ppt.js"></script>
+</body>
+</html>

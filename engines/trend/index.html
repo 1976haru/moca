@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>트렌드 분석 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 트렌드 분석 ══ -->
+<div id="trendDetail" class="mz-detail">
+          <div class="tr-wrap">
+            <div class="tr-hero">
+              <h2>🔥 지금 뭐가 뜨고 있나요?</h2>
+              <p>트렌드를 알아야 조회수가 올라가요! · 키워드 · URL · 채널 · 제목 · 캘린더까지 한 번에</p>
+            </div>
+
+            <!-- ─── 섹션1: 실시간 트렌드 키워드 ─── -->
+            <section class="tr-section">
+              <h3 class="sec-title">📈 실시간 트렌드 키워드 <span class="sec-badge" id="trUpdBadge">샘플 데이터 · 매일 업데이트 예정</span></h3>
+              <p class="sec-sub">유튜브 지역별·시니어 특화 트렌드 키워드 TOP10</p>
+              <div class="tr-tabs" id="trKwTabs">
+                <button class="tr-tab on" data-ktab="kr"     onclick="trSwitchKw('kr',this)">🇰🇷 한국 유튜브</button>
+                <button class="tr-tab"    data-ktab="jp"     onclick="trSwitchKw('jp',this)">🇯🇵 일본 유튜브</button>
+                <button class="tr-tab"    data-ktab="global" onclick="trSwitchKw('global',this)">🌍 글로벌</button>
+                <button class="tr-tab"    data-ktab="senior" onclick="trSwitchKw('senior',this)">👴 시니어 특화</button>
+              </div>
+              <div class="tr-cat-fils" id="trCatFils"></div>
+              <div class="tr-kw-grid" id="trKwGrid"></div>
+            </section>
+
+            <!-- ─── 섹션2: URL 분석 ─── -->
+            <section class="tr-section">
+              <h3 class="sec-title">🔍 URL 분석 <span class="sec-badge">AI</span></h3>
+              <p class="sec-sub">유튜브 영상 주소를 넣으면 제목·키워드·잘된 이유를 분석해드려요</p>
+              <div class="tr-input">
+                <input id="trUrlInput" placeholder="https://youtube.com/watch?v=... 또는 https://youtu.be/...">
+                <button onclick="trAnalyzeUrl()">🔍 분석하기</button>
+              </div>
+              <div class="tr-result" id="trUrlResult"></div>
+            </section>
+
+            <!-- ─── 섹션3: 경쟁 채널 분석 ─── -->
+            <section class="tr-section">
+              <h3 class="sec-title">📊 경쟁 채널 분석 <span class="sec-badge">AI</span></h3>
+              <p class="sec-sub">잘되는 채널을 분석해서 업로드 주기·콘텐츠 스타일·차별화 전략을 뽑아드려요</p>
+              <div class="tr-input">
+                <input id="trChUrl" placeholder="https://youtube.com/@채널명 또는 채널 URL">
+                <button onclick="trAnalyzeChannel()">🔍 채널 분석하기</button>
+                <button onclick="trSaveFavChannel()" style="background:#fff;color:#b14d82;border:1px solid var(--line-strong);flex:0 0 auto">⭐ 즐겨찾기</button>
+              </div>
+              <div class="tr-result" id="trChResult"></div>
+              <div style="margin-top:14px">
+                <div style="font-size:12px;font-weight:800;color:#5a4a56;margin-bottom:4px">⭐ 즐겨찾기 채널 <span style="font-size:10px;color:var(--sub);font-weight:400">(최대 5개)</span></div>
+                <div class="tr-fav-list" id="trFavList"></div>
+              </div>
+            </section>
+
+            <!-- ─── 섹션4: 내 채널 키워드 전략 ─── -->
+            <section class="tr-section">
+              <h3 class="sec-title">🎯 내 채널 키워드 전략 <span class="sec-badge">AI</span></h3>
+              <p class="sec-sub">내 채널 장르·타깃에 맞는 키워드와 영상 주제 5개를 추천받아요</p>
+              <div class="tr-ch-fields">
+                <div>
+                  <label>채널 장르</label>
+                  <div class="btns" id="trMyGenre">
+                    <button class="on" data-g="senior-emotion">시니어 감동</button>
+                    <button data-g="comic">코믹</button>
+                    <button data-g="knowledge">지식</button>
+                    <button data-g="music">음악</button>
+                  </div>
+                </div>
+                <div>
+                  <label>타깃</label>
+                  <div class="btns" id="trMyTarget">
+                    <button class="on" data-t="kr-senior">한국 시니어</button>
+                    <button data-t="jp-senior">일본 시니어</button>
+                    <button data-t="all">전체</button>
+                  </div>
+                </div>
+              </div>
+              <div class="tr-input">
+                <input id="trMyKeywords" placeholder="현재 주력 키워드 (예: 치매예방, 건강음식, 추억노래)">
+                <button onclick="trStrategyMe()">🎯 맞춤 키워드 분석</button>
+              </div>
+              <div class="tr-result" id="trMyResult"></div>
+            </section>
+
+            <!-- ─── 섹션5: 제목 분석기 ─── -->
+            <section class="tr-section">
+              <h3 class="sec-title">📊 제목 분석기 <span class="sec-badge">AI</span></h3>
+              <p class="sec-sub">내가 쓴 제목이 클릭률이 높을지 분석하고 개선안 3개 + 일본어 버전도 함께</p>
+              <div class="tr-input">
+                <input id="trTitleInput" placeholder="만들 영상 제목을 입력하세요 (예: 치매 예방에 좋은 음식)">
+                <button onclick="trAnalyzeTitle()">📊 제목 분석하기</button>
+              </div>
+              <div class="tr-result" id="trTitleResult"></div>
+            </section>
+
+            <!-- ─── 섹션6: 트렌드 캘린더 ─── -->
+            <section class="tr-section">
+              <h3 class="sec-title">🗓 트렌드 캘린더</h3>
+              <p class="sec-sub">언제 어떤 주제가 뜨는지 월별로 미리 알아봐요 (한/일 동시)</p>
+              <div class="tr-cal-highlight" id="trCalHighlight"></div>
+              <div class="tr-cal" id="trCalendar" style="margin-top:10px"></div>
+            </section>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../core/hub.js"></script>
+  <script src="../../core/onboarding.js"></script>
+</body>
+</html>

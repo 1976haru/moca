@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>심리/운세/사주 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 심리/운세/사주 ══ -->
+<div id="psyDetail" class="mz-detail">
+          <button class="mz-back" onclick="closePsy()">← 카드 목록으로</button>
+
+          <!-- 시즌 배너 -->
+          <div id="ps-banner" style="display:none;padding:14px 18px;border-radius:18px;margin-bottom:10px;text-align:center;font-weight:800;font-size:13px"></div>
+
+          <div class="mz-head">
+            <span class="mz-ico" id="ps-ico">🔮</span>
+            <div>
+              <h3 id="ps-title">심리/운세/사주</h3>
+              <p id="ps-desc" class="mz-sub">유형을 선택하고 정보를 입력하세요.</p>
+            </div>
+          </div>
+
+          <div class="mz-form" style="margin-bottom:10px">
+            <div class="mz-row">
+              <div>
+                <label>🌏 결과 언어</label>
+                <select class="mz-in" id="ps-lang">
+                  <option value="ko" selected>🇰🇷 한국어만</option>
+                  <option value="ko+ja">🇰🇷 + 🇯🇵 일본어</option>
+                  <option value="ko+en">🇰🇷 + 🇺🇸 영어</option>
+                  <option value="all">🇰🇷+🇯🇵+🇺🇸 3개국어</option>
+                </select>
+              </div>
+              <div>
+                <label>상세 수준</label>
+                <select class="mz-in" id="ps-length">
+                  <option value="short">요약 (300자)</option>
+                  <option value="mid" selected>표준 (1,000자)</option>
+                  <option value="long">상세 (2,500자)</option>
+                  <option value="premium">프리미엄 (5,000자+) 💎</option>
+                </select>
+              </div>
+              <div>
+                <label>톤</label>
+                <select class="mz-in" id="ps-tone">
+                  <option value="warm" selected>따뜻·친근</option>
+                  <option value="mystic">신비·진지</option>
+                  <option value="fun">재미·가벼움</option>
+                  <option value="pro">전문·객관</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="mz-subs" id="ps-subs"></div>
+
+          <div class="mz-form">
+            <!-- 기본 질문·주제 -->
+            <label>질문 / 주제 (원하는 포인트)</label>
+            <textarea class="mz-in" id="ps-topic" style="min-height:70px" placeholder="예: 오늘 면접 운세가 어떤가요? / 이 사람과의 궁합 / 가게 상호 후보"></textarea>
+
+            <!-- 생년월일 입력 -->
+            <div id="ps-birth-box" style="display:none;padding:12px;background:#fff5fa;border:1px solid #f2cfe0;border-radius:14px;margin-top:10px">
+              <label style="color:#b14d82">🎂 생년월일 입력 (사주·체질·운세용)</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>본인 생년월일</label><input class="mz-in" type="date" id="ps-birth1"></div>
+                <div><label>태어난 시간 (선택)</label>
+                  <select class="mz-in" id="ps-birth1-time">
+                    <option value="">모름</option>
+                    <option value="子">자(23~01)</option><option value="丑">축(01~03)</option>
+                    <option value="寅">인(03~05)</option><option value="卯">묘(05~07)</option>
+                    <option value="辰">진(07~09)</option><option value="巳">사(09~11)</option>
+                    <option value="午">오(11~13)</option><option value="未">미(13~15)</option>
+                    <option value="申">신(15~17)</option><option value="酉">유(17~19)</option>
+                    <option value="戌">술(19~21)</option><option value="亥">해(21~23)</option>
+                  </select>
+                </div>
+                <div><label>성별</label>
+                  <select class="mz-in" id="ps-birth1-sex"><option value="F">여성</option><option value="M">남성</option></select>
+                </div>
+              </div>
+              <div class="mz-row" style="margin-top:8px">
+                <div><label>상대 생년월일 (궁합 시)</label><input class="mz-in" type="date" id="ps-birth2"></div>
+                <div><label>상대 시간</label>
+                  <select class="mz-in" id="ps-birth2-time">
+                    <option value="">모름</option>
+                    <option value="子">자</option><option value="丑">축</option><option value="寅">인</option><option value="卯">묘</option>
+                    <option value="辰">진</option><option value="巳">사</option><option value="午">오</option><option value="未">미</option>
+                    <option value="申">신</option><option value="酉">유</option><option value="戌">술</option><option value="亥">해</option>
+                  </select>
+                </div>
+                <div><label>상대 성별</label>
+                  <select class="mz-in" id="ps-birth2-sex"><option value="">해당없음</option><option value="F">여성</option><option value="M">남성</option></select>
+                </div>
+              </div>
+            </div>
+
+            <!-- MBTI 입력 -->
+            <div id="ps-mbti-box" style="display:none;padding:12px;background:#f7f4ff;border:1px solid #d8d2f4;border-radius:14px;margin-top:10px">
+              <label style="color:#5d4aad">🧠 MBTI 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>본인 MBTI</label>
+                  <select class="mz-in" id="ps-mbti-me">
+                    <option value="INTJ">INTJ</option><option value="INTP">INTP</option><option value="ENTJ">ENTJ</option><option value="ENTP">ENTP</option>
+                    <option value="INFJ">INFJ</option><option value="INFP">INFP</option><option value="ENFJ">ENFJ</option><option value="ENFP">ENFP</option>
+                    <option value="ISTJ">ISTJ</option><option value="ISFJ">ISFJ</option><option value="ESTJ">ESTJ</option><option value="ESFJ">ESFJ</option>
+                    <option value="ISTP">ISTP</option><option value="ISFP">ISFP</option><option value="ESTP">ESTP</option><option value="ESFP">ESFP</option>
+                  </select>
+                </div>
+                <div><label>상대 MBTI (궁합)</label>
+                  <select class="mz-in" id="ps-mbti-other">
+                    <option value="">없음</option>
+                    <option>INTJ</option><option>INTP</option><option>ENTJ</option><option>ENTP</option>
+                    <option>INFJ</option><option>INFP</option><option>ENFJ</option><option>ENFP</option>
+                    <option>ISTJ</option><option>ISFJ</option><option>ESTJ</option><option>ESFJ</option>
+                    <option>ISTP</option><option>ISFP</option><option>ESTP</option><option>ESFP</option>
+                  </select>
+                </div>
+                <div><label>관계</label>
+                  <select class="mz-in" id="ps-mbti-rel">
+                    <option value="lover">연인</option><option value="friend">친구</option>
+                    <option value="work">직장</option><option value="family">가족</option><option value="team">팀</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 타로 입력 -->
+            <div id="ps-tarot-box" style="display:none;padding:12px;background:#fff7ee;border:1px solid #f1e0c4;border-radius:14px;margin-top:10px">
+              <label style="color:#9a5a1a">🔮 타로 스프레드</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>스프레드</label>
+                  <select class="mz-in" id="ps-tarot-spread">
+                    <option value="one">원 카드</option>
+                    <option value="three" selected>3카드 (과거·현재·미래)</option>
+                    <option value="celtic">켈틱 크로스 (10장)</option>
+                    <option value="love">연애 5카드</option>
+                    <option value="career">직업 5카드</option>
+                  </select>
+                </div>
+                <div><label>질문 분야</label>
+                  <select class="mz-in" id="ps-tarot-area">
+                    <option value="today">오늘</option><option value="love">연애</option>
+                    <option value="career">직업</option><option value="money">금전</option>
+                    <option value="health">건강</option><option value="free">자유 질문</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 작명 입력 -->
+            <div id="ps-naming-box" style="display:none;padding:12px;background:#effbf7;border:1px solid #c8ebd9;border-radius:14px;margin-top:10px">
+              <label style="color:#1a7a5a">✍️ 작명 조건</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>유형</label>
+                  <select class="mz-in" id="ps-name-type">
+                    <option value="baby">아기 이름</option>
+                    <option value="brand">상호/브랜드</option>
+                    <option value="pen">예명·필명·닉네임</option>
+                    <option value="pet">반려동물</option>
+                    <option value="yt">유튜브 채널명</option>
+                    <option value="evaluate">이름 감정</option>
+                  </select>
+                </div>
+                <div><label>성별 (사람)</label>
+                  <select class="mz-in" id="ps-name-sex">
+                    <option value="">해당없음</option><option value="F">여아</option><option value="M">남아</option>
+                  </select>
+                </div>
+                <div><label>성(姓)</label><input class="mz-in" id="ps-name-family" placeholder="예: 김, 이, 박"></div>
+              </div>
+              <label style="margin-top:8px">선호 조건·의미·업종 등</label>
+              <input class="mz-in" id="ps-name-pref" placeholder="예: 자연, 밝음 / 카페 / 게임·유튜브 콘셉트">
+            </div>
+
+            <!-- 자녀/반려동물 -->
+            <div id="ps-subject-box" style="display:none;padding:12px;background:#eff6ff;border:1px solid #bcd7f0;border-radius:14px;margin-top:10px">
+              <label style="color:#1f4a80">👶🐾 대상 정보</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>이름/별명</label><input class="mz-in" id="ps-sub-name" placeholder="예: 준이·흰둥이"></div>
+                <div><label>생년월일</label><input class="mz-in" type="date" id="ps-sub-birth"></div>
+                <div><label>추가 정보</label><input class="mz-in" id="ps-sub-extra" placeholder="예: 종(말티즈)·학년·성격 특징"></div>
+              </div>
+              <label style="margin-top:8px">태몽/꿈 내용 (선택)</label>
+              <textarea class="mz-in" id="ps-sub-dream" style="min-height:60px" placeholder="태몽이나 해석하고 싶은 꿈을 자세히 써주세요."></textarea>
+            </div>
+
+            <div class="mz-actions">
+              <button class="mz-btn pri" id="ps-gen" onclick="generatePsy()">✨ AI로 생성</button>
+              <button class="mz-btn" onclick="psCopy()">📋 복사</button>
+              <button class="mz-btn" onclick="psSave()">💾 저장</button>
+              <button class="mz-btn" onclick="psShare()">📤 SNS 공유</button>
+              <button class="mz-btn snd" onclick="psSendToMedia()">🎬 미디어 엔진으로</button>
+            </div>
+            <div id="ps-status" class="mz-status"></div>
+            <div id="ps-premium-lock" style="display:none;padding:10px;background:linear-gradient(135deg,#fff5fa,#f7f4ff);border:1px dashed #e8a6c6;border-radius:10px;margin-top:8px;text-align:center;font-size:12px;color:#b14d82;font-weight:800">🔒 프리미엄 결과 (상세 전체 보기는 유료 예정) — 기본 결과는 무료로 제공됩니다</div>
+            <textarea id="ps-out" class="mz-out" readonly placeholder="결과가 여기에 표시됩니다."></textarea>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../modules/psy/core.js"></script>
+  <script src="../../modules/psy/index.js"></script>
+  <script src="../../core/hub.js"></script>
+</body>
+</html>

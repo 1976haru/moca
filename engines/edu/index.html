@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>학습/교육 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 학습/교육 ══ -->
+<div id="eduDetail" class="mz-detail">
+          <button class="mz-back" onclick="closeEdu()">← 카드 목록으로</button>
+          <div class="mz-head">
+            <span class="mz-ico" id="ed-ico">🎓</span>
+            <div>
+              <h3 id="ed-title">학습/교육</h3>
+              <p id="ed-desc" class="mz-sub">학년·언어·세부유형을 선택한 뒤 입력하세요.</p>
+            </div>
+          </div>
+
+          <div class="mz-form" style="margin-bottom:10px">
+            <div class="mz-row">
+              <div>
+                <label>🎯 학년/수준 (자동 난이도 조절)</label>
+                <select class="mz-in" id="ed-grade">
+                  <option value="elem1-3">초등 저학년 (1~3)</option>
+                  <option value="elem4-6">초등 고학년 (4~6)</option>
+                  <option value="mid">중학교 (1~3)</option>
+                  <option value="high">고등학교 (1~3)</option>
+                  <option value="univ">대학교</option>
+                  <option value="grad">대학원</option>
+                  <option value="adult">성인·일반</option>
+                </select>
+              </div>
+              <div>
+                <label>🌏 언어 (동시 생성)</label>
+                <select class="mz-in" id="ed-lang">
+                  <option value="ko" selected>🇰🇷 한국어만</option>
+                  <option value="ko+en">🇰🇷 + 🇺🇸 영어</option>
+                  <option value="ko+jp">🇰🇷 + 🇯🇵 일본어</option>
+                  <option value="all">🇰🇷 + 🇺🇸 + 🇯🇵 3개국어</option>
+                </select>
+              </div>
+              <div>
+                <label>길이 / 수준</label>
+                <select class="mz-in" id="ed-length">
+                  <option value="short">간결 (500자)</option>
+                  <option value="mid" selected>표준 (1,500자)</option>
+                  <option value="long">상세 (3,000자)</option>
+                  <option value="xl">초장문 (5,000자+)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="mz-subs" id="ed-subs"></div>
+
+          <div class="mz-form">
+            <div class="mz-row">
+              <div><label>주제 / 단원 / 과제</label>
+                <input class="mz-in" id="ed-topic" placeholder="예: 독후감 - 어린왕자 / 일차함수 그래프 / 역사 조선시대 한양">
+              </div>
+              <div><label>대상 학습자</label>
+                <input class="mz-in" id="ed-target" placeholder="예: 초3 / 자녀 / 우리반 학생">
+              </div>
+            </div>
+            <div class="mz-row">
+              <div><label>핵심 키워드 (쉼표)</label>
+                <input class="mz-in" id="ed-keywords" placeholder="예: 환경, 친구, 우정">
+              </div>
+              <div><label>피하고 싶은 표현</label>
+                <input class="mz-in" id="ed-avoid" placeholder="예: 어려운 한자어, 폭력 묘사">
+              </div>
+            </div>
+
+            <!-- ⭐ 생활기록부 특화 -->
+            <div id="ed-record-box" style="display:none;padding:12px;background:#eff6ff;border:1px solid #bcd7f0;border-radius:14px;margin-top:10px">
+              <label style="color:#1f4a80">⭐ 생활기록부 특화 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>유형</label>
+                  <select class="mz-in" id="ed-rec-type">
+                    <option value="subject">교과세특</option>
+                    <option value="club">동아리</option>
+                    <option value="volunteer">봉사</option>
+                    <option value="career">진로</option>
+                    <option value="behavior">행동특성 및 종합의견</option>
+                    <option value="autonomous">자율활동</option>
+                  </select>
+                </div>
+                <div><label>관련 과목 / 영역</label>
+                  <input class="mz-in" id="ed-rec-subject" placeholder="예: 국어, 과학 / 문예부">
+                </div>
+              </div>
+              <label style="margin-top:8px">활동 내용 (구체적 관찰 사항)</label>
+              <textarea class="mz-in" id="ed-rec-activity" style="min-height:90px" placeholder="학생이 수행한 활동·관심·탐구·성장 과정 등을 구체적으로 적으면 500자 제한의 정제된 세특/창체 문구로 변환됩니다."></textarea>
+              <div class="mz-sub" style="margin-top:6px;font-size:11px;color:#1f4a80">ℹ️ 교과 성취기준·핵심역량에 기반한 공식 문어체로 자동 작성됩니다.</div>
+            </div>
+
+            <!-- ⭐ AI 튜터 특화 -->
+            <div id="ed-tutor-box" style="display:none;padding:12px;background:#f7f4ff;border:1px solid #d8d2f4;border-radius:14px;margin-top:10px">
+              <label style="color:#5d4aad">🤖 AI 튜터 입력</label>
+              <label style="margin-top:8px">문제 내용</label>
+              <textarea class="mz-in" id="ed-tutor-problem" style="min-height:80px" placeholder="학생이 풀어야 할 문제를 그대로 붙여넣으세요."></textarea>
+              <label style="margin-top:8px">학생이 쓴 답 (선택)</label>
+              <textarea class="mz-in" id="ed-tutor-answer" style="min-height:60px" placeholder="답을 입력하면 오답 분석 + 왜 틀렸는지 + 비슷한 문제를 생성합니다."></textarea>
+            </div>
+
+            <!-- ⭐ 학습 플래너 특화 -->
+            <div id="ed-planner-box" style="display:none;padding:12px;background:#effbf7;border:1px solid #c8ebd9;border-radius:14px;margin-top:10px">
+              <label style="color:#1a7a5a">🗓️ 학습 플래너 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>시험/목표 날짜</label><input class="mz-in" type="date" id="ed-plan-date"></div>
+                <div><label>남은 일수 가용 시간/일</label><input class="mz-in" id="ed-plan-hours" placeholder="예: 평일 2시간 / 주말 4시간"></div>
+              </div>
+              <label style="margin-top:8px">과목 목록 (쉼표)</label>
+              <input class="mz-in" id="ed-plan-subjects" placeholder="예: 국어, 수학, 영어, 사회, 과학">
+            </div>
+
+            <!-- ⭐ 입시 전략 특화 -->
+            <div id="ed-admission-box" style="display:none;padding:12px;background:#fff5fa;border:1px solid #f2cfe0;border-radius:14px;margin-top:10px">
+              <label style="color:#b14d82">🏆 입시 전략 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>희망 대학·학과</label><input class="mz-in" id="ed-adm-target" placeholder="예: 서울대 자유전공 / 연세대 경영"></div>
+                <div><label>전형</label>
+                  <select class="mz-in" id="ed-adm-type">
+                    <option value="suseong">학생부종합전형</option>
+                    <option value="kyogwa">학생부교과</option>
+                    <option value="nonsul">논술전형</option>
+                    <option value="susi">수시 특기자</option>
+                    <option value="susi-early">수시 조기</option>
+                    <option value="junchul">정시</option>
+                  </select>
+                </div>
+              </div>
+              <label style="margin-top:8px">현재 성적·활동 요약</label>
+              <textarea class="mz-in" id="ed-adm-profile" style="min-height:80px" placeholder="내신·모의고사 등급, 주요 교내외 활동, 수상, 독서 이력 등"></textarea>
+            </div>
+
+            <!-- ⭐ 교사/강사 특화 -->
+            <div id="ed-teacher-box" style="display:none;padding:12px;background:#fff7ee;border:1px solid #f1e0c4;border-radius:14px;margin-top:10px">
+              <label style="color:#9a5a1a">🍎 교사/강사 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>학급/수업 정보</label><input class="mz-in" id="ed-t-class" placeholder="예: 5학년 3반 / 수학 보충반"></div>
+                <div><label>수업 유형</label>
+                  <select class="mz-in" id="ed-t-type">
+                    <option value="lesson">수업지도안</option>
+                    <option value="quiz">시험문제 출제</option>
+                    <option value="evaluate">평가 문구</option>
+                    <option value="letter">가정통신문</option>
+                    <option value="ppt">수업 PPT 구성</option>
+                    <option value="hw">과제 출제</option>
+                    <option value="counsel">학부모 상담 준비</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- ⭐ 부모 지원 특화 -->
+            <div id="ed-parent-box" style="display:none;padding:12px;background:#fff5fa;border:1px solid #f2cfe0;border-radius:14px;margin-top:10px">
+              <label style="color:#b14d82">👨‍👩‍👧 부모 지원 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>자녀 나이/학년</label><input class="mz-in" id="ed-p-child" placeholder="예: 중2 남자아이"></div>
+                <div><label>상황/목적</label>
+                  <select class="mz-in" id="ed-p-type">
+                    <option value="meeting">학부모 총회 발언</option>
+                    <option value="email">교사 소통 이메일</option>
+                    <option value="consult">자녀 학습 상담 준비</option>
+                    <option value="career">자녀 진로 대화</option>
+                    <option value="motivate">학습 동기부여 방법</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="mz-actions">
+              <button class="mz-btn pri" id="ed-gen" onclick="generateEdu()">✨ AI로 생성</button>
+              <button class="mz-btn" onclick="edCopy()">📋 복사</button>
+              <button class="mz-btn" onclick="edSave()">💾 저장</button>
+              <button class="mz-btn snd" onclick="edSendToMedia()">🎬 미디어 엔진으로 보내기</button>
+            </div>
+            <div id="ed-status" class="mz-status"></div>
+            <textarea id="ed-out" class="mz-out" readonly placeholder="생성 결과가 여기에 표시됩니다."></textarea>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../modules/edu/core.js"></script>
+  <script src="../../modules/edu/index.js"></script>
+  <script src="../../core/hub.js"></script>
+</body>
+</html>

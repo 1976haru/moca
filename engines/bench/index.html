@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>유튜브 벤치마킹 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 유튜브 벤치마킹 ══ -->
+<div id="benchDetail" class="mz-detail">
+          <button class="mz-back" onclick="closeBench()">← 카드 목록으로</button>
+          <div class="mz-head">
+            <span class="mz-ico">🔍</span>
+            <div>
+              <h3>MOCA 유튜브 벤치마킹</h3>
+              <p class="mz-sub">잘된 영상을 분석해서 내 채널 공식으로 만들어요 · 한일 동시</p>
+            </div>
+          </div>
+
+          <div class="bench-tabs" id="bench-tabs">
+            <button class="bench-tab on" data-t="video"   onclick="benchTab('video')">📹 영상 분석</button>
+            <button class="bench-tab"    data-t="channel" onclick="benchTab('channel')">📺 채널 분석</button>
+            <button class="bench-tab"    data-t="gap"     onclick="benchTab('gap')">🗺 콘텐츠 갭</button>
+            <button class="bench-tab"    data-t="library" onclick="benchTab('library')">📚 내 공식 라이브러리</button>
+          </div>
+
+          <div id="bench-body"></div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../core/hub.js"></script>
+  <script src="../../core/bench.js"></script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>공공기관 패키지 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 공공기관 패키지 ══ -->
+<div id="publicDetail" class="mz-detail">
+          <button class="mz-back" onclick="closePublic()">← 카드 목록으로</button>
+          <div class="mz-head">
+            <span class="mz-ico" id="pb-ico">📄</span>
+            <div>
+              <h3 id="pb-title">문서/보고서</h3>
+              <p id="pb-desc" class="mz-sub">기관유형·톤·세부유형을 선택한 뒤 입력하세요.</p>
+            </div>
+          </div>
+
+          <div class="mz-form" style="margin-bottom:10px">
+            <div class="mz-row">
+              <div>
+                <label>🏛️ 기관 유형</label>
+                <select class="mz-in" id="pb-agency">
+                  <option value="central">중앙부처</option>
+                  <option value="metro">광역지자체</option>
+                  <option value="local">기초지자체</option>
+                  <option value="court">법원</option>
+                  <option value="prosecutor">검찰</option>
+                  <option value="police">경찰</option>
+                  <option value="edu-office">교육청</option>
+                  <option value="soe">공기업</option>
+                </select>
+              </div>
+              <div>
+                <label>🗣️ 문서 톤 (자동 변환)</label>
+                <select class="mz-in" id="pb-tone">
+                  <option value="formal" selected>격식체 (공문용)</option>
+                  <option value="gentle">안내체 (민원용)</option>
+                  <option value="easy">쉬운말 (일반국민용)</option>
+                  <option value="english">영어 (국제협력용)</option>
+                </select>
+              </div>
+              <div>
+                <label>길이</label>
+                <select class="mz-in" id="pb-length">
+                  <option value="short">간결 (500자)</option>
+                  <option value="mid" selected>표준 (1,500자)</option>
+                  <option value="long">상세 (3,000자)</option>
+                  <option value="xl">초장문 (5,000자+)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="mz-subs" id="pb-subs"></div>
+
+          <div class="mz-form">
+            <!-- 기본 필드 (항상 표시) -->
+            <div class="mz-row">
+              <div>
+                <label>주제 / 제목</label>
+                <input class="mz-in" id="pb-topic" placeholder="예: 2024년 하반기 정책 방향">
+              </div>
+              <div>
+                <label>대상 (수신·독자)</label>
+                <input class="mz-in" id="pb-target" placeholder="예: 기관장 / 실무 담당자 / 일반 시민">
+              </div>
+            </div>
+            <div class="mz-row">
+              <div>
+                <label>핵심 키워드 (쉼표)</label>
+                <input class="mz-in" id="pb-keywords" placeholder="예: 규제혁신, 청년, 예산절감">
+              </div>
+              <div>
+                <label>피하고 싶은 표현</label>
+                <input class="mz-in" id="pb-avoid" placeholder="예: 추상적 표현, 근거 없는 단정">
+              </div>
+            </div>
+
+            <!-- 법원 특화 필드 -->
+            <div id="pb-court-box" style="display:none;padding:12px;background:#fff7ee;border:1px solid #f1e0c4;border-radius:14px;margin-top:10px">
+              <label style="color:#9a5a1a">⚖️ 법원 조사관 특화 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div>
+                  <label>피조사자 / 인적 사항</label>
+                  <input class="mz-in" id="pb-court-subject" placeholder="예: 홍길동(45세), 사건번호 2024고단000">
+                </div>
+                <div>
+                  <label>면담 일시·장소</label>
+                  <input class="mz-in" id="pb-court-when" placeholder="예: 2024.07.15, 서울중앙지법 조사실">
+                </div>
+              </div>
+              <label style="margin-top:8px">면담 내용 키워드 (쉼표)</label>
+              <textarea class="mz-in" id="pb-court-notes" style="min-height:90px" placeholder="면담에서 나온 주요 키워드·문답·관찰 사항을 나열하면 법원 공식 문서 형식의 객관적 서술로 자동 변환됩니다."></textarea>
+              <div class="mz-sub" style="margin-top:6px;font-size:11px;color:#9a5a1a">ℹ️ 객관적·중립적 서술체가 자동 적용됩니다 (주관적 판단/추측 배제).</div>
+            </div>
+
+            <!-- 디자인 특화 필드 -->
+            <div id="pb-design-box" style="display:none;padding:12px;background:#f7f4ff;border:1px solid #d8d2f4;border-radius:14px;margin-top:10px">
+              <label style="color:#5d4aad">🎨 디자인·인쇄물 특화 입력</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>행사명 / 품명</label><input class="mz-in" id="pb-design-name" placeholder="예: 제10회 시민의 날 기념식"></div>
+                <div><label>일시</label><input class="mz-in" id="pb-design-when" placeholder="예: 2024.10.15(화) 14:00"></div>
+                <div><label>장소</label><input class="mz-in" id="pb-design-where" placeholder="예: 시민회관 대강당"></div>
+              </div>
+              <label style="margin-top:8px">주최·주관</label>
+              <input class="mz-in" id="pb-design-host" placeholder="예: ○○시 / 주관: ○○재단">
+              <div class="mz-sub" style="margin-top:6px;font-size:11px;color:#5d4aad">ℹ️ 3가지 문구·레이아웃 배치안이 자동 생성됩니다.</div>
+            </div>
+
+            <div class="mz-actions">
+              <button class="mz-btn pri" id="pb-gen" onclick="generatePublic()">✨ AI로 생성</button>
+              <button class="mz-btn" onclick="pbCopy()">📋 복사</button>
+              <button class="mz-btn" onclick="pbSave()">💾 저장</button>
+              <button class="mz-btn snd" onclick="pbSendToMedia()">🎬 미디어 엔진으로 보내기</button>
+            </div>
+            <div id="pb-status" class="mz-status"></div>
+            <textarea id="pb-out" class="mz-out" readonly placeholder="생성 결과가 여기에 표시됩니다."></textarea>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../modules/public/core.js"></script>
+  <script src="../../modules/public/index.js"></script>
+  <script src="../../core/hub.js"></script>
+</body>
+</html>

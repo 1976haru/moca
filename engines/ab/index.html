@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A/B 비교 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ A/B 비교 ══ -->
+<div id="abDetail" class="mz-detail">
+          <div class="ab-wrap">
+            <div class="ab-hero">
+              <h2>⚖️ A/B 비교하기</h2>
+              <p>같은 주제로 2개 만들어서 더 좋은 것 골라요! · 대본·제목·썸네일·언어·말투 비교 + AI 추천</p>
+            </div>
+
+            <!-- ─── 섹션1: 비교 유형 선택 ─── -->
+            <section class="ab-section">
+              <h3>1️⃣ 뭘 비교할까요?</h3>
+              <p class="sub">원하는 비교 유형을 선택하세요</p>
+              <div class="ab-tabs" id="abTabs">
+                <button class="on" data-ab="script"    onclick="abSwitch('script',this)">📝 대본</button>
+                <button data-ab="title"                onclick="abSwitch('title',this)">🎯 제목</button>
+                <button data-ab="thumb"                onclick="abSwitch('thumb',this)">🖼 썸네일</button>
+                <button data-ab="lang"                 onclick="abSwitch('lang',this)">🌏 한·일</button>
+                <button data-ab="tone"                 onclick="abSwitch('tone',this)">😊 말투</button>
+                <button data-ab="log"                  onclick="abSwitch('log',this)">📊 테스트 기록</button>
+              </div>
+
+              <!-- 섹션2: 대본 A/B -->
+              <div id="abPanel-script" class="ab-panel">
+                <div class="ab-field"><label>주제</label>
+                  <input id="ab-script-topic" placeholder='예: "치매 예방하는 음식 TOP5"'>
+                </div>
+                <div class="ab-field"><label>A 버전 스타일</label>
+                  <div class="ab-opt-row" id="ab-script-styleA">
+                    <button class="on" data-s="emotion">감동형</button>
+                    <button data-s="info">정보형</button>
+                    <button data-s="story">스토리형</button>
+                    <button data-s="quiz">퀴즈형</button>
+                    <button data-s="custom">직접입력</button>
+                  </div>
+                  <input id="ab-script-styleA-custom" placeholder="직접입력 스타일 (선택)" style="display:none">
+                </div>
+                <div class="ab-field"><label>B 버전 스타일</label>
+                  <div class="ab-opt-row" id="ab-script-styleB">
+                    <button data-s="emotion">감동형</button>
+                    <button class="on" data-s="info">정보형</button>
+                    <button data-s="story">스토리형</button>
+                    <button data-s="quiz">퀴즈형</button>
+                    <button data-s="custom">직접입력</button>
+                  </div>
+                  <input id="ab-script-styleB-custom" placeholder="직접입력 스타일 (선택)" style="display:none">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                  <div class="ab-field"><label>언어</label>
+                    <div class="ab-opt-row" id="ab-script-lang">
+                      <button class="on" data-l="ko">한국어</button>
+                      <button data-l="jp">일본어</button>
+                      <button data-l="kojp">동시</button>
+                    </div>
+                  </div>
+                  <div class="ab-field"><label>길이</label>
+                    <div class="ab-opt-row" id="ab-script-len">
+                      <button data-t="30">30초</button>
+                      <button class="on" data-t="60">60초</button>
+                      <button data-t="180">3분</button>
+                      <button data-t="300">5분</button>
+                    </div>
+                  </div>
+                  <div class="ab-field"><label>채널</label>
+                    <div class="ab-opt-row" id="ab-script-channel">
+                      <button class="on" data-c="senior-emotion">시니어감동</button>
+                      <button data-c="comic">코믹</button>
+                      <button data-c="knowledge">지식</button>
+                      <button data-c="custom">직접입력</button>
+                    </div>
+                    <input id="ab-script-channel-custom" placeholder="직접입력 채널 (선택)" style="display:none;margin-top:4px">
+                  </div>
+                </div>
+                <button class="ab-go" onclick="abRunScript()">⚡ A/B 동시 생성!</button>
+                <div id="ab-script-out"></div>
+              </div>
+
+              <!-- 섹션3: 제목 A/B -->
+              <div id="abPanel-title" class="ab-panel" style="display:none">
+                <div class="ab-field"><label>영상 주제 / 대본 첫 줄</label>
+                  <textarea id="ab-title-topic" placeholder='예: "치매 예방하는 음식 5가지를 소개하는 영상" / 혹은 대본 도입부를 붙여넣기'></textarea>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5a4a56;cursor:pointer">
+                  <input type="checkbox" id="ab-title-jp" checked> 일본어 제목도 같이 보기 (日本語タイトルも同時表示)
+                </label>
+                <button class="ab-go" onclick="abRunTitles()">🎯 제목 5개 동시생성</button>
+                <div id="ab-title-out"></div>
+              </div>
+
+              <!-- 섹션3b: 썸네일 A/B -->
+              <div id="abPanel-thumb" class="ab-panel" style="display:none">
+                <div class="ab-field"><label>영상 주제</label>
+                  <input id="ab-thumb-topic" placeholder='예: "치매 예방 음식 TOP5"'>
+                </div>
+                <div class="ab-field"><label>썸네일 방향</label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                    <input id="ab-thumb-A" placeholder='A 방향 예: "강렬한 경고 카피"'>
+                    <input id="ab-thumb-B" placeholder='B 방향 예: "숫자 강조 친근 카피"'>
+                  </div>
+                </div>
+                <button class="ab-go" onclick="abRunThumbs()">🖼 썸네일 문구 2개 비교</button>
+                <div id="ab-thumb-out"></div>
+              </div>
+
+              <!-- 섹션4: 한·일 비교 -->
+              <div id="abPanel-lang" class="ab-panel" style="display:none">
+                <div class="ab-field"><label>한국어 대본 또는 주제</label>
+                  <textarea id="ab-lang-input" placeholder='한국어 원본 또는 주제를 입력하세요.'></textarea>
+                </div>
+                <button class="ab-go" onclick="abRunLang()">🌏 한일 동시 생성</button>
+                <div id="ab-lang-out"></div>
+              </div>
+
+              <!-- 섹션5: 말투 A/B -->
+              <div id="abPanel-tone" class="ab-panel" style="display:none">
+                <div class="ab-field"><label>주제 또는 핵심 내용</label>
+                  <input id="ab-tone-topic" placeholder='예: "치매 예방 음식 소개"'>
+                </div>
+                <div class="ab-tone-grid">
+                  <div class="ab-field"><label>A 말투</label>
+                    <div class="ab-opt-row" id="ab-tone-A">
+                      <button data-t="friendly">친근하게</button>
+                      <button class="on" data-t="emotional">감동적으로</button>
+                      <button data-t="professional">전문적으로</button>
+                      <button data-t="humor">유머러스하게</button>
+                    </div>
+                  </div>
+                  <div class="ab-field"><label>B 말투</label>
+                    <div class="ab-opt-row" id="ab-tone-B">
+                      <button data-t="friendly">친근하게</button>
+                      <button data-t="emotional">감동적으로</button>
+                      <button class="on" data-t="professional">전문적으로</button>
+                      <button data-t="humor">유머러스하게</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="ab-go" onclick="abRunTone()">⚡ 두 말투로 동시 생성</button>
+                <div id="ab-tone-out"></div>
+              </div>
+
+              <!-- 섹션6: 테스트 기록 -->
+              <div id="abPanel-log" class="ab-panel" style="display:none">
+                <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                  <button class="ab-go" style="flex:1;min-width:180px" onclick="abAddLog()">+ 테스트 결과 기록하기</button>
+                  <button class="ab-go" style="flex:0 0 auto;background:#fff;color:#b14d82;border:1px solid var(--line-strong)" onclick="abExportLog()">📥 기록 내보내기</button>
+                </div>
+                <div id="ab-log-list"></div>
+                <div id="ab-log-stats"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../core/hub.js"></script>
+  <script src="../../core/ab.js"></script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>수익형 콘텐츠 빌더 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 수익형 콘텐츠 빌더 ══ -->
+<div id="monetizeDetail" class="mz-detail">
+          <button class="mz-back" onclick="closeBuilder()">← 카드 목록으로</button>
+
+          <!-- 🎨 브랜드킷 상단바 (접이식) -->
+          <details class="bld-brandkit">
+            <summary>🎨 내 브랜드킷 <span class="bk-sum" id="bk-summary"></span></summary>
+            <div class="bld-brandkit-body">
+              <div class="mz-row">
+                <div><label>채널명</label><input class="mz-in" id="bk-name" placeholder="예: 시니어라이프"></div>
+                <div><label>메인 색상</label><input class="mz-in" id="bk-color" type="color" value="#FF6B9D"></div>
+                <div><label>폰트</label>
+                  <select class="mz-in" id="bk-font">
+                    <option value="pretendard">Pretendard</option>
+                    <option value="noto-kr">Noto Sans KR</option>
+                    <option value="baedal">배달의민족 주아</option>
+                    <option value="black-han">Black Han Sans</option>
+                    <option value="noto-jp">Noto Sans JP</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mz-row">
+                <div><label>로고 (URL 또는 업로드)</label><input class="mz-in" id="bk-logo" placeholder="https://..."></div>
+                <div><label>채널 언어 (각각 따로 저장)</label>
+                  <select class="mz-in" id="bk-channel" onchange="bkSwitchChannel()">
+                    <option value="ko">🇰🇷 한국채널</option>
+                    <option value="ja">🇯🇵 일본채널</option>
+                  </select>
+                </div>
+                <div style="display:flex;align-items:flex-end"><button class="mz-btn" onclick="bkSave()">💾 이 채널 브랜드킷 저장</button></div>
+              </div>
+              <p class="hint" style="font-size:11px;margin:6px 0 0">→ 🇰🇷 / 🇯🇵 각각 다른 브랜드킷으로 저장됩니다. 선택한 채널의 값이 UI 에 자동 로드돼요.</p>
+            </div>
+          </details>
+
+          <!-- 콘텐츠 타입 헤더 -->
+          <div class="mz-head" style="margin-top:10px">
+            <span class="mz-ico" id="bld-ico">📝</span>
+            <div style="flex:1">
+              <h3 id="bld-title">블로그 빌더</h3>
+              <p id="bld-desc" class="mz-sub">글 하나로 네이버·브런치·티스토리까지</p>
+            </div>
+          </div>
+
+          <!-- 🎯 핵심 기능 배너 -->
+          <div class="bld-flow-banner">
+            <b>콘텐츠 1개 → 6개 플랫폼 자동 변환</b>
+            <div class="bld-flow">
+              <span>📝 블로그</span> → <span>📧 뉴스레터</span> → <span>📱 SNS카드</span> →
+              <span>🎨 웹툰</span> → <span>📊 전자책</span> → <span>🌐 LP</span>
+            </div>
+          </div>
+
+          <!-- ═══════ 블로그 빌더 (메인, 3단) ═══════ -->
+          <div id="bld-blog" class="bld-panel">
+            <div class="bld-3col">
+              <!-- 왼쪽: 단순화된 설정 (주제·느낌·언어·이미지 5개만) -->
+              <div class="bld-col bld-col-left">
+                <h4 style="margin-top:0">어떤 블로그를 쓸까요?</h4>
+
+                <label>주제</label>
+                <input class="mz-in" id="bld-topic" placeholder="예: 치매 예방하는 음식 TOP5">
+
+                <label style="margin-top:10px">느낌</label>
+                <div class="bld-pill-row" id="bld-tone">
+                  <button class="bld-pill on" data-v="emotional">🌸 감성적</button>
+                  <button class="bld-pill"    data-v="info">📊 정보형</button>
+                  <button class="bld-pill"    data-v="expert">📰 공식형</button>
+                </div>
+
+                <label style="margin-top:10px">언어</label>
+                <div class="bld-pill-row" id="bld-lang">
+                  <button class="bld-pill on" data-v="ko">🇰🇷</button>
+                  <button class="bld-pill"    data-v="ja">🇯🇵</button>
+                  <button class="bld-pill"    data-v="both">동시</button>
+                </div>
+
+                <label style="margin-top:10px">이미지</label>
+                <div class="bld-pill-row" id="bld-imgstyle">
+                  <button class="bld-pill on" data-v="ghibli">🌸 지브리</button>
+                  <button class="bld-pill"    data-v="realistic">📸 실사</button>
+                  <button class="bld-pill"    data-v="info">📊 인포그래픽</button>
+                </div>
+
+                <button class="mz-btn pri" style="width:100%;margin-top:16px;padding:14px" id="bld-gen" onclick="bldGenerateBlogFull()">☕ 글+이미지 자동생성</button>
+
+                <details style="margin-top:14px">
+                  <summary style="cursor:pointer;color:var(--sub);font-size:12px;padding:6px 0">🛠 고급 도구 (템플릿/길이/색상/애니)</summary>
+                  <div style="padding:8px 0">
+                    <label style="font-size:11px">템플릿</label>
+                    <div class="bld-tpl-grid" id="bld-tpl-grid"></div>
+
+                    <label style="margin-top:8px;font-size:11px">길이</label>
+                    <div class="bld-pill-row" id="bld-length">
+                      <button class="bld-pill"    data-v="short">짧게</button>
+                      <button class="bld-pill on" data-v="mid">중간</button>
+                      <button class="bld-pill"    data-v="long">길게</button>
+                    </div>
+
+                    <label style="margin-top:8px;font-size:11px">추가 이미지 스타일</label>
+                    <div class="bld-pill-row">
+                      <button class="bld-pill" data-v="watercolor" onclick="document.querySelectorAll('#bld-imgstyle .bld-pill').forEach(x=>x.classList.remove('on'));this.classList.add('on');BLD.imgStyle='watercolor'">🎨 수채화</button>
+                      <button class="bld-pill" data-v="emoji"      onclick="document.querySelectorAll('#bld-imgstyle .bld-pill').forEach(x=>x.classList.remove('on'));this.classList.add('on');BLD.imgStyle='emoji'">😊 이모지</button>
+                      <button class="bld-pill" data-v="minimal"    onclick="document.querySelectorAll('#bld-imgstyle .bld-pill').forEach(x=>x.classList.remove('on'));this.classList.add('on');BLD.imgStyle='minimal'">🖼 미니멀</button>
+                      <button class="bld-pill" data-v="pop"        onclick="document.querySelectorAll('#bld-imgstyle .bld-pill').forEach(x=>x.classList.remove('on'));this.classList.add('on');BLD.imgStyle='pop'">🎭 팝아트</button>
+                      <button class="bld-pill" data-v="vintage"    onclick="document.querySelectorAll('#bld-imgstyle .bld-pill').forEach(x=>x.classList.remove('on'));this.classList.add('on');BLD.imgStyle='vintage'">📷 빈티지</button>
+                    </div>
+
+                    <label style="margin-top:8px;font-size:11px">색상 테마</label>
+                    <div class="bld-pill-row" id="bld-color">
+                      <button class="bld-pill on" data-v="pastel">파스텔</button>
+                      <button class="bld-pill"    data-v="vivid">비비드</button>
+                      <button class="bld-pill"    data-v="mono">모노톤</button>
+                      <button class="bld-pill"    data-v="warm">따뜻한</button>
+                      <button class="bld-pill"    data-v="cool">시원한</button>
+                      <button class="bld-pill"    data-v="gold">골드</button>
+                    </div>
+
+                    <label style="margin-top:8px;font-size:11px">애니메이션</label>
+                    <div class="bld-pill-row" id="bld-anim">
+                      <button class="bld-pill"    data-v="none">없음</button>
+                      <button class="bld-pill on" data-v="fade">기본</button>
+                      <button class="bld-pill"    data-v="rich">화려하게</button>
+                    </div>
+                    <label style="display:flex;align-items:center;gap:6px;margin:4px 0;font-size:11px"><input type="checkbox" id="bld-fx-reveal" checked> 요소 나타남</label>
+                    <label style="display:flex;align-items:center;gap:6px;margin:4px 0;font-size:11px"><input type="checkbox" id="bld-fx-highlight" checked> 형광펜</label>
+                    <label style="display:flex;align-items:center;gap:6px;margin:4px 0;font-size:11px"><input type="checkbox" id="bld-fx-count" checked> 숫자 카운트업</label>
+                    <label style="display:flex;align-items:center;gap:6px;margin:4px 0;font-size:11px"><input type="checkbox" id="bld-fx-progress" checked> 읽기 진행바</label>
+                    <label style="display:flex;align-items:center;gap:6px;margin:4px 0;font-size:11px"><input type="checkbox" id="bld-fx-toc" checked> 목차 사이드바</label>
+                    <label style="margin-top:6px;font-size:11px">이미지 배치</label>
+                    <select class="mz-in" id="bld-imgplace">
+                      <option value="auto" selected>섹션마다 자동</option>
+                      <option value="top">상단 1장만</option>
+                      <option value="manual">직접 지정</option>
+                    </select>
+                  </div>
+                </details>
+              </div>
+
+              <!-- 가운데: 실시간 편집기 -->
+              <div class="bld-col bld-col-center">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <b style="font-size:13px">📝 실시간 미리보기</b>
+                  <button class="mz-btn ghost" style="padding:6px 10px;font-size:11px" onclick="document.querySelector('.bld-3col').classList.toggle('advanced')">🛠 고급 도구 (SEO·A/B·💰)</button>
+                </div>
+                <div class="bld-editor-toolbar">
+                  <button onclick="bldAddBlock('text')" title="텍스트">T</button>
+                  <button onclick="bldAddBlock('image')" title="이미지">🖼</button>
+                  <button onclick="bldAddBlock('divider')" title="구분선">—</button>
+                  <button onclick="bldAddBlock('button')" title="버튼">▭</button>
+                  <button onclick="bldAddBlock('table')" title="표">⊞</button>
+                  <button onclick="bldAddBlock('quote')" title="인용구">❝</button>
+                  <button onclick="bldAddBlock('checklist')" title="체크리스트">☑</button>
+                  <span style="flex:1"></span>
+                  <button onclick="bldUndo()" title="실행취소">↩</button>
+                  <button onclick="bldRedo()" title="다시실행">↪</button>
+                  <span style="flex:1"></span>
+                  <button onclick="bldSetDevice('mobile')" id="bld-dev-m" title="모바일">📱</button>
+                  <button onclick="bldSetDevice('desktop')" class="on" id="bld-dev-d" title="데스크탑">🖥</button>
+                </div>
+                <div class="bld-size-row">
+                  <button class="bld-chip on" data-size="blog">블로그 700</button>
+                  <button class="bld-chip" data-size="insta">인스타 1:1</button>
+                  <button class="bld-chip" data-size="story">스토리 9:16</button>
+                  <button class="bld-chip" data-size="kakao">카카오채널</button>
+                </div>
+                <div class="bld-canvas-wrap">
+                  <div class="bld-canvas" id="bld-canvas">
+                    <div class="bld-empty">주제를 입력하고 "☕ 글 자동생성"을 눌러주세요<br><small>또는 ▸툴바 버튼으로 빈 블록부터 시작</small></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 오른쪽: 속성 + SEO + A/B + 수익화 -->
+              <div class="bld-col bld-col-right">
+                <div class="bld-right-tabs">
+                  <button class="on" data-t="props" onclick="bldRightTab('props')">속성</button>
+                  <button data-t="seo" onclick="bldRightTab('seo')">SEO</button>
+                  <button data-t="ab" onclick="bldRightTab('ab')">A/B</button>
+                  <button data-t="money" onclick="bldRightTab('money')">💰</button>
+                </div>
+
+                <!-- 속성 -->
+                <div id="bld-tab-props" class="bld-tab on">
+                  <p class="hint">편집기에서 요소를 클릭하면 여기서 속성을 조절합니다.</p>
+                  <div id="bld-props-body"><p class="hint" style="opacity:.7">(선택된 요소 없음)</p></div>
+                </div>
+
+                <!-- SEO -->
+                <div id="bld-tab-seo" class="bld-tab">
+                  <div style="text-align:center;padding:12px 0">
+                    <div style="font-size:30px;font-weight:900;color:var(--pink-deep)" id="seo-score">—</div>
+                    <div class="hint">SEO 점수 (100점 만점)</div>
+                  </div>
+                  <ul class="seo-list" id="seo-checklist"></ul>
+                  <label style="margin-top:10px">메타 제목</label>
+                  <input class="mz-in" id="seo-title" placeholder="자동생성">
+                  <label style="margin-top:6px">메타 설명</label>
+                  <textarea class="mz-in" id="seo-desc" style="min-height:60px" placeholder="자동생성"></textarea>
+                  <label style="margin-top:6px">키워드</label>
+                  <input class="mz-in" id="seo-kw" placeholder="자동추출">
+                  <button class="mz-btn pri" style="width:100%;margin-top:8px" onclick="bldSeoAutoFix()">🔧 SEO 자동 개선 → 90점+</button>
+                  <p class="hint" style="margin-top:10px"><b>네이버 SEO 특화</b></p>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="seo-naver-2000" checked> 2000자 이상</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="seo-naver-img3" checked> 이미지 3장 이상</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="seo-naver-tag" checked> 해시태그 자동추천</label>
+                </div>
+
+                <!-- A/B -->
+                <div id="bld-tab-ab" class="bld-tab">
+                  <label>제목 A</label>
+                  <input class="mz-in" id="ab-title-a" placeholder="A안 제목">
+                  <label style="margin-top:6px">제목 B</label>
+                  <input class="mz-in" id="ab-title-b" placeholder="B안 제목">
+                  <label style="margin-top:6px">이미지 A 스타일</label>
+                  <select class="mz-in" id="ab-img-a"><option>지브리풍</option><option>인포그래픽</option><option>실사</option></select>
+                  <label style="margin-top:6px">이미지 B 스타일</label>
+                  <select class="mz-in" id="ab-img-b"><option>인포그래픽</option><option>지브리풍</option><option>실사</option></select>
+                  <button class="mz-btn pri" style="width:100%;margin-top:10px" onclick="bldAbSave()">두 버전 동시 저장</button>
+                  <p class="hint" style="margin-top:6px">실제 성과는 나중에 성과 탭에서 비교하세요</p>
+                </div>
+
+                <!-- 수익화 -->
+                <div id="bld-tab-money" class="bld-tab">
+                  <p class="hint">CTA 자동 삽입 · 70% 지점이 이탈률 최저 위치</p>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="mon-kmong" checked> 크몽 서비스 링크</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="mon-class"> 클래스101 강의</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="mon-sub"> 유료 구독</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="mon-kakao"> 카카오 채널</label>
+                  <label style="margin-top:8px">위치</label>
+                  <div class="bld-pill-row" id="mon-pos">
+                    <button class="bld-pill" data-v="top">상단</button>
+                    <button class="bld-pill on" data-v="70">70% 지점</button>
+                    <button class="bld-pill" data-v="bottom">하단</button>
+                  </div>
+                  <label style="margin-top:6px">CTA 링크 URL</label>
+                  <input class="mz-in" id="mon-url" placeholder="https://kmong.com/...">
+                  <button class="mz-btn pri" style="width:100%;margin-top:8px" onclick="bldMonCtaGen()">AI로 CTA 문구 생성</button>
+                  <textarea class="mz-in" id="mon-cta-text" style="min-height:70px;margin-top:6px" placeholder="CTA 문구"></textarea>
+                  <button class="mz-btn" style="width:100%;margin-top:6px" onclick="bldMonInsert()">📌 콘텐츠에 삽입</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 완성 후 내보내기 -->
+            <div class="bld-export">
+              <h4>🎉 완성! 어디에 올릴까요?</h4>
+              <div class="bld-export-grid">
+                <div>
+                  <b>즉시 복사 (붙여넣으면 완성!)</b>
+                  <div class="bld-btnrow">
+                    <button class="mz-btn" onclick="bldExport('naver')">📝 네이버 블로그 HTML</button>
+                    <button class="mz-btn" onclick="bldExport('brunch')">✍️ 브런치</button>
+                    <button class="mz-btn" onclick="bldExport('tistory')">📄 티스토리</button>
+                  </div>
+                </div>
+                <div>
+                  <b>🔄 콘텐츠 재활용 (1개 → 6개 플랫폼!)</b>
+                  <div class="bld-btnrow">
+                    <button class="mz-btn" onclick="bldRecycle('newsletter')">📧 뉴스레터</button>
+                    <button class="mz-btn" onclick="bldRecycle('sns')">📱 SNS 10장</button>
+                    <button class="mz-btn" onclick="bldRecycle('webtoon')">🎨 웹툰 5칸</button>
+                    <button class="mz-btn" onclick="bldRecycle('shorts')">📺 영상 대본</button>
+                    <button class="mz-btn" onclick="bldRecycle('ebook')">📊 PDF 전자책</button>
+                    <button class="mz-btn" onclick="bldRecycle('ja')">🇯🇵 일본어 버전</button>
+                  </div>
+                </div>
+                <div>
+                  <b>💾 파일 저장</b>
+                  <div class="bld-btnrow">
+                    <button class="mz-btn" onclick="bldSaveHtml()">💾 HTML</button>
+                    <button class="mz-btn" onclick="bldSavePdf()">📄 PDF</button>
+                    <button class="mz-btn" onclick="bldSaveImage()">🖼 이미지</button>
+                    <button class="mz-btn" onclick="bldSaveLibrary()">📁 보관함</button>
+                  </div>
+                </div>
+                <div>
+                  <b>📅 예약 발행</b>
+                  <div class="bld-btnrow">
+                    <input class="mz-in" type="datetime-local" id="bld-schedule-dt" style="flex:1">
+                    <button class="mz-btn" onclick="bldSchedule()">알림 설정</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══════ 뉴스레터 빌더 ═══════ -->
+          <div id="bld-newsletter" class="bld-panel" style="display:none">
+            <h4>📧 뉴스레터 빌더</h4>
+            <div class="mz-row">
+              <div><label>주제</label><input class="mz-in" id="nl-topic" placeholder="예: 이번 주 치매 예방 뉴스"></div>
+              <div><label>템플릿</label>
+                <select class="mz-in" id="nl-tpl">
+                  <option value="classic">📰 클래식</option>
+                  <option value="emotion">💌 감성</option>
+                  <option value="corp">🏛️ 기업</option>
+                  <option value="creator">🎨 크리에이터</option>
+                  <option value="shop">🛍️ 쇼핑몰</option>
+                </select>
+              </div>
+              <div><label>구독자 세분화</label>
+                <select class="mz-in" id="nl-segment">
+                  <option value="all">전체 구독자</option>
+                  <option value="senior">시니어 관심</option>
+                  <option value="health">건강 관심</option>
+                </select>
+              </div>
+            </div>
+            <div class="mz-actions">
+              <button class="mz-btn pri" onclick="bldGenerateNewsletter()">✨ 뉴스레터 자동 생성</button>
+              <button class="mz-btn" onclick="bldExport('stibee')">📋 스티비 복사</button>
+              <button class="mz-btn" onclick="bldExport('mailchimp')">📋 메일침프 복사</button>
+              <button class="mz-btn" onclick="bldExport('beehiiv')">📋 비히브 복사</button>
+              <button class="mz-btn" onclick="bldSavePdf()">📄 PDF</button>
+            </div>
+            <div class="bld-canvas-wrap"><div class="bld-canvas" id="nl-canvas"><div class="bld-empty">주제 입력 후 생성</div></div></div>
+          </div>
+
+          <!-- ═══════ 웹툰 빌더 ═══════ -->
+          <div id="bld-webtoon" class="bld-panel" style="display:none">
+            <h4>🎨 웹툰 빌더</h4>
+            <div class="bld-pill-row">
+              <button class="bld-pill on" data-v="naver">📱 네이버웹툰</button>
+              <button class="bld-pill" data-v="life">😄 일상툰</button>
+              <button class="bld-pill" data-v="drama">🎭 드라마툰</button>
+              <button class="bld-pill" data-v="gag">😂 개그툰</button>
+            </div>
+            <div class="mz-row" style="margin-top:8px">
+              <div><label>주제 / 스토리</label><input class="mz-in" id="wt-topic" placeholder="예: 할머니의 치매 예방 루틴"></div>
+              <div><label>캐릭터 1</label><input class="mz-in" id="wt-char1" placeholder="이름/외모 (예: 복순 할머니, 75세)"></div>
+              <div><label>캐릭터 2</label><input class="mz-in" id="wt-char2" placeholder="(예: 손녀 지우, 28세)"></div>
+            </div>
+            <button class="mz-btn pri" onclick="bldGenerateWebtoon()">✨ 5칸 웹툰 자동 생성</button>
+            <div class="bld-canvas-wrap"><div class="bld-canvas" id="wt-canvas"><div class="bld-empty">주제와 캐릭터 입력 후 생성</div></div></div>
+          </div>
+
+          <!-- ═══════ SNS 카드뉴스 빌더 ═══════ -->
+          <div id="bld-sns" class="bld-panel" style="display:none">
+            <h4>📱 SNS 카드뉴스 빌더</h4>
+            <div class="bld-pill-row" id="sns-size">
+              <button class="bld-pill on" data-v="insta">인스타 1:1</button>
+              <button class="bld-pill" data-v="story">스토리 9:16</button>
+              <button class="bld-pill" data-v="kakao">카카오 채널</button>
+              <button class="bld-pill" data-v="linkedin">링크드인</button>
+            </div>
+            <div class="bld-pill-row" style="margin-top:6px" id="sns-tpl">
+              <button class="bld-pill on" data-v="impact">🔥 임팩트형</button>
+              <button class="bld-pill" data-v="info">📊 인포그래픽</button>
+              <button class="bld-pill" data-v="qa">💬 Q&A형</button>
+              <button class="bld-pill" data-v="howto">📖 노하우형</button>
+            </div>
+            <div class="mz-row" style="margin-top:8px">
+              <div><label>주제</label><input class="mz-in" id="sns-topic" placeholder="예: 치매 예방 5가지"></div>
+              <div><label>슬라이드 수</label>
+                <select class="mz-in" id="sns-count"><option>5</option><option selected>10</option><option>15</option></select>
+              </div>
+              <div style="display:flex;align-items:flex-end"><label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="sns-gif"> GIF 애니 카드</label></div>
+            </div>
+            <button class="mz-btn pri" onclick="bldGenerateSns()">✨ 카드뉴스 자동 생성</button>
+            <div class="bld-canvas-wrap"><div class="bld-canvas" id="sns-canvas"><div class="bld-empty">주제 입력 후 생성</div></div></div>
+          </div>
+
+          <!-- ═══════ 전자책/PDF 빌더 ═══════ -->
+          <div id="bld-ebook" class="bld-panel" style="display:none">
+            <h4>📊 전자책 / PDF 빌더</h4>
+            <div class="bld-pill-row">
+              <button class="bld-pill on" data-v="business">비즈니스</button>
+              <button class="bld-pill" data-v="essay">감성 에세이</button>
+              <button class="bld-pill" data-v="guide">정보 가이드</button>
+              <button class="bld-pill" data-v="recipe">레시피북</button>
+              <button class="bld-pill" data-v="public">공공기관 자료집</button>
+            </div>
+            <div class="mz-row" style="margin-top:8px">
+              <div><label>책 제목</label><input class="mz-in" id="eb-title" placeholder="예: 시니어를 위한 치매 예방 완전정복"></div>
+              <div><label>챕터 수</label><select class="mz-in" id="eb-chapters"><option>5</option><option selected>7</option><option>10</option></select></div>
+              <div><label>판매 플랫폼 최적화</label>
+                <select class="mz-in" id="eb-platform">
+                  <option value="none">일반</option>
+                  <option value="kmong">크몽 판매용</option>
+                  <option value="class101">클래스101 자료용</option>
+                </select>
+              </div>
+            </div>
+            <button class="mz-btn pri" onclick="bldGenerateEbook()">✨ 전자책 자동 생성</button>
+            <div class="mz-actions" style="margin-top:8px">
+              <button class="mz-btn" onclick="bldSavePdf()">📄 PDF 다운로드</button>
+              <button class="mz-btn" onclick="bldSaveLibrary()">💾 보관함</button>
+            </div>
+            <div class="bld-canvas-wrap"><div class="bld-canvas" id="eb-canvas"><div class="bld-empty">제목·챕터 설정 후 생성</div></div></div>
+          </div>
+
+          <!-- ═══════ 랜딩페이지 빌더 ═══════ -->
+          <div id="bld-landing" class="bld-panel" style="display:none">
+            <h4>🌐 랜딩페이지 빌더 (링크인바이오 스타일)</h4>
+            <div class="mz-row">
+              <div><label>서비스·제품명</label><input class="mz-in" id="lp-name" placeholder="예: 시니어 건강 코칭"></div>
+              <div><label>한 줄 소개</label><input class="mz-in" id="lp-tagline" placeholder="예: 100세 시대 건강한 노후를 함께"></div>
+              <div><label>CTA 버튼 문구</label><input class="mz-in" id="lp-cta" placeholder="예: 무료 상담 신청"></div>
+            </div>
+            <div class="mz-row" style="margin-top:6px">
+              <div><label>CTA 링크</label><input class="mz-in" id="lp-url" placeholder="https://..."></div>
+              <div><label>섹션 수</label>
+                <select class="mz-in" id="lp-sections"><option>3</option><option selected>5</option><option>7</option></select>
+              </div>
+              <div><label>스크롤 애니메이션</label>
+                <select class="mz-in" id="lp-anim"><option value="fade">페이드인</option><option value="slide">슬라이드</option><option value="zoom">줌</option><option value="none">없음</option></select>
+              </div>
+            </div>
+            <button class="mz-btn pri" onclick="bldGenerateLanding()">✨ 랜딩페이지 자동 생성</button>
+            <div class="mz-actions" style="margin-top:8px">
+              <button class="mz-btn" onclick="bldExport('html')">📋 HTML 복사</button>
+              <button class="mz-btn" onclick="bldSaveHtml()">💾 HTML 저장</button>
+            </div>
+            <div class="bld-canvas-wrap"><div class="bld-canvas" id="lp-canvas"><div class="bld-empty">정보 입력 후 생성</div></div></div>
+          </div>
+
+          <!-- ═══════ 성과 학습 ═══════ -->
+          <div class="bld-perf">
+            <h4>📊 콘텐츠 성과 기록 + AI 학습</h4>
+            <div class="mz-row">
+              <div><label>조회수</label><input class="mz-in" id="perf-views" type="number" placeholder="0"></div>
+              <div><label>체류시간(초)</label><input class="mz-in" id="perf-time" type="number" placeholder="0"></div>
+              <div><label>클릭률(%)</label><input class="mz-in" id="perf-ctr" type="number" step="0.1" placeholder="0"></div>
+              <div><label>공유수</label><input class="mz-in" id="perf-share" type="number" placeholder="0"></div>
+            </div>
+            <div class="mz-actions" style="margin-top:6px">
+              <button class="mz-btn" onclick="bldPerfRecord()">📈 성과 기록</button>
+              <button class="mz-btn" onclick="bldPerfAnalyze()">🤖 AI 분석</button>
+            </div>
+            <div id="perf-result" style="margin-top:8px"></div>
+          </div>
+
+          <!-- 호환: 기존 라이브러리/미디어 전송이 참조하는 output 영역 -->
+          <textarea id="mz-out" class="mz-out" readonly style="margin-top:10px" placeholder="생성 결과 (플레인 텍스트)가 여기에 자동 보관됩니다."></textarea>
+          <div id="mz-status" class="mz-status"></div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../modules/profit/brandkit.js"></script>
+  <script src="../../modules/profit/builder.js"></script>
+  <script src="../../modules/profit/generator.js"></script>
+  <script src="../../modules/profit/index.js"></script>
+  <script src="../../core/hub.js"></script>
+</body>
+</html>

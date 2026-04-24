@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>번역/통역 — MOCA</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<link rel="stylesheet" href="../../shared/ui.css">
+</head>
+<body>
+
+<!-- ══ 번역/통역 ══ -->
+<div id="transDetail" class="mz-detail">
+          <button class="mz-back" onclick="closeTrans()">← 카드 목록으로</button>
+          <div class="mz-head">
+            <span class="mz-ico" id="tr-ico">🌐</span>
+            <div>
+              <h3 id="tr-title">번역/통역</h3>
+              <p id="tr-desc" class="mz-sub">출발어·도착어·번역 모드를 선택한 뒤 원문을 입력하세요.</p>
+            </div>
+          </div>
+
+          <div class="mz-form" style="margin-bottom:10px">
+            <div class="mz-row">
+              <div>
+                <label>출발어 (원문)</label>
+                <select class="mz-in" id="tr-from">
+                  <option value="auto" selected>🔍 자동 감지</option>
+                  <option value="ko">🇰🇷 한국어</option>
+                  <option value="ja">🇯🇵 일본어</option>
+                  <option value="en">🇺🇸 영어</option>
+                  <option value="zh">🇨🇳 중국어</option>
+                </select>
+              </div>
+              <div>
+                <label>도착어 (번역 대상)</label>
+                <select class="mz-in" id="tr-to">
+                  <option value="ja">🇯🇵 일본어</option>
+                  <option value="en">🇺🇸 영어</option>
+                  <option value="ko">🇰🇷 한국어</option>
+                  <option value="zh">🇨🇳 중국어</option>
+                  <option value="ko+ja+en">🇰🇷+🇯🇵+🇺🇸 3개국어 동시</option>
+                  <option value="ko+ja+en+zh">🇰🇷+🇯🇵+🇺🇸+🇨🇳 4개국어 동시</option>
+                </select>
+              </div>
+              <div>
+                <label>🎭 번역 모드 (상황별 자동 변환)</label>
+                <select class="mz-in" id="tr-mode">
+                  <option value="business" selected>비즈니스 격식체</option>
+                  <option value="casual">친근한 대화체</option>
+                  <option value="public">공공기관 공문체</option>
+                  <option value="medical">의료·법률 전문체</option>
+                  <option value="kids">어린이 쉬운말</option>
+                  <option value="senior">시니어 친화체</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="mz-subs" id="tr-subs"></div>
+
+          <div class="mz-form">
+            <label>원문</label>
+            <textarea class="mz-in" id="tr-source" style="min-height:140px;resize:vertical" placeholder="여기에 원문을 붙여넣거나 입력하세요."></textarea>
+
+            <div class="mz-row" style="margin-top:10px">
+              <div><label>대상/상황 컨텍스트 (선택)</label>
+                <input class="mz-in" id="tr-context" placeholder="예: 일본 거래처에 보낼 공식 이메일 / 친한 친구에게 보낼 카톡">
+              </div>
+              <div><label>피하고 싶은 표현</label>
+                <input class="mz-in" id="tr-avoid" placeholder="예: 직역투, 어색한 외래어">
+              </div>
+            </div>
+
+            <!-- 한류/일본문화 특화 -->
+            <div id="tr-culture-box" style="display:none;padding:12px;background:#fff5fa;border:1px solid #f2cfe0;border-radius:14px;margin-top:10px">
+              <label style="color:#b14d82">🎵 한류·일본문화 특화</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>분야</label>
+                  <select class="mz-in" id="tr-culture-type">
+                    <option value="kpop">K-pop / 팬 커뮤니티</option>
+                    <option value="jpop">J-pop / 노래 가사</option>
+                    <option value="anime">애니·만화·게임</option>
+                    <option value="fanletter">팬레터·팬카페</option>
+                  </select>
+                </div>
+                <div><label>연령대</label>
+                  <select class="mz-in" id="tr-culture-age">
+                    <option value="teen">10대</option>
+                    <option value="20s" selected>20대</option>
+                    <option value="30s">30대+</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 자막(.srt) 특화 -->
+            <div id="tr-subtitle-box" style="display:none;padding:12px;background:#eff6ff;border:1px solid #bcd7f0;border-radius:14px;margin-top:10px">
+              <label style="color:#1f4a80">🎬 자막 파일(.srt) 옵션</label>
+              <div class="mz-row" style="margin-top:6px">
+                <div><label>총 재생 시간 (초)</label><input class="mz-in" type="number" id="tr-sub-duration" value="60" min="10" max="7200"></div>
+                <div><label>1줄 최대 글자수</label><input class="mz-in" type="number" id="tr-sub-cps" value="16" min="10" max="30"></div>
+                <div><label>줄당 표시 시간(초)</label><input class="mz-in" type="number" id="tr-sub-linesec" value="3" min="1" max="8" step="0.5"></div>
+              </div>
+              <div class="mz-sub" style="margin-top:6px;font-size:11px;color:#1f4a80">ℹ️ 원문을 번역 + SRT 타이밍 자동 분할해서 .srt 형식으로 출력합니다.</div>
+            </div>
+
+            <div class="mz-actions">
+              <button class="mz-btn pri" id="tr-gen" onclick="generateTrans()">✨ AI 번역 실행</button>
+              <button class="mz-btn" onclick="trCopy()">📋 복사</button>
+              <button class="mz-btn" onclick="trSave()">💾 저장</button>
+              <button class="mz-btn snd" onclick="trSendToMedia()">🎬 미디어 엔진으로 (음성/자막)</button>
+              <button class="mz-btn" id="tr-go-edu" onclick="trGoEdu()" style="display:none;background:#eff6ff;border-color:#bcd7f0;color:#1f4a80">📚 학습 카테고리로</button>
+              <button class="mz-btn" id="tr-dl-srt" onclick="trDownloadSrt()" style="display:none">💾 .srt 다운로드</button>
+            </div>
+            <div id="tr-status" class="mz-status"></div>
+            <textarea id="tr-out" class="mz-out" readonly placeholder="번역 결과가 여기에 표시됩니다."></textarea>
+          </div>
+        </div>
+
+<script src="../../shared/ui.js"></script>
+<script src="../../shared/api-settings.js"></script>
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+<script src="../../core/intent-system.js"></script>
+<script src="../../core/library-adapter.js"></script>
+  <script src="../../modules/trans/core.js"></script>
+  <script src="../../modules/trans/index.js"></script>
+  <script src="../../core/hub.js"></script>
+</body>
+</html>
