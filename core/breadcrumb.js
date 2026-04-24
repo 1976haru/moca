@@ -18,48 +18,6 @@ function _refreshNavAiStatus(){
   }catch(_){ el.textContent = '🟡 연결 확인 중'; }
 }
 
-/* 검색 */
-const NAV_SEARCH_INDEX = [
-
-// 카테고리
-  { t:'📱 숏츠 스튜디오', d:'대본·이미지·영상 올인원', go:()=>{ state.category='shorts'; renderAll(); } },
-
-{ t:'🎬 미디어 엔진',    d:'음성·이미지·영상·음악', go:()=>{ state.category='media'; renderAll(); } },
-
-{ t:'💰 수익형 콘텐츠',  d:'블로그·전자책·웹툰·SNS', go:()=>{ state.category='profit'; renderAll(); } },
-
-{ t:'🏛️ 공공기관 패키지', d:'보도자료·공문·회의록', go:()=>{ state.category='public'; renderAll(); } },
-
-{ t:'📚 학습/교육',       d:'강의자료·퀴즈·워크북', go:()=>{ state.category='edu'; renderAll(); } },
-
-{ t:'🌐 번역/통역',       d:'한·영·일·중 동시', go:()=>{ state.category='trans'; renderAll(); } },
-
-{ t:'🏪 소상공인',         d:'메뉴판·전단지·SNS', go:()=>{ state.category='smb'; renderAll(); } },
-
-{ t:'🔮 심리/운세',        d:'타로·MBTI·사주', go:()=>{ state.category='psy'; renderAll(); } },
-
-{ t:'📁 내 보관함',        d:'만든 것들 모아보기', go:()=>{ state.category='library'; renderAll(); } },
-
-{ t:'🔥 트렌드 분석',      d:'이번주 뜨는 주제', go:()=>{ state.category='trend'; renderAll(); } },
-
-{ t:'🔍 유튜브 벤치마킹',  d:'잘된 영상 분석', go:()=>{ state.category='bench'; renderAll(); } },
-
-// 기능 (우회 진입점)
-  { t:'⚙️ 설정 → API 키', d:'Claude/OpenAI/Gemini 키 관리', go:()=>navGoSettings('ai') },
-
-{ t:'👤 프로필 관리',   d:'여러 사용자 · 스타일 학습', go:()=>navGoSettings('profile') },
-
-{ t:'💸 비용 관리',      d:'예산·환율·절약 모드', go:()=>navGoSettings('cost') },
-
-{ t:'🎨 꾸미기',         d:'테마·색상·폰트', go:()=>navGoSettings('theme') },
-
-{ t:'📊 통계',           d:'내 사용 현황', go:()=>navGoSettings('stats') },
-
-{ t:'✨ SEO 자동 개선',  d:'콘텐츠 빌더 > 블로그', go:()=>{ state.category='profit'; renderAll(); } },
-
-{ t:'🧪 A/B 테스트',     d:'제목·이미지 2안 동시', go:()=>{ state.category='profit'; renderAll(); } },
-
-];
 
 /* ─── 2. 브레드크럼 고정바 ─── */
 
