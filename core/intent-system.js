@@ -162,9 +162,9 @@
     if(typeof APIAdapter === 'undefined') return null;
     try{
       if(typeof AI_PROVIDER !== 'undefined') APIAdapter.setProvider(AI_PROVIDER);
-      ['v10_key','uc_claude_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('claude',v);});
-      ['v30_openai_key','uc_openai_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('openai',v);});
-      ['v30_gemini_key','uc_gemini_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('gemini',v);});
+      const _ck=localStorage.getItem('uc_claude_key'); if(_ck) APIAdapter.setApiKey('claude',_ck);
+      const _ok=localStorage.getItem('uc_openai_key'); if(_ok) APIAdapter.setApiKey('openai',_ok);
+      const _gk=localStorage.getItem('uc_gemini_key'); if(_gk) APIAdapter.setApiKey('gemini',_gk);
     }catch(_){}
     return APIAdapter;
   }

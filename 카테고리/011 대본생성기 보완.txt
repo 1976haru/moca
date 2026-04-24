@@ -1,0 +1,87 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기\engines\script\index.html 수정해줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+문제:
+body overflow:hidden 때문에
+iframe 안 콘텐츠 스크롤 안 됨.
+
+목표:
+이중 스크롤바 없애면서
+iframe 안 콘텐츠는 정상 스크롤.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1. 기존 추가했던 overflow:hidden 코드 제거
+
+<style> 안에서 아래 블록을 찾아서 완전 삭제:
+
+/* 임베드 모드: body 스크롤 비활성화 */
+html, body {
+  overflow: hidden !important;
+  height: auto !important;
+}
+
+/* 콘텐츠 영역만 스크롤 허용 */
+.app,
+#app,
+.wrap,
+.content,
+.main-content,
+#mainContent {
+  overflow-y: auto !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+위 블록 전체 삭제.
+
+STEP 2. 대신 아래 방식으로 교체
+
+<style> 안에 추가:
+
+/* 임베드 모드: 사이드바만 숨김 */
+/* body 스크롤은 그대로 유지 */
+.sidebar,
+#sidebar,
+.side-nav,
+.left-panel,
+aside,
+.nav-side,
+#navSide {
+  display: none !important;
+}
+
+/* 사이드바 없어진 만큼 메인 콘텐츠 전체 너비 */
+.main,
+#main,
+.main-content,
+#mainContent,
+.content-area,
+.app-body,
+.container {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 상단 고정 헤더·탭바 숨김 유지 */
+.app-header,
+.top-header,
+header.main,
+.script-header,
+#appHeader,
+#topHeader {
+  display: none !important;
+}
+
+/* 최상단 여백만 제거 */
+body {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+STEP 3. JS 문법 검증
+
+node --check engines/script/index.html
+오류 있으면 수정 후 재검증.
+완료 후 수정된 항목 목록 출력.

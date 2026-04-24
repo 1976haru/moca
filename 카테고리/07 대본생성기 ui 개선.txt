@@ -1,0 +1,407 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기 폴더에서 작업해줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+목표:
+대본생성기(engines/script/index.html)의
+기능 100% 유지하면서
+통합콘텐츠 생성기와 UI 완전 통일.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+작업 순서:
+
+━━━━━━━━━━━━━━━━━━
+STEP 1. engines/script/index.html
+        디자인 변수 통일
+━━━━━━━━━━━━━━━━━━
+
+<style> 맨 앞에 아래 변수 추가:
+
+:root {
+  --pink:        #ef6fab;
+  --pink-deep:   #c2185b;
+  --pink-soft:   #fff5fa;
+  --purple:      #9181ff;
+  --purple-soft: #f7f4ff;
+  --text:        #2b2430;
+  --sub:         #9e8fa0;
+  --line:        #f0e8ef;
+  --line-strong: #d8c2ce;
+  --blue:        #eff6ff;
+  --grad-main:   linear-gradient(135deg,#ef6fab,#9181ff);
+  --font:        'Noto Sans KR', sans-serif;
+}
+* { font-family: var(--font) !important; }
+
+━━━━━━━━━━━━━━━━━━
+STEP 2. 상단 헤더·탭바 숨김 처리
+━━━━━━━━━━━━━━━━━━
+
+engines/script/index.html 의
+<style> 안에 아래 추가:
+
+/* ── 통합생성기 임베드 모드: 자체 헤더 숨김 ── */
+.app-header,
+.top-header,
+header.main,
+.script-header,
+#appHeader,
+#topHeader { display: none !important; }
+
+/* 최상단 여백 제거 */
+body { padding-top: 0 !important; margin-top: 0 !important; }
+.app, #app, .wrap { padding-top: 0 !important; }
+
+━━━━━━━━━━━━━━━━━━
+STEP 3. 탭 버튼(.tnav) 스타일 교체
+━━━━━━━━━━━━━━━━━━
+
+engines/script/index.html 의
+기존 .tnav CSS를 찾아서 아래로 교체:
+
+.tnav {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sub);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.tnav:hover {
+  border-color: var(--pink);
+  color: var(--pink);
+  background: var(--pink-soft);
+}
+.tnav.on {
+  background: var(--grad-main);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgba(239,111,171,.3);
+}
+.tnav.on.gt {
+  background: linear-gradient(135deg,#f7e08a,#ef6fab);
+  color: #fff;
+  border-color: transparent;
+}
+.tnav.on.know-tab {
+  background: linear-gradient(135deg,#3a6fd8,#9181ff);
+  color: #fff;
+}
+.tnav.on.trivia-tab {
+  background: linear-gradient(135deg,#e07820,#ef6fab);
+  color: #fff;
+}
+.tnav.on.drama-tab {
+  background: linear-gradient(135deg,#8030A0,#9181ff);
+  color: #fff;
+}
+
+/* 탭 네비 컨테이너 */
+.tab-nav,
+.tnav-wrap,
+#tabNav,
+.script-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--pink-soft);
+  border-bottom: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 4. 입력창·버튼·패널 스타일 통일
+━━━━━━━━━━━━━━━━━━
+
+engines/script/index.html 의
+<style> 안에 아래 추가:
+
+/* 입력창 통일 */
+input[type=text],
+input[type=number],
+input[type=url],
+textarea,
+select {
+  border: 1.5px solid var(--line) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+  background: #fff !important;
+  font-family: var(--font) !important;
+  transition: border-color .2s !important;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--pink) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(239,111,171,.1) !important;
+}
+
+/* 버튼 통일 */
+button.pri,
+button.primary,
+.btn-primary,
+button[type=submit],
+.gen-btn,
+#genBtn {
+  background: var(--grad-main) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transition: opacity .15s !important;
+  box-shadow: 0 4px 14px rgba(239,111,171,.3) !important;
+}
+button.pri:hover { opacity: .85 !important; }
+
+button.sec,
+button.secondary,
+.btn-secondary,
+.sub-btn {
+  background: #fff !important;
+  color: var(--pink) !important;
+  border: 1.5px solid var(--pink) !important;
+  border-radius: 999px !important;
+  padding: 9px 20px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all .15s !important;
+}
+button.sec:hover {
+  background: var(--pink-soft) !important;
+}
+
+/* 패널·카드 통일 */
+.panel,
+.card,
+.section-box,
+.content-box,
+.mz-form,
+.gen-panel {
+  background: #fff !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+  margin-bottom: 14px !important;
+  box-shadow: 0 2px 12px rgba(126,87,110,.06) !important;
+}
+
+/* 라벨 통일 */
+label {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: var(--sub) !important;
+  margin-bottom: 6px !important;
+  display: block !important;
+}
+
+/* 결과창 통일 */
+#result,
+.result-box,
+.output-box {
+  background: var(--pink-soft) !important;
+  border: 1.5px solid var(--line) !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+}
+
+/* 슬라이더 통일 */
+input[type=range] {
+  accent-color: var(--pink) !important;
+}
+
+/* 체크박스·라디오 통일 */
+input[type=checkbox],
+input[type=radio] {
+  accent-color: var(--pink) !important;
+}
+
+/* 뱃지·태그 통일 */
+.badge,
+.tag,
+.chip,
+.keyword-chip {
+  background: var(--pink-soft) !important;
+  color: var(--pink) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 999px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* 스크롤바 통일 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--pink-soft); }
+::-webkit-scrollbar-thumb {
+  background: var(--pink);
+  border-radius: 999px;
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 5. 타겟 시청자 추가
+━━━━━━━━━━━━━━━━━━
+
+engines/script/index.html 의
+기본 설정 영역 (입력 언어·출력 언어 select 근처)에
+타겟 시청자 select 추가:
+
+<div style="margin-top:10px">
+  <label>👥 타겟 시청자</label>
+  <select class="mz-in" id="script-target"
+    onchange="localStorage.setItem('sh_target',this.value)">
+    <option value="일반">일반</option>
+    <option value="시니어(50+)">시니어 (50+)</option>
+    <option value="중년(40~50)">중년 (40~50)</option>
+    <option value="청년(20~30)">청년 (20~30)</option>
+    <option value="학부모">학부모</option>
+    <option value="어린이">어린이</option>
+    <option value="직장인">직장인</option>
+  </select>
+</div>
+
+이 select 초기값 설정 코드
+(기존 DOMContentLoaded 또는 window.onload 안에 추가):
+
+var savedTarget = localStorage.getItem('sh_target');
+var targetSel = document.getElementById('script-target');
+if(savedTarget && targetSel) targetSel.value = savedTarget;
+
+━━━━━━━━━━━━━━━━━━
+STEP 6. index.html 의 studioS1 제거
+━━━━━━━━━━━━━━━━━━
+
+index.html 에서:
+
+STUDIO_STEPS 배열을 찾아서
+{ n:1, label:'①기획' } 항목 제거 후
+나머지 번호 재정렬:
+
+변경 전:
+{ n:1, label:'①기획' },
+{ n:2, label:'②대본' },
+{ n:3, label:'③이미지' },
+{ n:4, label:'④음성·BGM' },
+{ n:5, label:'⑤편집' },
+{ n:6, label:'⑥자막·폰트' },
+{ n:7, label:'⑦최종검수' }
+
+변경 후:
+{ n:1, label:'①대본' },
+{ n:2, label:'②이미지' },
+{ n:3, label:'③음성·BGM' },
+{ n:4, label:'④편집' },
+{ n:5, label:'⑤자막·폰트' },
+{ n:6, label:'⑥최종검수' }
+
+_studioStepBody 함수 매핑 변경:
+변경 전:
+1: _studioS1, 2: _studioS2, 3: _studioS3,
+4: _studioS4, 5: _studioS5, 6: _studioS6, 7: _studioS7
+
+변경 후:
+1: _studioS2, 2: _studioS3, 3: _studioS4,
+4: _studioS5, 5: _studioS6, 6: _studioS7
+
+_studioBindStep 함수 매핑도 동일하게 변경:
+변경 전:
+1:_studioBindS1, 2:_studioBindS2 ...
+
+변경 후:
+1:_studioBindS2, 2:_studioBindS3 ...
+
+studioGoto 함수에서 범위 변경:
+if(n < 1 || n > 7) → if(n < 1 || n > 6)
+
+_studioS2 안의 "← 이전" 버튼 제거
+(이제 대본이 첫 단계라 이전 버튼 없음)
+
+━━━━━━━━━━━━━━━━━━
+STEP 6-1. 자동숏츠 시작 버튼 수정
+━━━━━━━━━━━━━━━━━━
+
+index.html 에서
+shortsDetail 또는 wz-content 안에서
+"기획 시작" 또는 studioGoto(1) 관련
+첫 진입 버튼 텍스트 수정:
+
+변경 전: "① 기획 시작하기"
+변경 후: "✨ 대본 생성 시작하기"
+
+━━━━━━━━━━━━━━━━━━
+STEP 6-2. _studioS2 첫단계 처리
+━━━━━━━━━━━━━━━━━━
+
+_studioS2() 함수 안에서
+"← 이전" 또는 "← 기획으로" 버튼 완전 제거.
+
+대신 상단에 채널 선택 버튼 추가
+(기획에서 담당하던 채널 선택 기능):
+
+'<div style="display:flex;gap:8px;margin-bottom:16px">' +
+  '<button class="studio-chip'+(p.channel==='ko'?' on':'')+'" '+
+    'onclick="studioSetChannel(\'ko\')">🇰🇷 한국어</button>' +
+  '<button class="studio-chip'+(p.channel==='ja'?' on':'')+'" '+
+    'onclick="studioSetChannel(\'ja\')">🇯🇵 일본어</button>' +
+  '<button class="studio-chip'+(p.channel==='both'?' on':'')+'" '+
+    'onclick="studioSetChannel(\'both\')">🌏 동시생성</button>' +
+'</div>'
+
+━━━━━━━━━━━━━━━━━━
+STEP 6-3. localStorage step 마이그레이션
+━━━━━━━━━━━━━━━━━━
+
+index.html 의 studioLoad() 함수 안에
+아래 코드 추가 (기존 step 값 보정):
+
+var saved = JSON.parse(
+  localStorage.getItem('uc_studio')||'{}');
+if(saved.project && saved.project.step){
+  /* 기존 7단계 → 6단계 변환 */
+  if(saved.project.step >= 2){
+    saved.project.step = saved.project.step - 1;
+  }
+  if(saved.project.step < 1) saved.project.step = 1;
+  if(saved.project.step > 6) saved.project.step = 6;
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 6-4. 대시보드 진행상태 표시 수정
+━━━━━━━━━━━━━━━━━━
+
+진행중 표시에서
+전체 단계 수 7 → 6으로 변경.
+
+"${cur}/7 진행중" → "${cur}/6 진행중"
+"n > 7" → "n > 6"
+"7단계" → "6단계"
+전체 파일에서 일괄 변경.
+
+━━━━━━━━━━━━━━━━━━
+STEP 7. JS 문법 검증
+━━━━━━━━━━━━━━━━━━
+
+node --check index.html
+node --check engines/script/index.html
+
+오류 있으면 수정 후 재검증.
+완료 후 변경된 항목 전체 목록 출력.
+
+━━━━━━━━━━━━━━━━━━
+STEP 7. JS 문법 검증
+━━━━━━━━━━━━━━━━━━
+
+node --check index.html
+node --check engines/script/index.html
+
+오류 있으면 수정 후 재검증.
+완료 후 변경 항목 목록 출력.

@@ -839,12 +839,12 @@ function setProg(id, state){
 
 async function _syncAPI(){
   if (typeof APIAdapter === 'undefined') throw new Error('api-adapter.js 미로드');
-  ['uc_claude_key','v10_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('claude',v);});
-  ['uc_openai_key','v30_openai_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('openai',v);});
-  ['uc_gemini_key','v30_gemini_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('gemini',v);});
+  var _ck=localStorage.getItem('uc_claude_key'); if(_ck) APIAdapter.setApiKey('claude',_ck);
+  var _ok=localStorage.getItem('uc_openai_key'); if(_ok) APIAdapter.setApiKey('openai',_ok);
+  var _gk=localStorage.getItem('uc_gemini_key'); if(_gk) APIAdapter.setApiKey('gemini',_gk);
 }
 async function aiCall(featureId, sys, user, maxTokens){
-  return APIAdapter.callAI(sys, user, { maxTokens: maxTokens||2000, featureId });
+  return APIAdapter.callWithFallback(sys, user, { maxTokens: maxTokens||2000, featureId });
 }
 async function analyzeAI(){
   const r = await aiCall('media-analyze','대본 분석가. JSON:\n{"seconds":30,"scenes":5,"emotion":"따뜻함"}', wizard.script.slice(0,1500), 400);

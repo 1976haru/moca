@@ -1,0 +1,120 @@
+engines/script/index.html 파일에서
+API 키 입력 섹션을 찾아서 아래와 같이 수정해줘.
+
+현재 코드에서:
+- "API 키" 텍스트가 있는 섹션
+- sk-ant-api03 같은 키를 입력하는 input창
+- "저장" 버튼
+이 부분을 전부 제거하고 아래로 교체해줘.
+
+교체할 내용:
+
+<div class="api-bar" style="
+  background:#fff;
+  border:1px solid #f1dce7;
+  border-radius:16px;
+  padding:12px 16px;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+">
+  <span style="font-size:12px;font-weight:800;color:#b14d82">🤖 사용할 AI:</span>
+  <button id="btn-claude" onclick="selectAI('claude')"
+    style="padding:8px 16px;border-radius:999px;border:none;
+    background:linear-gradient(135deg,#9181ff,#b14d82);
+    color:#fff;font-weight:800;font-size:12px;cursor:pointer">
+    🟣 Claude ✓
+  </button>
+  <button id="btn-openai" onclick="selectAI('openai')"
+    style="padding:8px 16px;border-radius:999px;border:1px solid #ddd;
+    background:#fff;font-weight:800;font-size:12px;cursor:pointer">
+    🟢 OpenAI
+  </button>
+  <button id="btn-gemini" onclick="selectAI('gemini')"
+    style="padding:8px 16px;border-radius:999px;border:1px solid #ddd;
+    background:#fff;font-weight:800;font-size:12px;cursor:pointer">
+    🔵 Gemini
+  </button>
+  <span id="ai-status" style="font-size:11px;color:#666;margin-left:4px"></span>
+  <a href="../index.html#setting" style="font-size:11px;color:#9181ff;
+    text-decoration:none;margin-left:auto">⚙️ API 키 설정</a>
+</div>
+
+<script>
+// AI 선택 및 localStorage 연동
+var _selectedAI = localStorage.getItem('uc_ai_provider') || 'claude';
+
+function selectAI(provider) {
+  _selectedAI = provider;
+  localStorage.setItem('uc_ai_provider', provider);
+  updateAIButtons();
+}
+
+function updateAIButtons() {
+  var providers = ['claude', 'openai', 'gemini'];
+  var names = {claude:'🟣 Claude', openai:'🟢 OpenAI', gemini:'🔵 Gemini'};
+  var keys = {
+    claude: localStorage.getItem('uc_claude_key'),
+    openai: localStorage.getItem('uc_openai_key'),
+    gemini: localStorage.getItem('uc_gemini_key')
+  };
+
+  providers.forEach(function(p) {
+    var btn = document.getElementById('btn-' + p);
+    if (!btn) return;
+    var hasKey = keys[p] && keys[p].trim().length > 0;
+    var isSelected = _selectedAI === p;
+
+    if (isSelected) {
+      btn.style.background = 'linear-gradient(135deg,#9181ff,#b14d82)';
+      btn.style.color = '#fff';
+      btn.style.border = 'none';
+      btn.textContent = names[p] + ' ✓';
+    } else {
+      btn.style.background = '#fff';
+      btn.style.color = hasKey ? '#333' : '#bbb';
+      btn.style.border = '1px solid ' + (hasKey ? '#ddd' : '#eee');
+      btn.textContent = names[p] + (hasKey ? '' : ' 🔴');
+    }
+  });
+
+  var status = document.getElementById('ai-status');
+  if (status) {
+    var key = keys[_selectedAI];
+    status.textContent = (key && key.trim().length > 0)
+      ? '🟢 연결됨'
+      : '🔴 키 없음 — 설정에서 입력해주세요';
+    status.style.color = (key && key.trim().length > 0) ? '#2f7a54' : '#e53';
+  }
+}
+
+// API 키 가져오기 함수 (기존 getApiKey 대체)
+function getApiKey(provider) {
+  var p = provider || _selectedAI;
+  var keyMap = {
+    claude: 'uc_claude_key',
+    openai: 'uc_openai_key',
+    gemini: 'uc_gemini_key'
+  };
+  return localStorage.getItem(keyMap[p] || 'uc_claude_key') || '';
+}
+
+// 페이지 로드 시 상태 복원
+document.addEventListener('DOMContentLoaded', function() {
+  updateAIButtons();
+});
+updateAIButtons();
+</script>
+
+중요:
+1. 기존에 API 키를 입력받아 저장하던 코드도 찾아서
+   getApiKey() 함수를 위의 새 함수로 교체해줘.
+2. 기존에 localStorage.getItem('api_key_v10') 또는
+   localStorage.getItem('claude_api_key') 같은 코드를
+   localStorage.getItem('uc_claude_key') 로 전부 교체해줘.
+3. 대본 생성 시 API 키 없으면:
+   alert 대신 토스트 메시지로:
+   "⚠️ API 키가 없어요. 설정에서 입력해주세요"
+   + 설정으로 이동 버튼 표시

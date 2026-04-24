@@ -1,0 +1,56 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기\index.html 파일을 수정해줘.
+
+【목표】
+상단 UI 완전 개편 + "뭘 만들어드릴까요?" 제거
+
+【1. 기존 상단 제거·숨김】
+- .costbar → display:none
+- .top → display:none
+- 기존 toptabs, brand 영역 → display:none
+- "뭘 만들어드릴까요?" (one-hub, id="oneHub") → display:none
+
+【2. 새 헤더 추가】
+<body> 시작 직후에 sticky 헤더 삽입. 구조:
+
+상단줄 (한 줄):
+왼쪽 = 오늘 날짜 (월/일/요일) + 날씨뱃지 (기온+아이콘+설명)
+가운데 = 로고(통) + "통합 콘텐츠 생성기"
+오른쪽 = AI연결상태(점+이름) + 오늘비용 + 이번달비용 + 잔액확인버튼
+
+하단줄 (한 줄):
+왼쪽 = 탭 4개: [✨일반] [🧒어린이] [📖가이드] [⚙️설정]
+가운데 = 검색창 (카테고리·기능명 검색, 결과 클릭시 해당 화면 이동)
+오른쪽 = 언어 드롭다운 하나로 통합(🇰🇷▾) + [☕소개] [💬Q&A] [❓도움말] 아이콘
+
+카테고리 들어가면 헤더 아래에 브레드크럼 자동 표시:
+🏠 홈 › 카테고리명           ✓ 저장됨
+
+【3. 날씨 API】
+Open-Meteo 무료 API 사용 (서울 lat:37.57, lon:126.98)
+URL: https://api.open-meteo.com/v1/forecast?latitude=37.57&longitude=126.98&current=temperature_2m,weathercode&timezone=Asia%2FSeoul
+weathercode → 이모지+한국어 설명 변환해서 표시
+실패시 "날씨 불가"로 표시
+
+【4. 기존 기능 연동】
+- 새 탭 클릭 → 기존 toptab[data-mode] 클릭 이벤트 그대로 연동
+- 언어 버튼 → 기존 toptab.lang 클릭 연동
+- AI연결상태 → 기존 cb-ai-dot, cb-ai-name 값 3초마다 동기화
+- 비용 → 기존 cb-today, cb-month 값 동기화
+- 카테고리 클릭 시 → 브레드크럼 자동 업데이트
+
+【5. 토스트 알림】
+우상단 고정. 2.5초 후 자동 사라짐.
+저장완료 / 화면이동 / 오류 상황에 표시
+
+【6. 플로팅 버튼】
+우하단 고정. 세로로 3개:
+[🏠 홈] [💾 저장] [❓ 도움말]
+기존 helpFab 버튼은 숨김
+
+【7. 기술 조건】
+- 기존 CSS 변수 (--pink, --purple, --line 등) 그대로 사용
+- sticky 헤더: position:sticky; top:0; z-index:200; backdrop-filter:blur(12px)
+- 모바일(600px 이하): 하단줄을 두 줄로 자동 줄바꿈
+- 기존 기능 100% 정상 작동 유지
+- 수정 후 node --check 로 JS 문법 검증
+- 완료 후 변경 항목 목록 출력

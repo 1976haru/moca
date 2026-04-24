@@ -10,6 +10,28 @@
 (function(global){
   'use strict';
 
+  /* ─── 레거시 키 1회 마이그레이션 ───────────────────────
+     과거 스크립트 엔진이 'api_key_v10', 'v10_key', 'v30_openai_key',
+     'v30_gemini_key' 에 저장한 값을 통일 키로 옮기고 원본은 삭제.
+     새 키에 이미 값이 있으면 건너뜀. 모든 엔진에서 한 번만 실행. */
+  (function migrateLegacyKeys(){
+    if(typeof localStorage === 'undefined') return;
+    if(localStorage.getItem('uc_key_migrated_v1') === '1') return;
+    const map = {
+      'api_key_v10':   'uc_claude_key',
+      'v10_key':       'uc_claude_key',
+      'v30_openai_key':'uc_openai_key',
+      'v30_gemini_key':'uc_gemini_key'
+    };
+    Object.keys(map).forEach(oldK => {
+      const val = localStorage.getItem(oldK);
+      const newK = map[oldK];
+      if(val && !localStorage.getItem(newK)) localStorage.setItem(newK, val);
+      if(val) localStorage.removeItem(oldK);
+    });
+    localStorage.setItem('uc_key_migrated_v1','1');
+  })();
+
   /* ─── 상수 ─── */
   const STORAGE_KEYS = {
     provider:    'uc_ai_provider',
@@ -201,20 +223,214 @@
     return parts.map(p => p.text || '').join('\n').trim();
   }
 
+  /* ─── 오류 분류 · 연결 상태 · 폴백 저장소 ──────────────────
+     401/403: 키 없음/만료 · 402: 크레딧 부족 · 429: 요청 초과
+     5xx: 서버 오류 · network: 연결 실패 */
+  const FALLBACK_ORDER_KEY   = 'uc_fallback_order';
+  const FALLBACK_ENABLED_KEY = 'uc_fallback_enabled';
+  const FALLBACK_HISTORY_KEY = 'uc_fallback_history';
+  const CONN_STATUS_KEY      = 'uc_connection_status';
+  const ALL_PROVIDERS        = ['claude','openai','gemini','minimax'];
+
+  function getFallbackOrder(){
+    try{ const s = JSON.parse(localStorage.getItem(FALLBACK_ORDER_KEY)||'null');
+      if(Array.isArray(s) && s.length) return s.filter(p => ALL_PROVIDERS.includes(p));
+    }catch(_){}
+    return ['claude','openai','gemini','minimax'];
+  }
+  function setFallbackOrder(order){
+    if(!Array.isArray(order)) return;
+    localStorage.setItem(FALLBACK_ORDER_KEY, JSON.stringify(order.filter(p => ALL_PROVIDERS.includes(p))));
+  }
+  function isFallbackEnabled(){ return localStorage.getItem(FALLBACK_ENABLED_KEY) !== '0'; }
+  function setFallbackEnabled(b){ localStorage.setItem(FALLBACK_ENABLED_KEY, b ? '1' : '0'); }
+
+  function classifyError(err){
+    const msg = ((err && (err.message || err.toString())) || '').toLowerCase();
+    if(/401|403|unauthorized|invalid[_ -]?api|api[_ -]?key/i.test(msg)) return {kind:'auth',   friendly:'API 키가 없거나 만료됐어요'};
+    if(/402|credit|balance|insufficient|billing/i.test(msg))           return {kind:'credit', friendly:'크레딧이 부족해요'};
+    if(/429|rate[_ -]?limit|too[_ -]?many/i.test(msg))                 return {kind:'rate',   friendly:'요청 한도를 초과했어요'};
+    if(/\b5\d\d\b|server error|internal/i.test(msg))                   return {kind:'server', friendly:'서버에 문제가 있어요'};
+    if(/network|fetch|timeout|cors|failed to fetch/i.test(msg))        return {kind:'network',friendly:'연결할 수 없어요'};
+    return {kind:'unknown', friendly: (err && err.message) ? err.message.slice(0,140) : '알 수 없는 오류'};
+  }
+
+  function _getConnStatus(){
+    try{ return JSON.parse(localStorage.getItem(CONN_STATUS_KEY) || '{}'); }catch(_){ return {}; }
+  }
+  function _setConnStatus(provider, state, info){
+    const all = _getConnStatus();
+    all[provider] = { state, info: info||null, at: Date.now() };
+    try{ localStorage.setItem(CONN_STATUS_KEY, JSON.stringify(all)); }catch(_){}
+    _dispatchStatusChange();
+  }
+  function getConnectionStatus(provider){
+    const all = _getConnStatus();
+    if(provider) return all[provider] || null;
+    return all;
+  }
+  function _dispatchStatusChange(){
+    try{ window.dispatchEvent(new CustomEvent('uc-ai-status-change')); }catch(_){}
+  }
+
+  function _logFallback(fromP, toP, klass){
+    try{
+      const list = JSON.parse(localStorage.getItem(FALLBACK_HISTORY_KEY) || '[]');
+      list.unshift({ from: fromP, to: toP, reason: klass && klass.kind, at: Date.now() });
+      localStorage.setItem(FALLBACK_HISTORY_KEY, JSON.stringify(list.slice(0,50)));
+    }catch(_){}
+  }
+
+  const PROVIDER_COLOR = {
+    claude:'#6030C0', openai:'#228B22', gemini:'#1565C0', minimax:'#D93644'
+  };
+  const PROVIDER_NAME = { claude:'Claude', openai:'ChatGPT', gemini:'Gemini', minimax:'MiniMax' };
+
+  function _emitFallbackToast(from, to, klass){
+    if(typeof document === 'undefined') return;
+    let t = document.getElementById('ai-bar-toast');
+    if(!t){
+      t = document.createElement('div');
+      t.id = 'ai-bar-toast';
+      t.className = 'ai-bar-toast';
+      document.body.appendChild(t);
+    }
+    const fromLbl = PROVIDER_NAME[from] || from;
+    const toLbl   = PROVIDER_NAME[to] || to;
+    const reason  = (klass && klass.friendly) || '오류';
+    t.style.background = 'linear-gradient(135deg,' + (PROVIDER_COLOR[to]||'#2b2430') + ',#2b2430)';
+    t.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<div>⚠️ <b>' + fromLbl + '</b> ' + reason +
+        '<br>→ <b>' + toLbl + '</b> 로 자동 전환했어요!<br>' +
+        '<span style="font-size:11px;opacity:.8">결과는 동일하게 나와요 😊</span></div>' +
+        '<button onclick="this.parentElement.parentElement.classList.remove(\'show\')" style="background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer">닫기</button>' +
+      '</div>';
+    t.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => t.classList.remove('show'), 4200);
+  }
+
+  function _emitErrorToast(msg){
+    if(typeof document === 'undefined') return;
+    let t = document.getElementById('ai-bar-toast');
+    if(!t){
+      t = document.createElement('div');
+      t.id = 'ai-bar-toast';
+      t.className = 'ai-bar-toast';
+      document.body.appendChild(t);
+    }
+    t.style.background = '#2b2430';
+    t.innerHTML = msg;
+    t.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => t.classList.remove('show'), 4500);
+  }
+
   /* ─── 통합 호출 (자동 라우팅) ─── */
   async function callAI(system, user, opts){
     const provider = (opts && opts.provider) || getProvider();
     try{
-      if(provider === 'claude') return await callClaude(system, user, opts);
-      if(provider === 'openai') return await callOpenAI(system, user, opts);
-      if(provider === 'gemini') return await callGemini(system, user, opts);
-      throw new Error('알 수 없는 제공자: '+provider);
+      let result;
+      if(provider === 'claude')       result = await callClaude(system, user, opts);
+      else if(provider === 'openai')  result = await callOpenAI(system, user, opts);
+      else if(provider === 'gemini')  result = await callGemini(system, user, opts);
+      else if(provider === 'minimax') result = await callMinimax(system, user, opts);
+      else throw new Error('알 수 없는 제공자: '+provider);
+      _setConnStatus(provider, 'ok');
+      return result;
     }catch(err){
+      const klass = classifyError(err);
+      _setConnStatus(provider, 'error', { kind: klass.kind, message: err.message });
       const friendly = humanError(err, provider);
       const wrapped = new Error(friendly);
       wrapped.raw = err;
       wrapped.provider = provider;
+      wrapped.kind = klass.kind;
       throw wrapped;
+    }
+  }
+
+  /* ─── MiniMax 호출 (chat/completions v2 호환) ─── */
+  async function callMinimax(system, user, opts){
+    opts = opts || {};
+    const key = getApiKey('minimax');
+    if(!key) throw new Error('MiniMax API 키가 저장되어 있지 않습니다.');
+    const model = opts.model || (localStorage.getItem(STORAGE_KEYS.minimaxModel) || 'abab6.5s-chat');
+    const res = await fetch('https://api.minimax.chat/v1/text/chatcompletion_v2', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
+      body: JSON.stringify({
+        model,
+        messages:[
+          { role:'system', content: system||'' },
+          { role:'user',   content: user||'' }
+        ],
+        max_tokens: opts.maxTokens || DEFAULTS.maxTokens
+      })
+    });
+    const data = await res.json();
+    if(!res.ok || data.error) throw new Error((data.error && (data.error.message||data.error)) || ('HTTP '+res.status));
+    return (data.choices?.[0]?.message?.content || '').trim();
+  }
+
+  /* ─── 폴백 호출: 오류 시 다음 공급자로 자동 전환 ──────────
+     순서: (선택/기본 공급자) → FallbackOrder 의 나머지
+     키 없는 공급자는 건너뜀. 서버 오류(5xx)는 1회 재시도 후 다음으로.
+     전환 시 토스트 알림. 모두 실패하면 최종 에러. */
+  async function callWithFallback(system, user, opts){
+    opts = opts || {};
+    const primary = opts.provider || getProvider();
+    const order = [primary].concat(getFallbackOrder().filter(p => p !== primary));
+    const available = order.filter(p => hasApiKey(p));
+    if(!available.length){
+      _emitErrorToast('❌ 사용 가능한 AI가 없어요.<br>설정 탭에서 API 키를 입력해주세요');
+      throw new Error('사용 가능한 AI가 없어요. 설정에서 API 키를 하나 이상 입력해주세요.');
+    }
+    let lastErr = null, lastKlass = null;
+    for(let i=0; i<available.length; i++){
+      const p = available[i];
+      try{
+        const result = await callAI(system, user, Object.assign({}, opts, { provider: p }));
+        if(i > 0){
+          _logFallback(available[0], p, lastKlass);
+          _emitFallbackToast(available[0], p, lastKlass);
+        }
+        return result;
+      }catch(err){
+        lastErr = err;
+        lastKlass = classifyError(err);
+        if(!isFallbackEnabled()){ throw err; }
+        // 서버 오류는 한 번만 재시도
+        if(lastKlass.kind === 'server'){
+          try{
+            await new Promise(r => setTimeout(r, 800));
+            const retry = await callAI(system, user, Object.assign({}, opts, { provider: p }));
+            if(i > 0){ _logFallback(available[0], p, lastKlass); _emitFallbackToast(available[0], p, lastKlass); }
+            return retry;
+          }catch(err2){ lastErr = err2; lastKlass = classifyError(err2); }
+        }
+        // 다음 공급자로 계속
+      }
+    }
+    _emitErrorToast('❌ 모든 AI 호출이 실패했어요 · 설정에서 확인해주세요');
+    const finalErr = new Error('모든 AI 호출 실패 — ' + (lastKlass ? lastKlass.friendly : (lastErr && lastErr.message)));
+    finalErr.raw = lastErr;
+    finalErr.kind = lastKlass && lastKlass.kind;
+    throw finalErr;
+  }
+
+  /* ─── 연결 테스트 ─── */
+  async function testConnection(provider){
+    if(!hasApiKey(provider)) return { ok:false, kind:'auth', message:'키가 없어요' };
+    try{
+      const r = await callAI('한 단어만 출력해. 정확히 "pong"', 'ping', { provider, maxTokens: 8 });
+      _setConnStatus(provider, 'ok');
+      return { ok:true, message:'정상 작동합니다', response: (r||'').slice(0,40) };
+    }catch(err){
+      const klass = classifyError(err);
+      _setConnStatus(provider, 'error', { kind: klass.kind, message: err.message });
+      return { ok:false, kind:klass.kind, message: klass.friendly };
     }
   }
 
@@ -272,19 +488,34 @@
   }
 
   /* ─── 공통 AI 선택바 (engines/* 상단) ───────────────────
-     - container 인자 (CSS 선택자 또는 Element). 미지정 시
-       <div id="ai-bar"> 를 <body> 최상단에 자동 삽입.
-     - 설정 탭에서 저장된 기본 공급자를 자동 선택.
-     - 버튼 클릭 시 setProvider(p) 저장. 키 미연결이면 안내 토스트.
-     - 설정 페이지 경로(settingsUrl)는 options 로 오버라이드 가능. */
-  const AI_NAMES = { claude:'🟣 Claude', openai:'🟢 ChatGPT', gemini:'🔵 Gemini' };
-  const AI_SETTINGS_HASH = { claude:'#claude', openai:'#openai', gemini:'#gemini' };
+     버튼에 실시간 상태 점(🟢🟡🔴)을 같이 그리고, storage/status 이벤트
+     발생 시 자동 갱신. 툴팁은 title 속성 사용.
+     - 🟢 연결됨 (최근 OK) · 🟡 키는 있으나 확인 안 됨 · 🔴 키 없음/오류 */
+  const AI_NAMES = { claude:'🟣 Claude', openai:'🟢 ChatGPT', gemini:'🔵 Gemini', minimax:'🔴 MiniMax' };
+  const AI_SETTINGS_HASH = { claude:'#claude', openai:'#openai', gemini:'#gemini', minimax:'#minimax' };
+
+  function _providerDot(p){
+    if(!hasApiKey(p)) return '🔴';
+    const st = _getConnStatus()[p];
+    if(st && st.state === 'error') return '🔴';
+    if(st && st.state === 'ok')    return '🟢';
+    return '🟡'; // 키는 있으나 확인 전
+  }
+  function _providerTooltip(p){
+    const name = PROVIDER_NAME[p] || p;
+    if(!hasApiKey(p)) return name + ': API 키 없음 — 설정 탭에서 입력하세요';
+    const st = _getConnStatus()[p];
+    if(st && st.state === 'ok')    return name + ': 연결됨 ✅';
+    if(st && st.state === 'error') return name + ': 오류 — ' + ((st.info && st.info.kind) || '알 수 없음');
+    return name + ': 키 있음 (연결 미확인)';
+  }
 
   function mountAiBar(container, options){
     if(typeof document === 'undefined') return null;
     options = options || {};
     const settingsUrl = options.settingsUrl || '../../index.html?set=ai';
-    const hint = options.hint || '← 설정의 기본값 자동 적용 / 클릭으로 변경';
+    const hint = options.hint || '← 통합설정의 키 자동 적용 · 클릭으로 변경';
+    const providers = options.providers || ['claude','openai','gemini'];
 
     let host = null;
     if(typeof container === 'string') host = document.querySelector(container);
@@ -299,23 +530,21 @@
       }
     }
     host.classList.add('ai-bar');
-    host.innerHTML = `
-      <span class="ai-bar-label">AI:</span>
-      <button type="button" data-ai="claude">🟣 Claude</button>
-      <button type="button" data-ai="openai">🟢 ChatGPT</button>
-      <button type="button" data-ai="gemini">🔵 Gemini</button>
-      <span class="ai-bar-hint">${hint}</span>
-    `;
+    host.innerHTML =
+      '<span class="ai-bar-label">🤖 사용할 AI</span>' +
+      providers.map(p => '<button type="button" data-ai="' + p + '" title=""></button>').join('') +
+      '<span class="ai-bar-hint">' + hint + '</span>';
 
     const refresh = () => {
       const cur = getProvider();
       host.querySelectorAll('button[data-ai]').forEach(btn => {
         const p = btn.getAttribute('data-ai');
-        btn.classList.remove('on-claude','on-openai','on-gemini');
+        btn.classList.remove('on-claude','on-openai','on-gemini','on-minimax');
         if(p === cur) btn.classList.add('on-' + p);
-        btn.textContent = (p === cur ? '✓ ' : '') + AI_NAMES[p].replace(/^[^\s]+\s/, (m)=>m);
-        // Keep icon+label form
-        btn.textContent = (p === cur ? AI_NAMES[p] + ' ✓' : AI_NAMES[p]);
+        const dot = _providerDot(p);
+        const label = AI_NAMES[p] || p;
+        btn.innerHTML = label + (p === cur ? ' ✓' : '') + ' <span class="ai-dot" aria-hidden="true">' + dot + '</span>';
+        btn.title = _providerTooltip(p);
       });
     };
 
@@ -323,8 +552,7 @@
       btn.addEventListener('click', () => {
         const p = btn.getAttribute('data-ai');
         if(!hasApiKey(p)){
-          const friendly = { claude:'Claude', openai:'ChatGPT', gemini:'Gemini' }[p];
-          _aiBarToast('🔑 설정에서 [' + friendly + '] 키를 먼저 입력해주세요!',
+          _aiBarToast('🔑 설정에서 [' + (PROVIDER_NAME[p]||p) + '] 키를 먼저 입력해주세요!',
             settingsUrl + AI_SETTINGS_HASH[p]);
           return;
         }
@@ -332,6 +560,13 @@
         refresh();
       });
     });
+
+    // 다른 탭/설정탭에서 키 변경·상태 변경 시 자동 갱신
+    window.addEventListener('storage', (e) => {
+      if(!e.key) return;
+      if(/^uc_(claude|openai|gemini|minimax)_key$/.test(e.key) || e.key === CONN_STATUS_KEY) refresh();
+    });
+    window.addEventListener('uc-ai-status-change', refresh);
 
     refresh();
     return { refresh, host };
@@ -347,6 +582,7 @@
       t.className = 'ai-bar-toast';
       document.body.appendChild(t);
     }
+    t.style.background = '#2b2430';
     t.innerHTML = (msg||'') + (href ? ' <a href="'+href+'">설정으로 이동 →</a>' : '');
     t.classList.add('show');
     clearTimeout(_toastTimer);
@@ -362,14 +598,30 @@
 
     // 호출
     callAI,
+    callWithFallback,
     callForFeature,
     callClaude,
     callOpenAI,
     callGemini,
+    callMinimax,
     generateBilingual,
+
+    // 폴백 / 상태
+    classifyError,
+    testConnection,
+    getConnectionStatus,
+    getFallbackOrder, setFallbackOrder,
+    isFallbackEnabled, setFallbackEnabled,
 
     // UI
     mountAiBar,
+    // 이미지 생성 헬퍼 (브라우저에서 window.generateImagesForText 사용 권장)
+    generateImagesForText: async function(text, style, apiKey, count){
+      if(typeof window !== 'undefined' && typeof window.generateImagesForText === 'function'){
+        return window.generateImagesForText(text, style, 'general', count || 3);
+      }
+      return [];
+    },
 
     // 유틸
     humanError,

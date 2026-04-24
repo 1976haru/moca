@@ -1,0 +1,651 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기\engines\script\index.html 수정해줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+목표:
+대본생성기 UI를 사용자 흐름에 맞게 재구성.
+기능 100% 유지. 레이아웃·순서·스타일만 변경.
+
+최종 순서:
+상단고정바 → 1장르 → 2채널 → 3모드
+→ 4주제 → 5기본설정 → 6Hook·Trust
+→ 7고급설정(접힘) → ⚡생성버튼 → 결과창
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+작업 순서:
+STEP 1. 디자인 변수·폰트 통일
+STEP 2. 사이드바 안전하게 숨김
+STEP 3. 상단 고정바 추가
+STEP 4. 전체 레이아웃 재구성
+STEP 5. 고급설정 접기/펼치기
+STEP 6. JS 문법 검증
+
+━━━━━━━━━━━━━━━━━━
+STEP 1. 디자인 변수·폰트 통일
+━━━━━━━━━━━━━━━━━━
+
+<style> 맨 앞에 추가:
+
+:root {
+  --pink:        #ef6fab;
+  --pink-deep:   #c2185b;
+  --pink-soft:   #fff5fa;
+  --purple:      #9181ff;
+  --purple-soft: #f7f4ff;
+  --text:        #2b2430;
+  --sub:         #9e8fa0;
+  --line:        #f0e8ef;
+  --line-strong: #d8c2ce;
+  --grad-main:   linear-gradient(135deg,#ef6fab,#9181ff);
+  --font:        'Noto Sans KR', sans-serif;
+}
+* { font-family: var(--font) !important; }
+
+━━━━━━━━━━━━━━━━━━
+STEP 2. 사이드바 안전하게 숨김
+━━━━━━━━━━━━━━━━━━
+
+<style> 안에 추가:
+
+/* 사이드바: width 0으로 줄임 (레이아웃 유지) */
+.sidebar,
+#sidebar,
+.side-nav,
+.left-panel,
+aside {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+}
+
+/* 메인 콘텐츠 전체 너비 */
+.main,
+#main,
+.main-content,
+#mainContent,
+.content-area,
+.app-body,
+.container,
+.wrap {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 기존 최상단 헤더 숨김 */
+.app-header,
+.top-header,
+header.main,
+.script-header,
+#appHeader,
+#topHeader,
+.topbar {
+  display: none !important;
+}
+
+/* body 여백 제거 */
+body {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  background: #faf7fb !important;
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 3. 상단 고정바 추가
+━━━━━━━━━━━━━━━━━━
+
+<body> 시작 직후 맨 앞에 삽입:
+
+<div id="script-topbar" style="
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,249,252,0.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(126,87,110,.08);
+  gap: 10px;
+">
+  <!-- 왼쪽: 돌아가기 -->
+  <button onclick="window.parent.postMessage({type:'sh_back'},'*')"
+    style="display:flex;align-items:center;gap:6px;
+    border:1.5px solid var(--line);background:#fff;
+    border-radius:999px;padding:7px 14px;
+    font-size:13px;font-weight:800;color:var(--pink);
+    cursor:pointer;transition:.15s;white-space:nowrap;"
+    onmouseover="this.style.background='var(--pink-soft)'"
+    onmouseout="this.style.background='#fff'">
+    ← 자동숏츠로
+  </button>
+
+  <!-- 가운데: 현재 선택 상태 -->
+  <div id="script-topbar-status" style="
+    font-size:12px;font-weight:700;color:var(--sub);
+    display:flex;align-items:center;gap:6px;flex:1;
+    justify-content:center;flex-wrap:wrap;
+  ">
+    <span>대본생성기</span>
+  </div>
+
+  <!-- 오른쪽: AI 선택 + 프리셋 -->
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    <button onclick="scriptToggleAiPanel()"
+      id="script-ai-btn"
+      style="border:1.5px solid var(--line);background:#fff;
+      border-radius:999px;padding:7px 12px;
+      font-size:12px;font-weight:800;color:var(--text);
+      cursor:pointer;transition:.15s;">
+      🤖 AI▾
+    </button>
+    <button onclick="scriptTogglePresetPanel()"
+      style="border:1.5px solid var(--line);background:#fff;
+      border-radius:999px;padding:7px 12px;
+      font-size:12px;font-weight:800;color:var(--text);
+      cursor:pointer;transition:.15s;">
+      📋 프리셋▾
+    </button>
+  </div>
+</div>
+
+<!-- AI 선택 드롭다운 -->
+<div id="script-ai-panel" style="
+  display:none;
+  position:sticky;top:49px;z-index:400;
+  background:#fff;border:1.5px solid var(--line);
+  border-radius:0 0 16px 16px;
+  padding:14px 16px;
+  box-shadow:0 8px 24px rgba(126,87,110,.12);
+">
+  <div style="font-size:11px;font-weight:800;color:var(--sub);margin-bottom:10px">사용할 AI 선택</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap" id="script-ai-btns"></div>
+  <div style="font-size:11px;color:var(--sub);margin-top:8px" id="script-ai-selected-label"></div>
+</div>
+
+<!-- 프리셋 드롭다운 -->
+<div id="script-preset-panel" style="
+  display:none;
+  position:sticky;top:49px;z-index:400;
+  background:#fff;border:1.5px solid var(--line);
+  border-radius:0 0 16px 16px;
+  padding:14px 16px;
+  box-shadow:0 8px 24px rgba(126,87,110,.12);
+">
+  <div style="font-size:11px;font-weight:800;color:var(--sub);margin-bottom:10px">채널 프리셋</div>
+  <div id="script-preset-btns"></div>
+</div>
+
+━━━━━━━━━━━━━━━━━━
+STEP 4. 전체 레이아웃 재구성
+━━━━━━━━━━━━━━━━━━
+
+기존 <body> 안의 메인 콘텐츠 영역을
+전부 아래 구조로 교체.
+기존 input/select/버튼의 id와 기능은
+100% 그대로 유지하고
+감싸는 wrapper와 순서만 변경.
+
+<div id="script-main" style="
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+">
+
+  <!-- ①장르 -->
+  <div class="sc-section">
+    <div class="sc-label">1️⃣ 장르</div>
+    <div class="sc-tnav-wrap" id="sc-genre-wrap">
+      <!-- 기존 .tnav 버튼들 그대로 이동 -->
+    </div>
+  </div>
+
+  <!-- ②채널 -->
+  <div class="sc-section">
+    <div class="sc-label">2️⃣ 채널</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <!-- 기존 채널 프리셋 버튼들 그대로 이동 -->
+    </div>
+  </div>
+
+  <!-- ③모드 -->
+  <div class="sc-section">
+    <div class="sc-label">3️⃣ 모드</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <!-- 기존 모드 선택 카드들 그대로 이동 -->
+      <!-- 카드 크기는 아래 CSS로 줄임 -->
+    </div>
+  </div>
+
+  <!-- ④주제 -->
+  <div class="sc-section">
+    <div class="sc-label">4️⃣ 주제 / 제목</div>
+    <!-- 기존 URL분석·트렌딩·주제입력·키워드태그 그대로 이동 -->
+  </div>
+
+  <!-- ⑤기본 설정 -->
+  <div class="sc-section">
+    <div class="sc-label">5️⃣ 기본 설정</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <!-- 입력언어·출력언어·목표길이 그대로 이동 -->
+    </div>
+  </div>
+
+  <!-- ⑥Hook · Trust -->
+  <div class="sc-section">
+    <div class="sc-label">6️⃣ Hook · Trust 설정</div>
+    <!-- 훅패턴·Hook강도·Trust강도 슬라이더 그대로 이동 -->
+  </div>
+
+  <!-- ⑦고급 설정 (기본 접힘) -->
+  <div class="sc-section">
+    <button onclick="scriptToggleAdvanced()" style="
+      display:flex;align-items:center;justify-content:space-between;
+      width:100%;border:none;background:transparent;
+      font-size:13px;font-weight:800;color:var(--sub);
+      cursor:pointer;padding:0;
+    ">
+      <span>7️⃣ 고급 설정</span>
+      <span id="sc-adv-icon">▾ 펼치기</span>
+    </button>
+    <div id="sc-advanced" style="display:none;margin-top:12px">
+      <!-- 이전예고·다음예고·자별화포인트·추가지시·A/B 그대로 이동 -->
+    </div>
+  </div>
+
+  <!-- 생성 버튼 -->
+  <div style="display:flex;gap:10px">
+    <button id="main-gen-btn"
+      style="flex:1;padding:16px;font-size:16px;font-weight:900;
+      background:var(--grad-main);color:#fff;border:none;
+      border-radius:16px;cursor:pointer;
+      box-shadow:0 4px 20px rgba(239,111,171,.35);
+      transition:.2s;"
+      onmouseover="this.style.opacity='.85'"
+      onmouseout="this.style.opacity='1'">
+      ⚡ 대본 생성
+    </button>
+    <button id="ab-btn"
+      style="padding:16px 20px;font-size:14px;font-weight:800;
+      background:#fff;color:var(--purple);
+      border:2px solid var(--purple);border-radius:16px;
+      cursor:pointer;transition:.2s;"
+      onmouseover="this.style.background='var(--purple-soft)'"
+      onmouseout="this.style.background='#fff'">
+      🅰/🅱 A/B
+    </button>
+  </div>
+
+  <!-- 결과창 -->
+  <div id="sc-result-wrap" style="display:none">
+    <div class="sc-section">
+      <div style="display:flex;align-items:center;
+        justify-content:space-between;margin-bottom:10px">
+        <div class="sc-label" style="margin:0">생성된 대본</div>
+        <div id="sc-result-meta" style="font-size:12px;color:var(--sub)"></div>
+      </div>
+      <textarea id="out" style="
+        width:100%;min-height:300px;
+        border:1.5px solid var(--line);border-radius:12px;
+        padding:14px;font-size:13px;line-height:1.8;
+        color:var(--text);resize:vertical;
+        font-family:var(--font);
+      "></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button onclick="copyAll()" class="sc-action-btn">📋 전체복사</button>
+        <button onclick="copyKo()"  class="sc-action-btn">🇰🇷 한국어만</button>
+        <button onclick="saveHist()" class="sc-action-btn">📁 히스토리저장</button>
+        <button onclick="saveWord()" class="sc-action-btn">📄 Word저장</button>
+        <button onclick="sendToLyric()" class="sc-action-btn">🎵 가사로</button>
+        <button onclick="genTitles()" class="sc-action-btn">✨ 제목 3개</button>
+      </div>
+      <!-- 숏츠모드 완료 버튼 (자동숏츠에서 왔을 때만 표시) -->
+      <div id="sc-shorts-done" style="display:none;margin-top:10px">
+        <button onclick="scriptDoneToShorts()"
+          style="width:100%;padding:14px;font-size:14px;font-weight:900;
+          background:var(--grad-main);color:#fff;border:none;
+          border-radius:14px;cursor:pointer;
+          box-shadow:0 4px 16px rgba(239,111,171,.3);">
+          ✅ 이 대본으로 다음 단계 →
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+━━━━━━━━━━━━━━━━━━
+STEP 4-1. CSS 추가 (sc-section 스타일)
+━━━━━━━━━━━━━━━━━━
+
+<style> 안에 추가:
+
+.sc-section {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(126,87,110,.05);
+}
+.sc-label {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+/* 장르 탭 버튼 */
+.sc-tnav-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tnav {
+  border: 1.5px solid var(--line) !important;
+  background: #fff !important;
+  border-radius: 999px !important;
+  padding: 7px 14px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--sub) !important;
+  cursor: pointer !important;
+  transition: all .15s !important;
+}
+.tnav:hover {
+  border-color: var(--pink) !important;
+  color: var(--pink) !important;
+  background: var(--pink-soft) !important;
+}
+.tnav.on {
+  background: var(--grad-main) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 10px rgba(239,111,171,.3) !important;
+}
+
+/* 모드 카드 크기 축소 */
+.mode-card,
+.modeCard,
+[class*="mode-btn"],
+[class*="modeBtn"] {
+  padding: 10px 16px !important;
+  font-size: 13px !important;
+  min-height: auto !important;
+  height: auto !important;
+}
+
+/* 입력창 */
+input[type=text],
+input[type=number],
+input[type=url],
+textarea,
+select {
+  border: 1.5px solid var(--line) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+  background: #fff !important;
+  transition: border-color .2s !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--pink) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(239,111,171,.1) !important;
+}
+
+/* 슬라이더 */
+input[type=range] {
+  accent-color: var(--pink) !important;
+  width: 100% !important;
+}
+
+/* 채널·모드 칩 버튼 */
+.sc-chip {
+  border: 2px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sub);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sc-chip.on,
+.sc-chip:hover {
+  border-color: var(--pink);
+  background: var(--pink-soft);
+  color: var(--pink);
+}
+
+/* 결과창 액션 버튼 */
+.sc-action-btn {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sc-action-btn:hover {
+  border-color: var(--pink);
+  color: var(--pink);
+  background: var(--pink-soft);
+}
+
+/* 상태바 업데이트 */
+#script-topbar-status {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sub);
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 4-2. 상태바 업데이트 JS
+━━━━━━━━━━━━━━━━━━
+
+기존 TAB 함수를 찾아서 맨 뒤에 추가:
+
+/* 상단바 상태 업데이트 */
+function scriptUpdateTopbar(){
+  var el = document.getElementById('script-topbar-status');
+  if(!el) return;
+  var genre = document.querySelector('.tnav.on')?.textContent?.trim() || '';
+  var ch = document.querySelector('.ch-preset.on, .preset-btn.on')?.textContent?.trim() || '';
+  var parts = [genre, ch].filter(Boolean);
+  el.textContent = parts.length ? parts.join(' · ') : '대본생성기';
+}
+
+/* TAB 함수 원본 호출 후 상태바 업데이트 */
+var _origTAB = window.TAB;
+window.TAB = function(name, btn){
+  if(typeof _origTAB === 'function') _origTAB(name, btn);
+  scriptUpdateTopbar();
+};
+
+━━━━━━━━━━━━━━━━━━
+STEP 5. 고급설정 + AI패널 + 프리셋패널 JS
+━━━━━━━━━━━━━━━━━━
+
+</script> 바로 앞에 추가:
+
+/* 고급설정 토글 */
+function scriptToggleAdvanced(){
+  var el  = document.getElementById('sc-advanced');
+  var ico = document.getElementById('sc-adv-icon');
+  if(!el) return;
+  var open = el.style.display === 'none';
+  el.style.display  = open ? 'block' : 'none';
+  ico.textContent   = open ? '▴ 접기' : '▾ 펼치기';
+}
+
+/* AI 패널 토글 */
+function scriptToggleAiPanel(){
+  var el = document.getElementById('script-ai-panel');
+  var pp = document.getElementById('script-preset-panel');
+  if(!el) return;
+  if(pp) pp.style.display = 'none';
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+
+  /* AI 버튼 렌더 */
+  var wrap = document.getElementById('script-ai-btns');
+  var label = document.getElementById('script-ai-selected-label');
+  if(!wrap) return;
+  var ais = [
+    {id:'claude',  name:'Claude',  color:'#7C5CFC'},
+    {id:'openai',  name:'OpenAI',  color:'#10A37F'},
+    {id:'gemini',  name:'Gemini',  color:'#4285F4'}
+  ];
+  var current = localStorage.getItem('selected_ai') || 'claude';
+  wrap.innerHTML = ais.map(function(a){
+    var on = current === a.id;
+    return '<button onclick="scriptSelectAi(\''+a.id+'\')" style="'+
+      'border:2px solid '+(on?a.color:'var(--line)')+';'+
+      'background:'+(on?a.color+'18':'#fff')+';'+
+      'border-radius:999px;padding:7px 16px;'+
+      'font-size:13px;font-weight:800;'+
+      'color:'+(on?a.color:'var(--sub)')+';'+
+      'cursor:pointer;transition:.15s;">'+
+      a.name+'</button>';
+  }).join('');
+  if(label) label.textContent = '현재: ' + (ais.find(function(a){return a.id===current;})?.name||'Claude');
+}
+
+function scriptSelectAi(id){
+  localStorage.setItem('selected_ai', id);
+  /* 기존 AI 선택 버튼 연동 */
+  var aiMap = {claude:'Claude', openai:'OpenAI', gemini:'Gemini'};
+  var btn = document.querySelector('[onclick*="selectAI(\''+id+'\'"]') ||
+            document.querySelector('[onclick*="setAI(\''+id+'\'"]') ||
+            document.querySelector('.ai-btn[data-ai="'+id+'"]');
+  if(btn) btn.click();
+  scriptToggleAiPanel();
+}
+
+/* 프리셋 패널 토글 */
+function scriptTogglePresetPanel(){
+  var el = document.getElementById('script-preset-panel');
+  var ap = document.getElementById('script-ai-panel');
+  if(!el) return;
+  if(ap) ap.style.display = 'none';
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+
+  var wrap = document.getElementById('script-preset-btns');
+  if(!wrap) return;
+  var presets = JSON.parse(localStorage.getItem('presets_v10')||'[]');
+  wrap.innerHTML = presets.length
+    ? presets.map(function(p, i){
+        return '<button onclick="applyPreset('+i+');scriptTogglePresetPanel()" style="'+
+          'display:block;width:100%;text-align:left;'+
+          'padding:8px 12px;border:1.5px solid var(--line);'+
+          'background:#fff;border-radius:10px;margin-bottom:6px;'+
+          'font-size:13px;font-weight:700;cursor:pointer;">'+
+          p.name+'</button>';
+      }).join('')
+    : '<div style="font-size:12px;color:var(--sub)">저장된 프리셋이 없어요</div>';
+}
+
+/* 외부 클릭 시 패널 닫기 */
+document.addEventListener('click', function(e){
+  var aiPanel  = document.getElementById('script-ai-panel');
+  var prePanel = document.getElementById('script-preset-panel');
+  var topbar   = document.getElementById('script-topbar');
+  if(topbar && !topbar.contains(e.target)){
+    if(aiPanel)  aiPanel.style.display  = 'none';
+    if(prePanel) prePanel.style.display = 'none';
+  }
+});
+
+/* 숏츠 완료 버튼 */
+function scriptDoneToShorts(){
+  var text = document.getElementById('out')?.value || '';
+  window.parent.postMessage({
+    type: 'sh_next',
+    step: 2,
+    script: text
+  }, '*');
+}
+
+/* from=shorts 파라미터 처리 */
+(function(){
+  var params = new URLSearchParams(location.search);
+  if(params.get('from') !== 'shorts') return;
+
+  /* 숏츠 완료 버튼 표시 */
+  var doneBtn = document.getElementById('sc-shorts-done');
+  if(doneBtn) doneBtn.style.display = 'block';
+
+  /* 주제 자동 입력 */
+  var topic = params.get('topic') || localStorage.getItem('sh_topic_bridge') || '';
+  if(topic){
+    window.addEventListener('DOMContentLoaded', function(){
+      var inp = document.getElementById('one-input') ||
+                document.querySelector('input[placeholder*="주제"]') ||
+                document.querySelector('textarea[placeholder*="주제"]');
+      if(inp && !inp.value) inp.value = topic;
+    });
+  }
+
+  /* 탭 자동 선택 */
+  var tab = params.get('tab');
+  if(tab){
+    window.addEventListener('DOMContentLoaded', function(){
+      var btn = document.querySelector('.tnav[onclick*="\''+tab+'\'"]');
+      if(btn) btn.click();
+    });
+  }
+
+  /* API 키 브리지 */
+  try {
+    var ck = localStorage.getItem('uc_claude_key');
+    var ok = localStorage.getItem('uc_openai_key');
+    var gk = localStorage.getItem('uc_gemini_key');
+    if(ck) localStorage.setItem('api_key_v10', ck);
+    if(ok) localStorage.setItem('v30_openai_key', ok);
+    if(gk) localStorage.setItem('v30_gemini_key', gk);
+  } catch(e){}
+})();
+
+/* 결과창 자동 표시 */
+(function(){
+  var origOut = document.getElementById('out');
+  if(!origOut) return;
+  var observer = new MutationObserver(function(){
+    var wrap = document.getElementById('sc-result-wrap');
+    if(wrap && origOut.value.trim()){
+      wrap.style.display = 'block';
+      /* 글자수·시간 표시 */
+      var meta = document.getElementById('sc-result-meta');
+      if(meta){
+        var len = origOut.value.length;
+        var min = Math.round(len / 200 * 10) / 10;
+        meta.textContent = len.toLocaleString() + '자 · 약 ' + min + '분';
+      }
+    }
+  });
+  observer.observe(origOut, {characterData:true, subtree:true, childList:true});
+})();
+
+━━━━━━━━━━━━━━━━━━
+STEP 6. JS 문법 검증
+━━━━━━━━━━━━━━━━━━
+
+node --check engines/script/index.html
+오류 있으면 수정 후 재검증.
+완료 후 변경된 항목 전체 목록 출력.

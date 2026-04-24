@@ -1,0 +1,522 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기\index.html 의
+상단 헤더를 완전히 새로 만들어줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【제거할 것】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+기존 .costbar → display:none
+기존 .top → display:none
+이전에 추가된 .uc-header 있으면 제거 후 새로 작성
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【새 헤더 구조】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<body> 시작 직후에 아래 구조 삽입:
+
+<header id="ucHeader">
+
+  <!-- 줄1: 정보바 -->
+  <div class="uch-info">
+    <!-- 왼쪽: 날짜 + 날씨 -->
+    <div class="uch-date">
+      <span id="uchDateStr"></span>
+      <div class="uch-weather" id="uchWeather">
+        <span id="uchWIcon">⛅</span>
+        <span id="uchWTemp"></span>
+        <span id="uchWDesc"></span>
+      </div>
+    </div>
+    <!-- 가운데: 브랜드 -->
+    <div class="uch-brand">
+      <div class="uch-logo">통</div>
+      <span class="uch-name">통합 콘텐츠 생성기</span>
+    </div>
+    <!-- 오른쪽: AI상태 + 비용 -->
+    <div class="uch-cost">
+      <span class="uch-ai" id="uchAiDot">🔴</span>
+      <span class="uch-ai-name" id="uchAiName">AI 미연결</span>
+      <span class="uch-sep">│</span>
+      <span>오늘 <b id="uchToday">₩0</b></span>
+      <span class="uch-sep">│</span>
+      <span>월 <b id="uchMonth">₩0</b></span>
+      <button class="uch-balance" onclick="openBalanceLinks()">잔액확인</button>
+    </div>
+  </div>
+
+  <!-- 줄2: 네비바 -->
+  <div class="uch-nav">
+    <!-- 홈버튼 (크고 독립적) -->
+    <button class="uch-home" id="uchHomeBtn" onclick="ucGoHome()" title="홈으로">
+      🏠
+    </button>
+    <!-- 모드 탭 -->
+    <div class="uch-tabs" id="uchTabs">
+      <button class="uch-tab on" data-mode="normal"  onclick="ucTab('normal',this)">✨ 일반</button>
+      <button class="uch-tab"   data-mode="kids"    onclick="ucTab('kids',this)">🧒 어린이</button>
+      <button class="uch-tab"   data-mode="guide"   onclick="ucTab('guide',this)">📖 가이드</button>
+      <button class="uch-tab"   data-mode="setting" onclick="ucTab('setting',this)">⚙️ 설정</button>
+    </div>
+    <!-- 검색창 -->
+    <div class="uch-search-wrap">
+      <div class="uch-search">
+        <span>🔍</span>
+        <input id="uchSearchIn" placeholder="검색..." 
+               oninput="ucSearchFilter(this.value)"
+               onfocus="ucSearchOpen()">
+      </div>
+      <div class="uch-sdrop" id="uchSDrop">
+        <div class="uch-sdrop-recent" id="uchSRecent"></div>
+        <div class="uch-sdrop-results" id="uchSResults"></div>
+      </div>
+    </div>
+    <!-- 우측 아이콘 -->
+    <div class="uch-icons">
+      <button class="uch-lang" id="uchLang" onclick="ucLangNext()">🇰🇷 KR ▾</button>
+      <button class="uch-icon" onclick="ucTab('about',null)" title="소개">☕</button>
+      <button class="uch-icon" onclick="ucTab('qna',null)"  title="Q&A">💬</button>
+      <button class="uch-icon" title="도움말" onclick="document.getElementById('helpFab')?.click()">❓</button>
+    </div>
+  </div>
+
+  <!-- 줄3: 브레드크럼 (카테고리 진입 시만 표시) -->
+  <div class="uch-crumb" id="uchCrumb" style="display:none">
+    <button class="uch-crumb-home" onclick="ucGoHome()">🏠 홈</button>
+    <span class="uch-crumb-sep">›</span>
+    <span class="uch-crumb-cur" id="uchCrumbCur"></span>
+    <span class="uch-crumb-save" id="uchCrumbSave">✓ 저장됨</span>
+  </div>
+
+</header>
+
+<!-- 플로팅: 홈·저장·도움말 -->
+<div id="ucFloat">
+  <button class="ucf-btn ucf-home" onclick="ucGoHome()" title="홈">🏠</button>
+  <button class="ucf-btn ucf-save" onclick="ucManualSave()" title="저장">💾</button>
+  <button class="ucf-btn ucf-help" onclick="document.getElementById('helpFab')?.click()" title="도움말">❓</button>
+</div>
+
+<!-- 토스트 -->
+<div id="ucToast" class="uc-toast"></div>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【CSS】</style> 바로 앞에 추가
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/* ── 헤더 전체 ── */
+#ucHeader{
+  position:sticky;top:0;z-index:300;
+  background:#fff;
+  box-shadow:0 2px 20px rgba(126,87,110,.10);
+  border-bottom:1px solid var(--line);
+}
+
+/* ── 줄1: 정보바 ── */
+.uch-info{
+  display:flex;align-items:center;
+  padding:8px 20px;
+  background:linear-gradient(135deg,#fff9fc,#f7f4ff);
+  border-bottom:1px solid var(--line);
+  gap:12px;min-height:44px;
+}
+.uch-date{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:700;color:var(--sub);
+  flex-shrink:0;
+}
+.uch-date #uchDateStr{
+  font-size:13px;font-weight:800;color:var(--text);
+}
+.uch-weather{
+  display:flex;align-items:center;gap:4px;
+  background:#eff6ff;border-radius:999px;
+  padding:3px 10px;font-size:12px;
+  color:#3a6fd8;font-weight:700;
+}
+.uch-brand{
+  flex:1;display:flex;align-items:center;
+  justify-content:center;gap:10px;
+}
+.uch-logo{
+  width:32px;height:32px;border-radius:10px;
+  background:linear-gradient(135deg,var(--pink),var(--purple));
+  color:#fff;font-size:15px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.uch-name{
+  font-size:15px;font-weight:900;
+  color:var(--text);letter-spacing:-.3px;
+}
+.uch-cost{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;flex-shrink:0;
+}
+.uch-ai{font-size:10px;}
+.uch-ai-name{font-weight:700;color:var(--sub);}
+.uch-sep{color:var(--line-strong);}
+.uch-cost b{color:var(--purple);font-weight:900;}
+.uch-balance{
+  background:linear-gradient(135deg,var(--pink),var(--purple));
+  color:#fff;border:none;border-radius:999px;
+  padding:4px 12px;font-size:11px;font-weight:800;
+  cursor:pointer;transition:.15s;
+}
+.uch-balance:hover{opacity:.85;}
+
+/* ── 줄2: 네비바 ── */
+.uch-nav{
+  display:flex;align-items:center;
+  padding:6px 16px;gap:8px;
+  background:#fff;min-height:52px;
+}
+
+/* 홈버튼 — 크고 독립적 */
+.uch-home{
+  width:44px;height:44px;
+  border-radius:14px;border:2px solid var(--pink);
+  background:#fff;font-size:20px;
+  cursor:pointer;transition:.2s;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 2px 8px rgba(239,111,171,.2);
+}
+.uch-home:hover{
+  background:var(--pink);
+  box-shadow:0 4px 16px rgba(239,111,171,.4);
+  transform:scale(1.05);
+}
+
+/* 모드 탭 */
+.uch-tabs{display:flex;gap:4px;flex:1;}
+.uch-tab{
+  border:1.5px solid var(--line);background:#fff;
+  border-radius:999px;padding:8px 16px;
+  font-size:13px;font-weight:700;color:var(--sub);
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.uch-tab:hover{border-color:var(--pink);color:var(--pink);}
+.uch-tab.on{
+  background:linear-gradient(135deg,var(--pink),var(--purple));
+  color:#fff;border-color:transparent;
+  box-shadow:0 2px 10px rgba(239,111,171,.3);
+}
+
+/* 검색 */
+.uch-search-wrap{position:relative;}
+.uch-search{
+  display:flex;align-items:center;gap:6px;
+  border:1.5px solid var(--line);border-radius:999px;
+  padding:8px 16px;background:#fff;
+  transition:.2s;min-width:180px;
+}
+.uch-search:focus-within{
+  border-color:var(--pink);
+  box-shadow:0 0 0 3px rgba(239,111,171,.12);
+}
+.uch-search input{
+  border:none;outline:none;background:transparent;
+  font-size:13px;color:var(--text);width:100%;
+}
+.uch-search input::placeholder{color:#ccc;}
+.uch-sdrop{
+  position:absolute;top:calc(100% + 6px);left:0;
+  min-width:260px;background:#fff;
+  border:1.5px solid var(--line);border-radius:16px;
+  box-shadow:0 8px 30px rgba(126,87,110,.15);
+  padding:10px;z-index:400;display:none;
+}
+.uch-sdrop.open{display:block;}
+.uch-sdrop-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:10px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  transition:.12s;
+}
+.uch-sdrop-item:hover{background:var(--pink-soft);color:var(--pink);}
+.uch-sdrop-label{
+  font-size:10px;font-weight:800;color:var(--sub);
+  padding:6px 10px 2px;letter-spacing:.5px;
+  text-transform:uppercase;
+}
+
+/* 우측 아이콘 */
+.uch-icons{display:flex;align-items:center;gap:6px;}
+.uch-lang{
+  border:1.5px solid var(--line);background:#fff;
+  border-radius:999px;padding:7px 14px;
+  font-size:12px;font-weight:800;color:var(--text);
+  cursor:pointer;transition:.15s;
+}
+.uch-lang:hover{border-color:var(--pink);}
+.uch-icon{
+  width:36px;height:36px;border-radius:50%;
+  border:1.5px solid var(--line);background:#fff;
+  font-size:16px;cursor:pointer;transition:.15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.uch-icon:hover{border-color:var(--pink);background:var(--pink-soft);}
+
+/* ── 줄3: 브레드크럼 ── */
+.uch-crumb{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 20px;
+  background:linear-gradient(135deg,#fff5f9,#f7f4ff);
+  border-top:1px solid var(--line);
+  font-size:12px;font-weight:700;
+}
+.uch-crumb-home{
+  border:none;background:none;
+  color:var(--pink);font-size:12px;font-weight:800;
+  cursor:pointer;padding:0;
+}
+.uch-crumb-home:hover{text-decoration:underline;}
+.uch-crumb-sep{color:var(--sub);opacity:.4;}
+.uch-crumb-cur{color:var(--text);}
+.uch-crumb-save{
+  margin-left:auto;font-size:11px;
+  color:#27ae60;font-weight:700;
+}
+
+/* ── 플로팅 버튼 ── */
+#ucFloat{
+  position:fixed;bottom:24px;right:20px;
+  display:flex;flex-direction:column;gap:8px;
+  z-index:500;
+}
+.ucf-btn{
+  width:44px;height:44px;border-radius:50%;
+  border:none;font-size:18px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(126,87,110,.25);
+  transition:.2s;display:flex;align-items:center;justify-content:center;
+}
+.ucf-btn:hover{transform:scale(1.1);}
+.ucf-home{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;}
+.ucf-save{background:#fff;color:var(--purple);border:2px solid var(--line);}
+.ucf-help{background:#fff;color:var(--sub);border:2px solid var(--line);}
+
+/* ── 토스트 ── */
+.uc-toast{
+  position:fixed;top:80px;right:20px;z-index:999;
+  background:#fff;border:1.5px solid var(--line);
+  border-radius:14px;padding:12px 18px;
+  font-size:13px;font-weight:700;
+  box-shadow:0 8px 30px rgba(126,87,110,.18);
+  transform:translateX(130%);transition:transform .3s ease;
+  max-width:280px;pointer-events:none;
+}
+.uc-toast.show{transform:translateX(0);}
+.uc-toast.success{border-color:#27ae60;color:#27ae60;}
+.uc-toast.warn{border-color:#f39c12;color:#f39c12;}
+.uc-toast.info{border-color:var(--purple);color:var(--purple);}
+
+/* 기존 헤더 완전 숨김 */
+.costbar,.top{display:none !important;}
+
+/* 모바일 */
+@media(max-width:600px){
+  .uch-info{padding:6px 12px;}
+  .uch-name{font-size:13px;}
+  .uch-cost{display:none;}
+  .uch-nav{padding:4px 10px;gap:6px;}
+  .uch-search{min-width:100px;}
+  .uch-tab{padding:7px 10px;font-size:12px;}
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【JS】마지막 </script> 바로 앞에 추가
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/* 날짜 */
+(function(){
+  const el=document.getElementById('uchDateStr');
+  if(!el)return;
+  const d=new Date(),days=['일','월','화','수','목','금','토'];
+  el.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
+})();
+
+/* 날씨 — Open-Meteo 서울 */
+(function(){
+  const wMap={
+    0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',
+    51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
+    71:'🌨',73:'🌨',75:'❄️',80:'🌦',81:'🌧',82:'⛈',95:'⛈'
+  };
+  const dMap={
+    0:'맑음',1:'맑음',2:'구름조금',3:'흐림',45:'안개',48:'안개',
+    51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한비',
+    71:'눈',73:'눈',75:'강한눈',80:'소나기',81:'소나기',82:'폭우',95:'뇌우'
+  };
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=37.57&longitude=126.98&current=temperature_2m,weathercode&timezone=Asia%2FSeoul')
+    .then(r=>r.json())
+    .then(d=>{
+      const t=Math.round(d.current.temperature_2m),c=d.current.weathercode;
+      const wi=document.getElementById('uchWIcon');
+      const wt=document.getElementById('uchWTemp');
+      const wd=document.getElementById('uchWDesc');
+      if(wi)wi.textContent=wMap[c]||'🌡';
+      if(wt)wt.textContent=t+'°C';
+      if(wd)wd.textContent=dMap[c]||'';
+    }).catch(()=>{
+      const wd=document.getElementById('uchWDesc');
+      if(wd)wd.textContent='날씨 불가';
+    });
+})();
+
+/* AI상태·비용 3초마다 동기화 */
+(function(){
+  function sync(){
+    const aiN=document.getElementById('cb-ai-name');
+    const aiD=document.getElementById('cb-ai-dot');
+    const td=document.getElementById('cb-today');
+    const mo=document.getElementById('cb-month');
+    const uN=document.getElementById('uchAiName');
+    const uD=document.getElementById('uchAiDot');
+    const uT=document.getElementById('uchToday');
+    const uM=document.getElementById('uchMonth');
+    if(aiN&&uN)uN.textContent=aiN.textContent;
+    if(aiD&&uD)uD.textContent=(aiD.textContent==='🟢')?'🟢':'🔴';
+    if(td&&uT)uT.textContent=td.textContent;
+    if(mo&&uM)uM.textContent=mo.textContent;
+  }
+  sync();setInterval(sync,3000);
+})();
+
+/* 탭 전환 */
+function ucTab(mode,btn){
+  const old=document.querySelector('.toptab[data-mode="'+mode+'"]');
+  if(old)old.click();
+  document.querySelectorAll('.uch-tab').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+}
+
+/* 언어 순환 */
+(function(){
+  const langs=[{k:'ko',t:'🇰🇷 KR'},{k:'ja',t:'🇯🇵 JP'},{k:'en',t:'🇺🇸 EN'}];
+  let idx=0;
+  window.ucLangNext=function(){
+    idx=(idx+1)%langs.length;
+    const btn=document.getElementById('uchLang');
+    if(btn){btn.textContent=langs[idx].t+' ▾';btn.dataset.lang=langs[idx].k;}
+    const old=document.querySelector('.toptab.lang[data-lang="'+langs[idx].k+'"]');
+    if(old)old.click();
+  };
+})();
+
+/* 검색 */
+const UCH_CATS=[
+  {i:'📱',n:'숏츠 스튜디오',d:'대본·이미지·영상',c:'shorts'},
+  {i:'🎬',n:'미디어 엔진',d:'음성·이미지·영상',c:'media'},
+  {i:'💰',n:'수익형 콘텐츠',d:'블로그·전자책·SNS',c:'profit'},
+  {i:'🏛️',n:'공공기관 패키지',d:'보도자료·공문',c:'public'},
+  {i:'📚',n:'학습/교육',d:'강의자료·퀴즈',c:'edu'},
+  {i:'🌐',n:'번역/통역',d:'한·영·일·중 변환',c:'trans'},
+  {i:'🏪',n:'소상공인',d:'메뉴판·전단지',c:'smb'},
+  {i:'🔮',n:'심리/운세',d:'타로·MBTI·사주',c:'psy'},
+  {i:'📁',n:'내 보관함',d:'저장된 콘텐츠',c:'library'},
+  {i:'🔥',n:'트렌드 분석',d:'지금 뜨는 것',c:'trend'},
+];
+function ucSearchOpen(){
+  const drop=document.getElementById('uchSDrop');
+  const rec=document.getElementById('uchSRecent');
+  if(!drop)return;
+  const hist=JSON.parse(localStorage.getItem('uch_hist')||'[]');
+  if(rec)rec.innerHTML='<div class="uch-sdrop-label">최근 사용</div>'+
+    (hist.slice(0,3).map(h=>`<div class="uch-sdrop-item" onclick="ucSearchGo('${h.c}','${h.n}')">${h.i} ${h.n}</div>`).join('')||
+    '<div style="font-size:12px;color:#bbb;padding:6px 10px">없음</div>');
+  drop.classList.add('open');
+}
+function ucSearchFilter(q){
+  const res=document.getElementById('uchSResults');
+  if(!res)return;
+  if(!q.trim()){res.innerHTML='';return;}
+  const found=UCH_CATS.filter(x=>x.n.includes(q)||x.d.includes(q));
+  res.innerHTML='<div class="uch-sdrop-label">검색 결과</div>'+
+    (found.length?found.map(r=>`<div class="uch-sdrop-item" onclick="ucSearchGo('${r.c}','${r.n}')">${r.i} ${r.n} <span style="font-size:11px;color:#bbb;margin-left:auto">${r.d}</span></div>`).join(''):
+    '<div style="font-size:12px;color:#bbb;padding:6px 10px">검색 결과 없음</div>');
+}
+function ucSearchGo(cat,name){
+  const item=UCH_CATS.find(x=>x.c===cat);
+  if(item){
+    let h=JSON.parse(localStorage.getItem('uch_hist')||'[]');
+    h=[item,...h.filter(x=>x.c!==cat)].slice(0,5);
+    localStorage.setItem('uch_hist',JSON.stringify(h));
+  }
+  const btn=document.querySelector('[data-cat="'+cat+'"]')||
+            document.querySelector('#sidebar [data-id="'+cat+'"]');
+  if(btn)btn.click();
+  const drop=document.getElementById('uchSDrop');
+  const inp=document.getElementById('uchSearchIn');
+  if(drop)drop.classList.remove('open');
+  if(inp)inp.value='';
+  ucShowToast('📍 '+name,'info');
+}
+document.addEventListener('click',function(e){
+  const drop=document.getElementById('uchSDrop');
+  const wrap=drop?.closest('.uch-search-wrap');
+  if(drop&&wrap&&!wrap.contains(e.target))drop.classList.remove('open');
+});
+
+/* 홈 이동 */
+function ucGoHome(){
+  ['shortsDetail','monetizeDetail','publicDetail','eduDetail',
+   'transDetail','smbDetail','psyDetail'].forEach(id=>{
+    document.getElementById(id)?.classList.add('hide');
+  });
+  const grid=document.getElementById('grid');
+  if(grid)grid.style.display='';
+  const normal=document.querySelector('.toptab[data-mode="normal"]');
+  if(normal)normal.click();
+  ucSetCrumb(null);
+  ucShowToast('🏠 홈으로 돌아왔어요','info');
+}
+
+/* 브레드크럼 */
+function ucSetCrumb(name){
+  const bc=document.getElementById('uchCrumb');
+  const cur=document.getElementById('uchCrumbCur');
+  if(!bc||!cur)return;
+  if(name){cur.textContent=name;bc.style.display='flex';}
+  else bc.style.display='none';
+}
+
+/* 자동저장 표시 */
+function ucShowSave(){
+  const el=document.getElementById('uchCrumbSave');
+  if(!el)return;
+  el.textContent='저장 중...';el.style.color='#f39c12';
+  setTimeout(()=>{el.textContent='✓ 저장됨';el.style.color='#27ae60';},800);
+}
+function ucManualSave(){ucShowSave();ucShowToast('💾 저장됐어요','success');}
+
+/* 토스트 */
+function ucShowToast(msg,type){
+  const t=document.getElementById('ucToast');
+  if(!t)return;
+  t.textContent=msg;t.className='uc-toast show '+(type||'info');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+/* 카테고리 클릭 시 브레드크럼 연동 */
+(function(){
+  const orig=window.showCategory;
+  window.showCategory=function(cat){
+    if(orig)orig.apply(this,arguments);
+    const item=document.querySelector('#sidebar [data-id="'+cat+'"]');
+    const name=item?.querySelector('.si-title,.si-t')?.textContent;
+    if(name)ucSetCrumb(name);
+    ucShowSave();
+  };
+})();
+
+console.log('✅ 헤더 v2 초기화 완료');
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【기술 조건】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 기존 .costbar, .top 완전 숨김 (display:none !important)
+- 이전에 추가된 uc-header 있으면 완전 삭제 후 새로 작성
+- 기존 helpFab 버튼 숨김 (새 플로팅으로 대체)
+- 기존 toptab 기능 100% 연동 유지
+- 수정 후 node --check JS 문법 검증
+- 완료 후 변경 항목 목록 출력

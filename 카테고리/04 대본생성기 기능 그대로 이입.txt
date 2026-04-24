@@ -1,0 +1,104 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기 폴더에서 작업해줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【목표】
+자동숏츠 STEP2 대본생성:
+- 현재 장르 카드 UI 100% 유지
+- 카드 클릭 시 아래에 대본생성기 기능 펼쳐짐
+- 대본생성기 기능 v31 100% 보존
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【PART 1】index.html 수정
+
+renderScript() 함수를 아래 구조로 교체:
+
+1. 상단: 기존 장르 선택 카드 그대로 유지
+   (✨일반 / 🎬통합 / 🎵가사 / 📜사자성어 /
+    😄코믹 / 🔬전문지식 / 🧩잡학 / 🎭숏드라마 /
+    🎤변환허브 / 📁히스토리)
+
+2. 카드 클릭 시:
+   - 선택된 카드 하이라이트
+   - 카드 아래에 iframe 영역 펼쳐짐 (슬라이드 다운 애니메이션)
+   - iframe src = 'engines/script/index.html?from=shorts&tab=선택한탭&topic=현재주제'
+   - iframe 높이: 700px
+   - iframe 테두리: 없음
+   - iframe 배경: 흰색
+
+3. API 키 브리지 (iframe 로드 전 실행):
+   localStorage.setItem('api_key_v10',
+     localStorage.getItem('uc_claude_key') || '')
+   localStorage.setItem('v30_openai_key',
+     localStorage.getItem('uc_openai_key') || '')
+   localStorage.setItem('v30_gemini_key',
+     localStorage.getItem('uc_gemini_key') || '')
+
+4. 안내 문구 (카드 아래, iframe 위):
+   "✅ 대본 완성 후 ④ 다음 단계로 자동 이동해요"
+   스타일: 작은 힌트 텍스트, 핑크색
+
+5. shOpenScript(tab) 함수 추가:
+   - shState.data.topic을 localStorage 'sh_topic_bridge'에 저장
+   - localStorage 'sh_from_shorts' = '1' 저장
+   - iframe 있으면 src만 교체 (새로 생성 안 함)
+   - 없으면 iframe 새로 생성해서 삽입
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【PART 2】engines/script/index.html 수정
+
+URL 파라미터 from=shorts 일 때:
+
+1. 자체 상단 (topbar, tab-nav) 숨김
+   header.topbar { display: none }
+   nav.tab-nav { display: none }
+   → 장르 선택은 index.html 카드가 담당하므로 불필요
+
+2. 자체 상단 대신 얇은 안내바 표시:
+   "📱 자동숏츠 대본 모드 | 탭: 선택한탭이름
+    [← 자동숏츠로] 버튼"
+   스타일: 핑크 그라데이션 배경, 높이 36px, 고정
+
+3. tab 파라미터로 해당 탭 자동 활성화:
+   TAB(파라미터값, 해당버튼) 호출
+
+4. topic 파라미터 또는 localStorage 'sh_topic_bridge' 값을
+   주제 입력 textarea (id="one-input" 또는 첫번째 textarea)에
+   자동 입력
+
+5. "← 자동숏츠로" 클릭 시:
+   window.parent.postMessage({type:'sh_back'}, '*')
+   또는 history.back()
+
+6. 결과 생성 완료 시 (대본 생성 버튼 클릭 후 결과 표시될 때):
+   하단에 버튼 자동 추가:
+   [✅ 이 대본으로 다음 단계 →]
+   클릭 시 window.parent.postMessage({type:'sh_next', step:4}, '*')
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【PART 3】index.html — postMessage 수신
+
+window.addEventListener('message', function(e) {
+  if(e.data.type === 'sh_back') {
+    // iframe 닫기 (슬라이드 업)
+    document.getElementById('sh-script-iframe-wrap')
+      ?.classList.remove('open')
+  }
+  if(e.data.type === 'sh_next') {
+    // 다음 단계로 이동
+    shState.step = e.data.step || 4
+    renderStepper()
+    renderStepContent()
+  }
+})
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【기술 조건】
+- 기존 기능 100% 유지 (index.html, engines/script/index.html 둘 다)
+- iframe 영역 id: 'sh-script-iframe-wrap'
+- iframe id: 'sh-script-iframe'
+- 슬라이드 애니메이션: max-height 0 → 700px, transition 0.3s ease
+- 수정 후 node --check 로 JS 문법 검증
+- 완료 후 변경 항목 목록 출력

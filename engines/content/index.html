@@ -260,9 +260,9 @@ function renderSub(){
 function _v(id){ const e = document.getElementById(id); return e ? e.value : ''; }
 async function _syncAPI(){
   if (typeof APIAdapter === 'undefined') throw new Error('api-adapter.js 미로드');
-  ['uc_claude_key','v10_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('claude',v);});
-  ['uc_openai_key','v30_openai_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('openai',v);});
-  ['uc_gemini_key','v30_gemini_key'].forEach(k=>{const v=localStorage.getItem(k); if(v) APIAdapter.setApiKey('gemini',v);});
+  var _ck=localStorage.getItem('uc_claude_key'); if(_ck) APIAdapter.setApiKey('claude',_ck);
+  var _ok=localStorage.getItem('uc_openai_key'); if(_ok) APIAdapter.setApiKey('openai',_ok);
+  var _gk=localStorage.getItem('uc_gemini_key'); if(_gk) APIAdapter.setApiKey('gemini',_gk);
 }
 
 /* ═══════ AI 생성 ═══════ */
@@ -308,8 +308,8 @@ async function generate(){
     const user = '주제: ' + topic + '\n\n위 조건에 맞춰 바로 사용할 수 있는 최종 결과물을 작성해라.';
 
     const [r1, r2] = await Promise.allSettled([
-      APIAdapter.callAI(sysKO, user, {maxTokens:maxTok, featureId:'content-'+c.id+'-ko'}),
-      APIAdapter.callAI(sysJP, user, {maxTokens:maxTok, featureId:'content-'+c.id+'-jp'})
+      APIAdapter.callWithFallback(sysKO, user, {maxTokens:maxTok, featureId:'content-'+c.id+'-ko'}),
+      APIAdapter.callWithFallback(sysJP, user, {maxTokens:maxTok, featureId:'content-'+c.id+'-jp'})
     ]);
     outKO.value = r1.status==='fulfilled' ? r1.value : '❌ ' + r1.reason.message;
     outJP.value = r2.status==='fulfilled' ? r2.value : '❌ ' + r2.reason.message;

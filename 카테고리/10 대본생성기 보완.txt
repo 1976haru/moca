@@ -1,0 +1,374 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기\index.html 수정해줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+목표:
+대본 생성 완료 즉시 AI 자동 검수 실행.
+점수 + 현재문구 + 추천문구 + 교체 버튼.
+점수 70 미만이면 다음 버튼 비활성화.
+수정 후 재검수 가능.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+작업 순서:
+STEP 1. studioS2AiGenerate 함수 수정
+        → 대본 생성 완료 후 자동 검수 호출
+STEP 2. 기존 체크리스트 영역 완전 교체
+        → 새 AI 검수 결과 UI
+STEP 3. studioS2AiReview 함수 완전 교체
+        → 점수+현재문구+추천문구+교체버튼
+STEP 4. studioS2ApplySuggestion 함수 추가
+        → 추천 문구 대본에 자동 교체
+STEP 5. 다음 버튼 활성/비활성 처리
+STEP 6. JS 문법 검증
+
+━━━━━━━━━━━━━━━━━━
+STEP 1. studioS2AiGenerate 함수 수정
+━━━━━━━━━━━━━━━━━━
+
+기존 studioS2AiGenerate 함수 마지막 부분에서
+studioSave(); renderStudio(); 바로 앞에
+아래 코드 추가:
+
+/* 대본 생성 완료 후 자동 검수 시작 */
+setTimeout(function(){
+  studioS2AiReview(true);
+}, 800);
+
+━━━━━━━━━━━━━━━━━━
+STEP 2. _studioS2() 함수 안
+        기존 체크리스트 블록 완전 교체
+━━━━━━━━━━━━━━━━━━
+
+_studioS2() 함수 안에서
+체크리스트 관련 블록 전체를 찾아서
+아래로 교체:
+
+/* 검수 결과 영역 */
+var reviewHtml = (function(){
+  var p2 = STUDIO.project.s2;
+  var items = [
+    {key:'hook',  label:'훅 강도',      desc:'첫 3초 안에 시청자를 잡는가?'},
+    {key:'lang',  label:'시니어 이해도', desc:'쉬운 언어로 작성됐는가?'},
+    {key:'cta',   label:'CTA 명확도',   desc:'구독·댓글 유도가 명확한가?'},
+    {key:'flow',  label:'전체 흐름',    desc:'자연스럽게 연결되는가?'}
+  ];
+
+  var hasResult = p2.review_done;
+  if(!hasResult){
+    return '<div style="background:#fff9fc;border:1px dashed var(--pink);' +
+      'border-radius:14px;padding:20px;text-align:center;color:var(--sub)">' +
+      '<div style="font-size:24px;margin-bottom:8px">🤖</div>' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:4px">' +
+        'AI 대본 검수 대기 중' +
+      '</div>' +
+      '<div style="font-size:12px;margin-bottom:14px">' +
+        '대본 생성 완료 시 자동으로 검수가 시작돼요' +
+      '</div>' +
+      '<button class="studio-btn ghost" onclick="studioS2AiReview(false)">' +
+        '🔍 지금 바로 검수하기' +
+      '</button>' +
+    '</div>';
+  }
+
+  var sc = p2.viralScore || 0;
+  var scoreColor = sc>=85?'#27ae60':sc>=70?'#f39c12':'#e74c3c';
+  var scoreGrade = sc>=85?'🔥 우수':sc>=70?'✅ 양호':'⚠️ 보완필요';
+  var scoreMsg   = sc>=85?'바로 다음 단계로 진행하세요!'
+                 : sc>=70?'CTA 등 일부만 다듬으면 완벽해요'
+                 : '대본을 수정 후 재검수를 해주세요';
+
+  var itemsHtml = items.map(function(item){
+    var score   = p2['review_score_'+item.key] || 0;
+    var comment = p2['review_comment_'+item.key] || '';
+    var current = p2['review_current_'+item.key] || '';
+    var suggest = p2['review_suggest_'+item.key] || '';
+    var ic = score>=85?'✅':score>=70?'⚠️':'❌';
+    var cl = score>=85?'#27ae60':score>=70?'#f39c12':'#e74c3c';
+
+    return '<div style="padding:12px 0;border-bottom:1px solid var(--line)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-size:16px">'+ic+'</span>' +
+          '<div>' +
+            '<div style="font-size:13px;font-weight:800">'+item.label+'</div>' +
+            '<div style="font-size:11px;color:var(--sub)">'+item.desc+'</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:20px;font-weight:900;color:'+cl+'">'+score+'</div>' +
+      '</div>' +
+      '<div style="background:#f8f8f8;border-radius:999px;height:6px;margin-bottom:8px">' +
+        '<div style="width:'+score+'%;height:100%;background:'+cl+';border-radius:999px"></div>' +
+      '</div>' +
+      (comment ?
+        '<div style="font-size:12px;color:'+cl+';margin-bottom:6px;font-weight:700">'+comment+'</div>'
+        : '') +
+      (current && suggest ?
+        '<div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px">' +
+          '<div style="color:#e74c3c;margin-bottom:4px">현재: "'+current+'"</div>' +
+          '<div style="color:#27ae60;margin-bottom:8px">추천: "'+suggest+'"</div>' +
+          '<button onclick="studioS2ApplySuggestion(\''+item.key+'\','+
+            JSON.stringify(suggest).replace(/'/g,"\\'")+')" '+
+            'style="border:none;background:linear-gradient(135deg,var(--pink),var(--purple));'+
+            'color:#fff;border-radius:999px;padding:5px 14px;font-size:11px;'+
+            'font-weight:800;cursor:pointer">✏️ 이 문구로 교체</button>' +
+        '</div>'
+        : '') +
+    '</div>';
+  }).join('');
+
+  return '<div style="background:#fff;border:2px solid '+scoreColor+';border-radius:16px;padding:16px">' +
+    /* 종합 점수 */
+    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">' +
+      '<div style="text-align:center;min-width:70px">' +
+        '<div style="font-size:36px;font-weight:900;color:'+scoreColor+'">'+sc+'</div>' +
+        '<div style="font-size:11px;color:var(--sub)">/100</div>' +
+      '</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-size:15px;font-weight:900;color:'+scoreColor+';margin-bottom:4px">'+scoreGrade+'</div>' +
+        '<div style="font-size:12px;color:var(--sub);margin-bottom:8px">'+scoreMsg+'</div>' +
+        '<div style="background:#f5f5f5;border-radius:999px;height:8px">' +
+          '<div style="width:'+sc+'%;height:100%;background:'+scoreColor+
+          ';border-radius:999px;transition:width .6s ease"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    /* 핵심 개선 포인트 */
+    (STUDIO.project.s2.review_top ?
+      '<div style="background:linear-gradient(135deg,#fff9fc,#f7f4ff);'+
+      'border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px">' +
+        '💡 <b>핵심 개선 포인트:</b> ' + STUDIO.project.s2.review_top +
+      '</div>'
+      : '') +
+
+    /* 항목별 결과 */
+    itemsHtml +
+
+    /* 재검수 버튼 */
+    '<div style="margin-top:12px;text-align:center">' +
+      '<button class="studio-btn ghost" onclick="studioS2AiReview(false)" '+
+        'style="font-size:12px">🔄 수정 후 재검수</button>' +
+    '</div>' +
+
+    /* 다음 단계 안내 */
+    '<div style="margin-top:10px;padding:10px;background:' +
+      (sc>=70?'#effbf7':'#fff5f5') +
+      ';border-radius:10px;font-size:12px;text-align:center;font-weight:700;color:' +
+      (sc>=70?'#27ae60':'#e74c3c') + '">' +
+      (sc>=85?'🔥 85점 이상 — 바로 이미지 단계로 진행하세요!'
+      :sc>=70?'✅ 70점 이상 — 다음 단계 진행 가능해요'
+      :'⚠️ 70점 미만 — 대본을 수정 후 재검수하세요') +
+    '</div>' +
+  '</div>';
+})();
+
+위 reviewHtml 변수를 _studioS2() 반환값 안
+체크리스트가 있던 자리에 삽입:
+'...' + reviewHtml + '...'
+
+━━━━━━━━━━━━━━━━━━
+STEP 3. studioS2AiReview 함수 완전 교체
+━━━━━━━━━━━━━━━━━━
+
+기존 studioS2AiReview 함수를 찾아서
+아래로 완전 교체:
+
+async function studioS2AiReview(isAuto){
+  var p = STUDIO.project;
+  var p2 = p.s2;
+
+  /* iframe 안 대본 또는 붙여넣기 영역에서 텍스트 추출 */
+  var text = p2.scriptKo || p2.scriptJa || '';
+
+  /* iframe 안 textarea 에서도 시도 */
+  if(!text.trim()){
+    try {
+      var ifr = document.getElementById('studio-script-iframe');
+      if(ifr && ifr.contentDocument){
+        var ta = ifr.contentDocument.getElementById('out') ||
+                 ifr.contentDocument.querySelector('textarea.result-out') ||
+                 ifr.contentDocument.querySelector('#result textarea');
+        if(ta) text = ta.value || '';
+      }
+    } catch(e){}
+  }
+
+  if(!text.trim()){
+    if(!isAuto){
+      alert('대본을 먼저 생성해주세요.\n대본 생성 후 자동으로 검수가 시작돼요.');
+    }
+    return;
+  }
+
+  /* 로딩 표시 */
+  p2.review_done = false;
+  studioSave();
+  renderStudio();
+
+  var sys =
+    '유튜브 숏츠 대본 품질 검수 전문가. ' +
+    '아래 4가지 항목을 평가해서 반드시 JSON만 출력. ' +
+    'JSON 형식 예시: ' +
+    '{"hook":{"score":85,"comment":"훅 평가 한줄","current":"현재 훅 문구","suggest":"개선된 훅 문구"},' +
+    '"lang":{"score":90,"comment":"언어 평가 한줄","current":"","suggest":""},' +
+    '"cta":{"score":72,"comment":"CTA 평가 한줄","current":"현재 CTA 문구","suggest":"개선된 CTA 문구"},' +
+    '"flow":{"score":88,"comment":"흐름 평가 한줄","current":"","suggest":""},' +
+    '"overall":83,' +
+    '"top":"가장 중요한 개선점 한줄"}' +
+    '규칙: current와 suggest는 개선이 필요할 때만 채움. 좋으면 빈 문자열.';
+
+  var user =
+    '채널: ' + (p.channel==='both'?'한국+일본':p.channel==='ja'?'일본':'한국') + '\n' +
+    '장르: ' + (p.s1.genre||'일반') + '\n' +
+    '타겟: ' + (p.s1.target||'일반') + '\n\n' +
+    '검수할 대본:\n' + text.slice(0, 4000);
+
+  try {
+    var res = await APIAdapter.callWithFallback(sys, user, {maxTokens:1200});
+    var m = res.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('JSON 파싱 실패');
+    var obj = JSON.parse(m[0]);
+
+    /* 결과 저장 */
+    ['hook','lang','cta','flow'].forEach(function(key){
+      if(obj[key]){
+        p2['review_score_'+key]   = obj[key].score   || 0;
+        p2['review_comment_'+key] = obj[key].comment  || '';
+        p2['review_current_'+key] = obj[key].current  || '';
+        p2['review_suggest_'+key] = obj[key].suggest  || '';
+      }
+    });
+    p2.viralScore  = obj.overall || 0;
+    p2.review_top  = obj.top     || '';
+    p2.review_done = true;
+
+    studioSave();
+    renderStudio();
+
+    /* 다음 버튼 활성/비활성 처리 */
+    var nextBtn = document.querySelector('.studio-btn.pri[onclick*="studioS2Next"]');
+    if(nextBtn){
+      if((obj.overall||0) >= 70){
+        nextBtn.disabled = false;
+        nextBtn.style.opacity = '1';
+        nextBtn.title = '';
+      } else {
+        nextBtn.disabled = true;
+        nextBtn.style.opacity = '0.4';
+        nextBtn.title = '70점 이상이어야 다음 단계로 진행할 수 있어요';
+      }
+    }
+
+  } catch(e){
+    p2.review_done = true;
+    p2.review_error = e.message;
+    studioSave();
+    renderStudio();
+    console.error('검수 오류:', e);
+  }
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 4. studioS2ApplySuggestion 함수 추가
+━━━━━━━━━━━━━━━━━━
+
+studioS2AiReview 함수 바로 아래에 추가:
+
+function studioS2ApplySuggestion(key, suggest){
+  var p2 = STUDIO.project.s2;
+
+  /* iframe 안 대본에 교체 시도 */
+  try {
+    var ifr = document.getElementById('studio-script-iframe');
+    if(ifr && ifr.contentDocument){
+      var ta = ifr.contentDocument.getElementById('out') ||
+               ifr.contentDocument.querySelector('textarea.result-out');
+      if(ta){
+        var current = p2['review_current_'+key] || '';
+        if(current && ta.value.includes(current)){
+          ta.value = ta.value.replace(current, suggest);
+          /* 교체 후 텍스트 저장 */
+          if(key === 'cta' || key === 'hook'){
+            p2.scriptKo = ta.value;
+          }
+        }
+      }
+    }
+  } catch(e){}
+
+  /* 저장 후 재검수 안내 */
+  p2['review_suggest_'+key] = '';
+  p2['review_current_'+key] = '';
+  studioSave();
+  renderStudio();
+
+  /* 토스트 알림 */
+  if(typeof ucShowToast === 'function'){
+    ucShowToast('✅ 문구가 교체됐어요. 재검수를 눌러 점수를 확인하세요.', 'success');
+  } else {
+    alert('✅ 문구가 교체됐어요.\n재검수 버튼을 눌러 점수를 확인하세요.');
+  }
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 5. 다음 버튼 초기 상태 처리
+━━━━━━━━━━━━━━━━━━
+
+_studioS2() 함수 안에서
+"다음: 이미지 →" 버튼을 찾아서:
+
+검수 완료 + 점수 70 이상이면 활성
+그 외에는 비활성 + 안내 툴팁 표시
+
+변경 전:
+'<button class="studio-btn pri" onclick="studioS2Next()">다음: 이미지 생성 →</button>'
+
+변경 후:
+(function(){
+  var sc = STUDIO.project.s2.viralScore || 0;
+  var done = STUDIO.project.s2.review_done;
+  var disabled = !done || sc < 70;
+  return '<button class="studio-btn pri" ' +
+    'onclick="studioS2Next()" ' +
+    (disabled ? 'disabled style="opacity:0.4;cursor:not-allowed" ' : '') +
+    'title="' + (disabled ?
+      (!done ? 'AI 검수 후 진행할 수 있어요' : '70점 이상이어야 진행할 수 있어요') : '') +
+    '">' +
+    '다음: 이미지 생성 →' +
+    (disabled && done ?
+      '<span style="display:block;font-size:10px;margin-top:2px">현재 '+sc+'점 · 70점 이상 필요</span>'
+      : '') +
+  '</button>';
+})()
+
+━━━━━━━━━━━━━━━━━━
+STEP 6. studioS2Next 함수 수정
+━━━━━━━━━━━━━━━━━━
+
+기존 studioS2Next 함수를 찾아서 교체:
+
+function studioS2Next(){
+  var p = STUDIO.project;
+  var sc = p.s2.viralScore || 0;
+  var done = p.s2.review_done;
+
+  if(!done){
+    alert('대본 AI 검수를 먼저 완료해주세요.\n생성된 대본이 있으면 자동으로 검수가 시작돼요.');
+    return;
+  }
+  if(sc < 70){
+    alert('바이럴 점수가 '+sc+'점이에요.\n70점 이상이어야 다음 단계로 진행할 수 있어요.\n\n개선 포인트: ' + (p.s2.review_top||'대본을 수정해주세요'));
+    return;
+  }
+  p.step = 2;
+  studioSave();
+  renderStudio();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+━━━━━━━━━━━━━━━━━━
+STEP 7. JS 문법 검증
+━━━━━━━━━━━━━━━━━━
+
+node --check index.html
+오류 있으면 수정 후 재검증.
+완료 후 변경된 항목 전체 목록 출력.
