@@ -1,0 +1,62 @@
+C:\shorts\일본시니어\통합콘텐츠 생성기 폴더에서 작업해줘.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+작업 1. voice_v3.js 내용을 index.html에 추가
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+C:\shorts\일본시니어\통합콘텐츠 생성기\voice_v3.js 파일을 읽어서
+index.html의 마지막 </script> 바로 앞에 전체 내용 추가.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+작업 2. _studioS4 함수 안에 UI 추가
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+index.html의 _studioS4 함수 안에서
+BGM 섹션 (bgmHtml 변수) 끝부분을 찾아서
+
+현재 bgmHtml 마지막 '</div>' 바로 앞에
+아래 내용 추가:
+
+    /* Pixabay BGM 검색 버튼 */
+    '<button onclick="studioS4SearchBgm()" class="studio-btn ghost" style="font-size:11px;margin-top:6px">🔍 Pixabay BGM 자동검색</button>' +
+
+그리고 return 문 안에서
+bgmHtml 다음에 아래 섹션 추가:
+
+    /* E. 발음 교정 + 채널 목소리 */
+    '<div class="studio-section">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+      '<div class="studio-label" style="margin:0">📖 E. 발음 교정 · 채널 목소리</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      '<button onclick="studioS4AutoFixPronunc()" class="studio-btn ghost" style="font-size:11px">🔧 발음 자동 교정</button>' +
+      '<button onclick="studioS4OpenPronuncEditor()" class="studio-btn ghost" style="font-size:11px">📖 발음 사전 편집</button>' +
+      '<button onclick="studioS4SaveChannelVoice()" class="studio-btn ghost" style="font-size:11px">💾 채널 목소리 저장</button>' +
+      '<button onclick="studioS4LoadChannelVoice()" class="studio-btn ghost" style="font-size:11px">📂 채널 목소리 불러오기</button>' +
+    '</div>' +
+    '</div>' +
+
+    /* F. Before/After + 립싱크 (씬별) */
+    (scenes.length ?
+    '<div class="studio-section">' +
+    '<div class="studio-label">🎭 F. 씬별 미리보기 · 립싱크</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px">' +
+    scenes.slice(0,5).map(function(sc,i){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border:1px solid var(--line);border-radius:8px">' +
+        '<div style="font-size:12px;font-weight:700;flex:1">씬'+(i+1)+' '+sc.label+'</div>' +
+        '<button onclick="studioS4Preview('+i+',false)" style="border:1.5px solid var(--line);background:#fff;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">원본 ▶</button>' +
+        '<button onclick="studioS4Preview('+i+',true)" style="border:none;background:var(--pink);color:#fff;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">감정 ▶</button>' +
+        '<button onclick="studioS4GenLipSync('+i+')" style="border:1.5px solid #4a90c4;color:#4a90c4;background:#fff;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">👄 립싱크</button>' +
+      '</div>';
+    }).join('') +
+    (scenes.length>5?'<div style="font-size:11px;color:var(--sub);text-align:center">... 외 '+(scenes.length-5)+'개 씬</div>':'') +
+    '</div></div>'
+    : '') +
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+최종 검증
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+node --check index.html
+grep -n "studioS4SearchBgm\|studioS4OpenPronuncEditor\|studioS4Preview\|studioS4GenLipSync\|studioS4SaveChannelVoice" index.html | head -10
+"수정 완료" 출력.
