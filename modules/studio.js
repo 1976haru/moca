@@ -803,6 +803,8 @@ function _studioS3(){
       '</button>';
     }).join('') + '</div>';
 
+  var reuseBarHtml = studioS3ReuseBar();
+
   const scenesHtml = scenes.map(function(sc, idx){
     var img     = (s3.images  || [])[idx];
     var adopted = (s3.adopted || [])[idx];
@@ -876,7 +878,7 @@ function _studioS3(){
     '<label style="cursor:pointer"><span class="studio-btn ghost" style="font-size:12px;padding:8px 12px">📂 내 사진 일괄업로드</span><input type="file" accept="image/*" multiple style="display:none" onchange="studioS3UploadBatch(this)"></label>' +
     '</div></div>' +
     '<div style="font-size:11px;color:var(--sub);margin-bottom:10px">💡 내 사진을 씬 순서대로 선택하면 자동 배정 · 비용 ₩0</div>' +
-    scenesHtml + '</div>' +
+    reuseBarHtml + scenesHtml + '</div>' +
 
     '<div class="studio-section"><div class="studio-label">🖼 F. 썸네일 생성</div>' +
     '<input id="s3-thumb-title" class="studio-in" placeholder="썸네일 제목" value="'+(s3.thumbTitle||'')+'" style="margin-bottom:8px">' +
@@ -901,15 +903,64 @@ function _studioS3(){
 
 function _studioS3ParseScenes(script){
   var defaults = [
-    {label:'훅 장면',   time:'0~3초',   prompt:''},
-    {label:'설명 장면', time:'3~20초',  prompt:''},
-    {label:'핵심 장면', time:'20~45초', prompt:''},
-    {label:'강조 장면', time:'45~55초', prompt:''},
-    {label:'CTA 장면',  time:'55~60초', prompt:''},
+    {label:'훅 장면',   time:'0~3초',   desc:'시청자 시선 잡기', prompt:''},
+    {label:'설명 장면', time:'3~20초',  desc:'핵심 내용 소개',   prompt:''},
+    {label:'핵심 장면', time:'20~45초', desc:'중요 정보 전달',   prompt:''},
+    {label:'강조 장면', time:'45~55초', desc:'포인트 강조',       prompt:''},
+    {label:'CTA 장면',  time:'55~60초', desc:'구독·댓글 유도',   prompt:''},
   ];
-  if(!script) return defaults;
-  var m = script.match(/씬\s*\d+|SCENE\s*\d+|\[씬/gi);
-  if(m && m.length >= 3) return m.slice(0,5).map(function(s,i){ return defaults[i]||{label:'씬'+(i+1),time:'',prompt:''}; });
+  if(!script || script.length < 50) return defaults;
+  var lines = script.split('\n').filter(function(l){ return l.trim(); });
+  var scenePattern = /^[【\[]?씬\s*(\d+)[】\]]?|^SCENE\s*(\d+)/i;
+  var sceneLines = [];
+  var cur = null;
+  lines.forEach(function(line){
+    var m = line.match(scenePattern);
+    if(m){
+      if(cur) sceneLines.push(cur);
+      cur = {label:'씬'+(m[1]||m[2]), lines:[], time:'', desc:'', prompt:''};
+    } else if(cur){
+      cur.lines.push(line);
+    }
+  });
+  if(cur) sceneLines.push(cur);
+  if(sceneLines.length >= 3){
+    return sceneLines.slice(0,7).map(function(s,i){
+      var times = ['0~3초','3~15초','15~35초','35~50초','50~58초','58~60초'];
+      s.desc = s.lines.slice(0,2).join(' ').slice(0,60);
+      s.time = times[i] || '';
+      return s;
+    });
+  }
+  var paras = [];
+  var buf = [];
+  lines.forEach(function(line){
+    if(line.trim() === '' && buf.length){
+      paras.push(buf.join(' '));
+      buf = [];
+    } else {
+      buf.push(line.trim());
+    }
+  });
+  if(buf.length) paras.push(buf.join(' '));
+  if(paras.length >= 3){
+    var count = paras.length >= 5 ? 5 : paras.length;
+    var chunk = Math.ceil(paras.length / count);
+    var sceneLabels = ['훅 장면','설명 장면','핵심 장면','강조 장면','CTA 장면'];
+    var sceneTimes  = ['0~3초','3~20초','20~45초','45~55초','55~60초'];
+    var result = [];
+    for(var i=0; i<count; i++){
+      var group = paras.slice(i*chunk, (i+1)*chunk);
+      result.push({
+        label: sceneLabels[i] || ('씬'+(i+1)),
+        time:  sceneTimes[i]  || '',
+        desc:  group[0] ? group[0].slice(0,60) : '',
+        prompt: '',
+        lines: group
+      });
+    }
+    return result;
+  }
   return defaults;
 }
 
@@ -1107,8 +1158,87 @@ function studioS3SaveLib(idx){
 
 function studioS3OpenLib(){
   var lib = JSON.parse(localStorage.getItem('uc_img_library')||'[]');
-  if(!lib.length){ alert('저장된 이미지가 없어요'); return; }
-  alert('라이브러리: '+lib.length+'장 저장됨');
+  var overlay = document.createElement('div');
+  overlay.id = 'img-lib-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:700px;max-height:80vh;overflow-y:auto;padding:20px';
+  var header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div style="font-size:16px;font-weight:900">📁 이미지 라이브러리</div><button onclick="document.getElementById(\'img-lib-overlay\').remove()" style="border:none;background:#eee;border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:700">닫기</button></div>';
+  var content = '';
+  if(!lib.length){
+    content = '<div style="text-align:center;padding:40px;color:#bbb"><div style="font-size:40px;margin-bottom:10px">📭</div><div style="font-size:14px;font-weight:700">저장된 이미지가 없어요</div><div style="font-size:12px;margin-top:6px">씬 이미지 생성 후 📁 버튼을 눌러 저장하세요</div></div>';
+  } else {
+    content = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' +
+      lib.map(function(item, idx){
+        var date = item.savedAt ? new Date(item.savedAt).toLocaleDateString('ko-KR') : '';
+        return '<div style="border:1px solid #eee;border-radius:12px;overflow:hidden">' +
+          '<img src="'+item.url+'" style="width:100%;height:120px;object-fit:cover;display:block">' +
+          '<div style="padding:8px">' +
+            '<div style="font-size:11px;color:#999;margin-bottom:6px">'+date+(item.style?' · '+item.style:'')+'</div>' +
+            '<div style="display:flex;gap:4px">' +
+              '<button onclick="studioS3LibUse('+idx+')" style="flex:1;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px;font-size:11px;font-weight:700;cursor:pointer">씬에 사용</button>' +
+              '<button onclick="studioS3LibDelete('+idx+')" style="border:none;background:#eee;border-radius:999px;padding:5px 8px;font-size:11px;cursor:pointer">🗑</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+  }
+  box.innerHTML = header + content;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+async function studioS3ExtractScenes(){
+  var p = STUDIO.project;
+  var s3 = p.s3 || {};
+  var script = (p.s2 && (p.s2.scriptKo || p.s2.scriptJa)) || p.script || '';
+  if(!script || script.length < 100){
+    s3.scenes = _studioS3ParseScenes(script);
+    STUDIO.project.s3 = s3; studioSave(); return;
+  }
+  if(s3.scenes && s3.scenes.length && s3.scenesFromScript === script.slice(0,100)) return;
+  var sys = '유튜브 숏츠 대본 분석 전문가. JSON만 출력. 설명 없음.';
+  var user = '아래 대본을 3~6개 씬으로 분석해서 JSON 배열로 반환해줘.\n형식: [{"label":"씬 이름","time":"시간대","desc":"씬 내용 한 줄 설명","prompt":""}]\n시간대 예시: 0~3초, 3~20초\n대본:\n' + script.slice(0,2000);
+  try {
+    var res = await APIAdapter.callWithFallback(sys, user, {maxTokens:800});
+    var m = res.match(/\[[\s\S]*\]/);
+    if(m){
+      var arr = JSON.parse(m[0]);
+      if(arr && arr.length >= 2){
+        s3.scenes = arr;
+        s3.scenesFromScript = script.slice(0,100);
+        STUDIO.project.s3 = s3; studioSave(); renderStudio();
+        if(typeof ucShowToast==='function') ucShowToast('✅ 씬 '+arr.length+'개 자동 추출 완료','success');
+        return;
+      }
+    }
+  } catch(e){ console.warn('씬 AI 추출 실패:', e.message); }
+  s3.scenes = _studioS3ParseScenes(script);
+  STUDIO.project.s3 = s3; studioSave();
+}
+
+function studioS3LibUse(idx){
+  var lib = JSON.parse(localStorage.getItem('uc_img_library')||'[]');
+  var item = lib[idx]; if(!item) return;
+  var s3 = STUDIO.project.s3 || {};
+  s3.images = s3.images || [];
+  var emptyIdx = s3.images.findIndex(function(img){ return !img; });
+  if(emptyIdx === -1) emptyIdx = 0;
+  s3.images[emptyIdx] = item.url;
+  s3.adopted = s3.adopted || [];
+  s3.adopted[emptyIdx] = true;
+  STUDIO.project.s3 = s3; studioSave();
+  document.getElementById('img-lib-overlay')?.remove();
+  renderStudio();
+  if(typeof ucShowToast==='function') ucShowToast('✅ 씬'+(emptyIdx+1)+'에 적용됐어요','success');
+}
+
+function studioS3LibDelete(idx){
+  var lib = JSON.parse(localStorage.getItem('uc_img_library')||'[]');
+  lib.splice(idx, 1);
+  localStorage.setItem('uc_img_library', JSON.stringify(lib));
+  document.getElementById('img-lib-overlay')?.remove();
+  studioS3OpenLib();
 }
 
 function studioS3ThumbStyle(val, btn){
@@ -1433,3 +1563,185 @@ setInterval(() => {
     studioSave();
   }
 }, 20000);
+
+/* ── 이미지 절약 시스템 ── */
+
+/* 비율 설정 UI를 _studioS3() 함수의 E섹션 상단에 추가할 HTML 반환 */
+function studioS3ReuseBar(){
+  var s3 = STUDIO.project.s3 || {};
+  var scenes = s3.scenes || [];
+  var total = scenes.length;
+  if(total <= 3) return ''; /* 씬이 적으면 표시 안 함 */
+
+  var ratio  = s3.imageRatio  || 100; /* 생성할 이미지 비율 % */
+  var reuseMode = s3.reuseMode || 'block'; /* block/cycle/random */
+  var genCount = Math.max(1, Math.round(total * ratio / 100));
+
+  return '<div style="background:#fff9fc;border:1.5px solid var(--pink);border-radius:14px;padding:14px;margin-bottom:14px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+      '<div style="font-size:13px;font-weight:900">💡 이미지 절약 설정</div>' +
+      '<div style="font-size:12px;color:var(--pink);font-weight:800">씬 '+total+'개 중 '+genCount+'장만 생성</div>' +
+    '</div>' +
+
+    /* 슬라이더 */
+    '<div style="margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:4px">' +
+        '<span>최소 ('+Math.ceil(total*0.2)+'장)</span>' +
+        '<span style="font-weight:800;color:var(--pink)">'+ratio+'% = '+genCount+'장 생성</span>' +
+        '<span>전체 ('+total+'장)</span>' +
+      '</div>' +
+      '<input type="range" min="10" max="100" step="5" value="'+ratio+'" '+
+        'oninput="studioS3SetRatio(this.value)" '+
+        'style="width:100%;accent-color:var(--pink)">' +
+    '</div>' +
+
+    /* 재사용 방식 */
+    '<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px">재사용 방식</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      [
+        {id:'block',  label:'📦 구간',  desc:'씬1~3→이미지1, 씬4~6→이미지2'},
+        {id:'cycle',  label:'🔄 순환',  desc:'1→2→...→'+genCount+'→1→2...'},
+        {id:'similar',label:'🧠 유사도',desc:'비슷한 내용끼리 같은 이미지'},
+        {id:'random', label:'🎲 랜덤',  desc:'무작위 배정'},
+      ].map(function(m){
+        var on = reuseMode === m.id;
+        return '<button onclick="studioS3SetReuseMode(\''+m.id+'\')" '+
+          'title="'+m.desc+'" '+
+          'style="border:2px solid '+(on?'var(--pink)':'var(--line)')+';'+
+          'background:'+(on?'var(--pink-soft)':'#fff')+';'+
+          'border-radius:999px;padding:6px 12px;cursor:pointer;'+
+          'font-size:12px;font-weight:700;color:'+(on?'var(--pink)':'var(--sub)')+'">'+
+          m.label+'</button>';
+      }).join('') +
+    '</div>' +
+
+    /* 미리보기 */
+    '<div style="margin-top:10px;font-size:11px;color:var(--sub);background:#f8f8f8;border-radius:8px;padding:8px">' +
+      '📋 배정 미리보기: '+studioS3ReusePreview(total, genCount, reuseMode) +
+    '</div>' +
+  '</div>';
+}
+
+/* 재사용 배정 미리보기 텍스트 */
+function studioS3ReusePreview(total, genCount, mode){
+  if(mode === 'block'){
+    var blockSize = Math.ceil(total / genCount);
+    return '씬 '+blockSize+'개마다 이미지 1장 공유 (총 '+genCount+'장 생성)';
+  }
+  if(mode === 'cycle'){
+    return '씬1→이미지1, 씬2→이미지2 ... 씬'+(genCount+1)+'→이미지1 (반복)';
+  }
+  if(mode === 'similar'){
+    return 'AI가 씬 내용 분석 → 유사한 씬끼리 같은 이미지 배정';
+  }
+  return '무작위 배정 ('+genCount+'장 이미지로 '+total+'씬 커버)';
+}
+
+/* 비율 설정 */
+function studioS3SetRatio(val){
+  var s3 = STUDIO.project.s3 || {};
+  s3.imageRatio = parseInt(val);
+  STUDIO.project.s3 = s3;
+  studioSave();
+  /* 슬라이더만 업데이트 (전체 재렌더 없이) */
+  var total = (s3.scenes||[]).length;
+  var genCount = Math.max(1, Math.round(total * s3.imageRatio / 100));
+  var preview = document.querySelector('[data-reuse-preview]');
+  if(preview) preview.textContent = studioS3ReusePreview(total, genCount, s3.reuseMode||'block');
+  /* 비율 표시 업데이트 */
+  var label = document.querySelector('[data-ratio-label]');
+  if(label) label.textContent = val+'% = '+genCount+'장 생성';
+}
+
+/* 재사용 방식 설정 */
+function studioS3SetReuseMode(mode){
+  var s3 = STUDIO.project.s3 || {};
+  s3.reuseMode = mode;
+  STUDIO.project.s3 = s3;
+  studioSave();
+  renderStudio();
+}
+
+/* 이미지 배정 실행 — 생성된 이미지를 전체 씬에 배정 */
+function studioS3ApplyReuse(){
+  var s3 = STUDIO.project.s3 || {};
+  var scenes = s3.scenes || [];
+  var images = (s3.images || []).filter(function(img){ return !!img; });
+  if(!images.length){ alert('먼저 이미지를 생성해주세요'); return; }
+
+  var total    = scenes.length;
+  var genCount = images.length;
+  var mode     = s3.reuseMode || 'block';
+  var assigned = new Array(total).fill(null);
+
+  /* 생성된 이미지는 원래 위치에 먼저 배정 */
+  images.forEach(function(img, i){ assigned[i] = img; });
+
+  if(mode === 'block'){
+    var blockSize = Math.ceil(total / genCount);
+    for(var i=0; i<total; i++){
+      if(!assigned[i]){
+        var srcIdx = Math.floor(i / blockSize);
+        assigned[i] = images[Math.min(srcIdx, genCount-1)];
+      }
+    }
+  } else if(mode === 'cycle'){
+    for(var i=0; i<total; i++){
+      if(!assigned[i]) assigned[i] = images[i % genCount];
+    }
+  } else if(mode === 'random'){
+    for(var i=0; i<total; i++){
+      if(!assigned[i]) assigned[i] = images[Math.floor(Math.random()*genCount)];
+    }
+  } else if(mode === 'similar'){
+    /* 유사도는 AI 분석 필요 → 일단 block으로 폴백 */
+    var blockSize2 = Math.ceil(total / genCount);
+    for(var i=0; i<total; i++){
+      if(!assigned[i]){
+        var srcIdx2 = Math.floor(i / blockSize2);
+        assigned[i] = images[Math.min(srcIdx2, genCount-1)];
+      }
+    }
+    studioS3ApplyReuseSimilar(); /* 비동기로 AI 재배정 */
+  }
+
+  s3.finalImages = assigned;
+  STUDIO.project.s3 = s3;
+  studioSave();
+  renderStudio();
+  if(typeof ucShowToast==='function') ucShowToast('✅ '+genCount+'장으로 '+total+'씬 배정 완료','success');
+}
+
+/* 유사도 기반 재배정 (AI) */
+async function studioS3ApplyReuseSimilar(){
+  var s3 = STUDIO.project.s3 || {};
+  var scenes = s3.scenes || [];
+  var images = (s3.images||[]).filter(function(img){ return !!img; });
+  if(!images.length || !scenes.length) return;
+
+  var sys = '유튜브 영상 씬 분석가. JSON만 출력.';
+  var user = '아래 씬 목록을 '+images.length+'개 그룹으로 나눠줘.\n'+
+    '형식: {"groups":[[씬인덱스,...],[씬인덱스,...]]}\n'+
+    '씬 목록:\n'+
+    scenes.map(function(s,i){ return i+': '+s.label+' - '+s.desc; }).join('\n');
+
+  try {
+    var res = await APIAdapter.callWithFallback(sys, user, {maxTokens:500});
+    var m = res.match(/\{[\s\S]*\}/);
+    if(m){
+      var obj = JSON.parse(m[0]);
+      var groups = obj.groups || [];
+      var assigned = new Array(scenes.length).fill(null);
+      groups.forEach(function(group, imgIdx){
+        var img = images[imgIdx];
+        if(!img) return;
+        group.forEach(function(sceneIdx){
+          if(sceneIdx >= 0 && sceneIdx < scenes.length) assigned[sceneIdx] = img;
+        });
+      });
+      s3.finalImages = assigned;
+      STUDIO.project.s3 = s3; studioSave(); renderStudio();
+      if(typeof ucShowToast==='function') ucShowToast('✅ AI 유사도 배정 완료','success');
+    }
+  } catch(e){ console.warn('유사도 배정 실패:', e.message); }
+}
