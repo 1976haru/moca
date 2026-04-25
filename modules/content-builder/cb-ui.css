@@ -38,6 +38,11 @@
 .cb-q-mid{ background:#fffbe8;color:#8a6800;border-color:#fde68a}
 .cb-q-low{ background:#fff1f1;color:#c0392b;border-color:#fca5a5}
 
+/* 단계 안내 */
+.cb-step-hint{padding:8px 12px;background:linear-gradient(135deg,#fff5fa,#f5f0ff);
+  border:1px dashed var(--cb-line);border-radius:10px;font-size:11.5px;color:#7b4060;
+  margin-bottom:8px;line-height:1.5}
+
 /* 탭 */
 .cb-tabs{display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
 .cb-tab{padding:10px 14px;border:1.5px solid var(--cb-line);border-radius:10px;

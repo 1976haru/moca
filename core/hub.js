@@ -54,38 +54,64 @@ const cards = {
     {i:'📖',t:'가이드',        s:'사용 안내·팁',                 bg:'bg-mint',  tag:'도움',   tab:'guide'}
   ],
   media:[
-    /* ⭐ 핵심 진입 카드 2개 */
-    {i:'🎨',t:'콘텐츠 빌더 열기',s:'레시피·템플릿·블록·미디어 슬롯·품질검수·출력',
-      bg:'bg-pink', tag:'⭐ 핵심', url:'engines/media/index.html?mode=builder'},
-    {i:'🎬',t:'미디어 위자드 열기',s:'기존 음성·이미지·영상·자막 변환 도구',
-      bg:'bg-purple',tag:'⭐ 핵심', url:'engines/media/index.html?mode=wizard'},
-    /* 🎯 콘텐츠 빌더 단계별 직접 진입 (보조 카드 6) */
-    {i:'📥',t:'카테고리 결과 가져오기',s:'다른 카테고리 초안·소재로 시작',
-      bg:'bg-mint',  tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t1'},
-    {i:'📄',t:'템플릿 보기',s:'블로그·카드뉴스·뉴스레터·포스터 20종',
-      bg:'bg-green', tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t3'},
-    {i:'🧱',t:'블록 구성',s:'제목·본문·이미지·CTA 블록 자동 배치',
-      bg:'bg-blue',  tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t4'},
-    {i:'🖼',t:'미디어 슬롯',s:'이미지·영상·음악 프롬프트 패키지',
-      bg:'bg-peach', tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t5'},
-    {i:'👁',t:'미리보기·품질검수',s:'7항목 품질점수 + 6모드 미리보기',
-      bg:'bg-pink',  tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t7'},
-    {i:'📦',t:'출력 패키지',s:'복사·외부툴 핸드오프·보관함·JSON',
-      bg:'bg-purple',tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t8'},
-    /* 🎬 기존 미디어 위자드 도구 (보존, 모두 wizard 모드로 이동) */
-    {i:'🎤',t:'변환허브',s:'ElevenLabs·InVideo 변환',bg:'bg-peach',tag:'🎬 기존',
-      engine:'script',tab:'hub', url:'engines/media/index.html?mode=wizard'},
-    {i:'🖼️',t:'썸네일 생성',s:'CTR 높은 썸네일 자동화',bg:'bg-pink',  tag:'🎬 기존',
+    /* ⭐ 시작 카드 3개 — 처음 사용자가 가장 먼저 봄 */
+    {i:'🚀', t:'새 콘텐츠 만들기',       s:'목표만 입력하면 AI가 구성을 추천합니다',
+      bg:'bg-pink',  tag:'⭐ 시작', section:'start',
+      url:'engines/media/index.html?mode=builder&tab=t1'},
+    {i:'📥', t:'카테고리 결과 가져오기', s:'다른 카테고리 초안·소재로 완성 콘텐츠 조립',
+      bg:'bg-mint',  tag:'⭐ 시작', section:'start',
+      url:'engines/media/index.html?mode=builder&tab=t1&source=draft'},
+    {i:'🕒', t:'이어 만들기',            s:'최근 작업 불러와 편집 계속',
+      bg:'bg-purple',tag:'⭐ 시작', section:'start',
+      url:'engines/media/index.html?mode=builder&tab=t1&resume=1'},
+
+    /* 🎯 단계형 워크플로우 0~7 (8개 카드) */
+    {i:'🏠', t:'0. 대시보드',         s:'새 콘텐츠 시작·최근 작업·가져오기',
+      bg:'bg-blue',  tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t1'},
+    {i:'📥', t:'1. 소스 가져오기',    s:'목표 입력·글 붙여넣기·카테고리 결과 불러오기',
+      bg:'bg-mint',  tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t1'},
+    {i:'🍳', t:'2. 레시피·템플릿',     s:'AI 추천 패키지와 콘텐츠 형식 선택',
+      bg:'bg-pink',  tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t2'},
+    {i:'🧱', t:'3. 블록 구성',        s:'제목·본문·이미지 자리·CTA 자동 배치',
+      bg:'bg-purple',tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t4'},
+    {i:'🖼', t:'4. 미디어 채우기',    s:'이미지·영상·음성·자막·썸네일 슬롯 채우기',
+      bg:'bg-peach', tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t5'},
+    {i:'🎨', t:'5. 디자인·브랜드',    s:'문체·색상·플랫폼·이미지 스타일 적용',
+      bg:'bg-green', tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t6'},
+    {i:'👁', t:'6. 미리보기·품질검수',s:'모바일·SNS·블로그 미리보기와 품질 점수',
+      bg:'bg-pink',  tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t7'},
+    {i:'📦', t:'7. 출력·패키지',      s:'전체 복사·플랫폼별·HTML/Markdown·JSON',
+      bg:'bg-purple',tag:'단계', section:'step',
+      url:'engines/media/index.html?mode=builder&tab=t8'},
+
+    /* 🧰 보조 도구함 (음성·자막·썸네일·영상 보조 기능, 사용자 친화 이름) */
+    {i:'🎤', t:'파일/외부툴 변환',  s:'ElevenLabs·InVideo 변환 허브',
+      bg:'bg-peach', tag:'🧰 보조', section:'tool', engine:'script',tab:'hub',
       url:'engines/media/index.html?mode=wizard'},
-    {i:'🎥',t:'영상 조립',  s:'장면별 영상 자동 편집',  bg:'bg-purple',tag:'🎬 기존',
+    {i:'🖼️', t:'썸네일 만들기',     s:'CTR 높은 썸네일 자동화',
+      bg:'bg-pink',  tag:'🧰 보조', section:'tool',
       url:'engines/media/index.html?mode=wizard'},
-    {i:'💬',t:'자막 싱크',  s:'SRT·VTT 자동 생성',     bg:'bg-green', tag:'🎬 기존',
+    {i:'🎥', t:'영상 조립하기',     s:'장면별 영상 자동 편집',
+      bg:'bg-purple',tag:'🧰 보조', section:'tool',
       url:'engines/media/index.html?mode=wizard'},
-    {i:'🎙️',t:'TTS 음성',  s:'ElevenLabs 연동',       bg:'bg-blue',  tag:'🎬 기존',
+    {i:'💬', t:'자막 만들기',       s:'SRT·VTT 자동 생성',
+      bg:'bg-green', tag:'🧰 보조', section:'tool',
       url:'engines/media/index.html?mode=wizard'},
-    {i:'🎞️',t:'프레임 유지',s:'InVideo 구조 변환',    bg:'bg-mint',  tag:'🎬 기존',
+    {i:'🎙️', t:'음성 만들기',       s:'TTS·ElevenLabs 연동',
+      bg:'bg-blue',  tag:'🧰 보조', section:'tool',
       url:'engines/media/index.html?mode=wizard'},
-    {i:'🎨',t:'스타일 프리셋',s:'채널별 톤앤매너',     bg:'bg-pink',  tag:'🎬 기존',
+    {i:'🎞️', t:'영상 비율 맞추기',  s:'프레임/구조 변환',
+      bg:'bg-mint',  tag:'🧰 보조', section:'tool',
+      url:'engines/media/index.html?mode=wizard'},
+    {i:'🎨', t:'스타일 빠른 적용',  s:'채널별 톤앤매너 프리셋',
+      bg:'bg-pink',  tag:'🧰 보조', section:'tool',
       url:'engines/media/index.html?mode=wizard'}
   ],
   monetize:[
@@ -395,6 +421,12 @@ function renderGrid(){
     return;
   }
   const list = cards[state.category] || [];
+
+  /* media 카테고리는 section(start/step/tool) 별로 그룹 + 도구함은 details 접기 */
+  if (state.category === 'media' && list.some(c => c.section)) {
+    return _renderMediaGrid(g, list);
+  }
+
   list.forEach(c => {
     const b = document.createElement('button');
     b.className = 'q ' + c.bg;
@@ -428,6 +460,77 @@ function renderGrid(){
     };
     g.appendChild(b);
   });
+}
+
+/* ── media 전용 그리드 — 시작/단계/보조 도구함 (3구간) ── */
+function _renderMediaGrid(g, list) {
+  const start = list.filter(c => c.section === 'start');
+  const step  = list.filter(c => c.section === 'step');
+  const tool  = list.filter(c => c.section === 'tool');
+
+  /* g 는 grid 컨테이너 — innerHTML 으로 한 번에 그리고, 그리드 column-span으로 헤더/접기 처리 */
+  g.innerHTML = '';
+  g.style.gridColumn = ''; /* reset */
+
+  /* 안내문 (전폭) */
+  const intro = document.createElement('div');
+  intro.style.cssText = 'grid-column:1/-1;padding:14px 16px;background:linear-gradient(135deg,#fff5fa,#f5f0ff);' +
+    'border:1.5px solid #ead9e1;border-radius:14px;margin-bottom:6px;color:#5b1a4a;line-height:1.6';
+  intro.innerHTML =
+    '<div style="font-size:14px;font-weight:900;margin-bottom:4px">🎨 콘텐츠 빌더</div>' +
+    '<div style="font-size:12.5px;color:#7b4060">글·이미지·영상 조합을 하나의 콘텐츠 패키지로 완성합니다. ' +
+      '초안·소재·이미지·영상 아이디어를 가져와 블로그·상세페이지·카드뉴스·뉴스레터·포스터·SNS 패키지로 조립하세요.</div>' +
+    '<div style="margin-top:8px;font-size:11.5px;color:#9b6f7e">' +
+      '💡 처음이라면 <b>새 콘텐츠 만들기</b>부터 시작하세요. 이미 다른 카테고리에서 만든 결과가 있다면 <b>카테고리 결과 가져오기</b>를 누르세요.' +
+    '</div>';
+  g.appendChild(intro);
+
+  /* 시작 카드 (그리드 안에 직접) */
+  start.forEach(c => g.appendChild(_makeCardBtn(c)));
+
+  /* 단계 헤더 (전폭) */
+  const stepHd = document.createElement('div');
+  stepHd.style.cssText = 'grid-column:1/-1;padding:8px 0 4px;font-size:13px;font-weight:800;color:#5b1a4a;margin-top:8px';
+  stepHd.innerHTML = '🎯 단계별 워크플로우 — 왼쪽부터 순서대로 진행하면 됩니다';
+  g.appendChild(stepHd);
+
+  /* 단계 카드 */
+  step.forEach(c => g.appendChild(_makeCardBtn(c)));
+
+  /* 보조 도구함 (전폭, details 접기) */
+  const tools = document.createElement('details');
+  tools.style.cssText = 'grid-column:1/-1;margin-top:14px;background:#fbf7f9;border:1.5px solid #ead9e1;border-radius:14px;padding:0';
+  tools.innerHTML =
+    '<summary style="padding:14px 16px;cursor:pointer;font-size:13px;font-weight:800;color:#5b1a4a;list-style:none;display:flex;align-items:center;justify-content:space-between">' +
+      '<span>🧰 보조 도구함 — 음성·자막·썸네일·영상 보조 기능 (필요할 때만)</span>' +
+      '<span style="font-size:11px;color:#9b6f7e;font-weight:600">처음에는 열지 않아도 됩니다 ▼</span>' +
+    '</summary>' +
+    '<div id="cbToolsGrid" style="padding:0 16px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px"></div>';
+  g.appendChild(tools);
+  const toolsGrid = tools.querySelector('#cbToolsGrid');
+  tool.forEach(c => toolsGrid.appendChild(_makeCardBtn(c)));
+
+  /* 하단 안내 (전폭) */
+  const foot = document.createElement('div');
+  foot.style.cssText = 'grid-column:1/-1;margin-top:10px;font-size:11.5px;color:#9b6f7e;text-align:center';
+  foot.textContent = '개별 음성·자막·썸네일 작업만 필요하면 보조 도구함을 열어 사용하세요.';
+  g.appendChild(foot);
+}
+
+/* 카드 버튼 생성 (기존 클릭 라우팅과 동일) */
+function _makeCardBtn(c) {
+  const b = document.createElement('button');
+  b.className = 'q ' + (c.bg || '');
+  b.innerHTML = `<span class="tag">${c.tag||''}</span><div class="i">${c.i||''}</div><strong>${c.t||''}</strong><span>${c.s||''}</span>`;
+  b.onclick = () => {
+    if (c.url) { location.href = c.url; return; }
+    /* 기존 라우팅 fallback (다른 카테고리와 동일) */
+    if (state.category === 'monetize' || state.category === 'profit') {
+      if (typeof openBuilder === 'function' && c.bldId) return openBuilder(c);
+    }
+    alert(`"${c.t}" 선택됨`);
+  };
+  return b;
 }
 
 function renderAll(){ renderSidebar(); renderHero(); renderGrid(); }

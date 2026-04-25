@@ -36,6 +36,7 @@
       +     '</div>'
       +   '</header>'
 
+      +   '<div class="cb-step-hint">💡 왼쪽부터 순서대로 진행하면 됩니다 — 현재 단계는 진하게 표시됩니다.</div>'
       +   '<nav class="cb-tabs" id="cbTabs">'
       +     CB_TABS.map(function(t){
             return '<button type="button" class="cb-tab ' + (cur===t.id?'on':'') + '"' +
