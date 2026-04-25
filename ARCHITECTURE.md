@@ -23,3 +23,44 @@
 ---
 
 ## 숏츠 스튜디오 파이프라인
+
+---
+
+## 단계별 함수명 매핑
+
+| 단계 | 함수명 | 파일 |
+|---|---|---|
+| 0 대시보드 | `_studioDashboard()` | dashboard.js |
+| 1 대본 생성 | `_studioS1Step()` | s1-script-step.js |
+| 2 이미지·영상 소스 | `_studioS3Source()` | s3-source-tabs.js |
+| 3 음성·BGM | `_studioS2Step()` | s2-voice-step.js |
+| 4 편집·미리보기 | `_studioS4Edit()` | s4-edit.js |
+| 5 최종검수·출력 | `_studioS5Upload()` | s5-upload-v2.js |
+
+---
+
+## 데이터 경로 통일 (studioGet)
+
+```javascript
+studioGet('script')   // proj.scriptText || proj.script
+studioGet('scenes')   // proj.scenes || proj.s3.scenes || proj.sources.images
+studioGet('voice')    // proj.voice || proj.s4
+studioGet('thumb')    // proj.thumbUrl || proj.s3.thumbUrl
+studioGet('edit')     // proj.edit || localStorage moca_s4_edit
+```
+
+---
+
+## CSS 변수 (공통 디자인 토큰)
+
+```css
+--pink:   #ef6fab
+--purple: #9181ff
+--line:   #f0e8ef
+--text:   #2b2430
+--sub:    #9b8a93
+```
+
+---
+
+## 개발 원칙
