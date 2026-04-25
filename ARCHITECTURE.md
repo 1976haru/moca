@@ -24,6 +24,19 @@
 
 ## 숏츠 스튜디오 파이프라인
 
+engines/shorts/index.html → ../../modules/studio/*.js 로드
+
+| 탭 | 역할 | 실제 파일 |
+|---|---|---|
+| 0 대시보드 | 채널·모드 선택 | modules/studio/dashboard.js |
+| 1 대본 생성 | 훅 A/B → 씬 분리 | modules/studio/s1-script-step.js |
+| 2 이미지·소스 | 이미지 프롬프트·영상소스 | modules/studio/s3-source-tabs.js |
+| 3 음성·BGM | TTS 생성·BGM 매칭 | modules/studio/s2-voice-step.js |
+| 4 편집 | 리훅·루프엔딩·사운드FX | modules/studio/s4-edit.js |
+| 5 최종검수·출력 | 품질검사·패키지 다운로드 | modules/studio/s5-upload-v2.js |
+
+허브 카드 수정 → core/hub.js (index.html 직접 수정 금지)
+
 ---
 
 ## 단계별 함수명 매핑
@@ -64,3 +77,19 @@ studioGet('edit')     // proj.edit || localStorage moca_s4_edit
 ---
 
 ## 개발 원칙
+
+### 파일 규칙
+
+- 파일 1개 = 1000줄 이하 유지
+- 설계·기획 → Claude 대화 / 코드 수정·생성 → Claude Code
+- 함수 네이밍: 스텝 접두어 사용 (s1_, s2_, s3_, s4_, s5_)
+
+### Git 커밋 컨벤션
+
+- feat: 새 기능 / fix: 버그 / docs: 문서 / refactor: 구조 개선
+
+### 브라우저 테스트 체크리스트
+
+1. 시크릿 창 → 1976haru.github.io/moca/engines/shorts/index.html
+2. 0~5단계 탭 클릭 → 각 화면 렌더링 확인
+3. F12 콘솔 에러 없음 확인
