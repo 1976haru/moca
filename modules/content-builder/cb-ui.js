@@ -148,23 +148,30 @@
   }
   window.cbSwitchMode = cbSwitchMode;
 
-  /* ── 자동 진입 처리 (URL ?mode=builder 또는 draft 존재) ── */
+  /* ── 자동 진입 처리 (URL ?mode=builder&tab=tN 또는 draft 존재) ── */
   function _autoEnter() {
     const params = new URLSearchParams(window.location.search || '');
     const mode   = params.get('mode');
+    const tab    = params.get('tab');     /* t1~t8 */
     const draft  = (window.cbCore && window.cbCore.cbLoadDraft && window.cbCore.cbLoadDraft());
 
     if (draft) {
       const ok = window.cbCore.cbApplyDraft(draft);
-      if (ok) {
-        window.cbCore.cbClearDraft();
-      }
+      if (ok) window.cbCore.cbClearDraft();
     }
 
     if (mode === 'builder' || draft) {
-      /* view-cb 가 페이지에 있으면 builder 모드로 시작 */
       if (document.getElementById('view-cb')) {
         cbSwitchMode('builder');
+        /* tab 파라미터가 있으면 해당 탭으로 이동 */
+        if (tab && /^t[1-8]$/.test(tab)) {
+          setTimeout(function(){ cbGotoTab(tab); }, 30);
+        }
+      }
+    } else if (mode === 'wizard') {
+      /* 명시적 wizard 모드 */
+      if (document.getElementById('view-cb') && document.getElementById('view-hub')) {
+        cbSwitchMode('wizard');
       }
     }
   }

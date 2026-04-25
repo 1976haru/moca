@@ -54,13 +54,39 @@ const cards = {
     {i:'📖',t:'가이드',        s:'사용 안내·팁',                 bg:'bg-mint',  tag:'도움',   tab:'guide'}
   ],
   media:[
-    {i:'🎤',t:'변환허브',s:'ElevenLabs·InVideo 변환',bg:'bg-peach',tag:'변환',engine:'script',tab:'hub'},
-    {i:'🖼️',t:'썸네일 생성',s:'CTR 높은 썸네일 자동화',bg:'bg-pink',tag:'이미지'},
-    {i:'🎥',t:'영상 조립',s:'장면별 영상 자동 편집',bg:'bg-purple',tag:'영상'},
-    {i:'💬',t:'자막 싱크',s:'SRT·VTT 자동 생성',bg:'bg-green',tag:'자막'},
-    {i:'🎙️',t:'TTS 음성',s:'ElevenLabs 연동',bg:'bg-blue',tag:'음성'},
-    {i:'🎞️',t:'프레임 유지',s:'InVideo 구조 변환',bg:'bg-mint',tag:'변환'},
-    {i:'🎨',t:'스타일 프리셋',s:'채널별 톤앤매너',bg:'bg-pink',tag:'프리셋'}
+    /* ⭐ 핵심 진입 카드 2개 */
+    {i:'🎨',t:'콘텐츠 빌더 열기',s:'레시피·템플릿·블록·미디어 슬롯·품질검수·출력',
+      bg:'bg-pink', tag:'⭐ 핵심', url:'engines/media/index.html?mode=builder'},
+    {i:'🎬',t:'미디어 위자드 열기',s:'기존 음성·이미지·영상·자막 변환 도구',
+      bg:'bg-purple',tag:'⭐ 핵심', url:'engines/media/index.html?mode=wizard'},
+    /* 🎯 콘텐츠 빌더 단계별 직접 진입 (보조 카드 6) */
+    {i:'📥',t:'카테고리 결과 가져오기',s:'다른 카테고리 초안·소재로 시작',
+      bg:'bg-mint',  tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t1'},
+    {i:'📄',t:'템플릿 보기',s:'블로그·카드뉴스·뉴스레터·포스터 20종',
+      bg:'bg-green', tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t3'},
+    {i:'🧱',t:'블록 구성',s:'제목·본문·이미지·CTA 블록 자동 배치',
+      bg:'bg-blue',  tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t4'},
+    {i:'🖼',t:'미디어 슬롯',s:'이미지·영상·음악 프롬프트 패키지',
+      bg:'bg-peach', tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t5'},
+    {i:'👁',t:'미리보기·품질검수',s:'7항목 품질점수 + 6모드 미리보기',
+      bg:'bg-pink',  tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t7'},
+    {i:'📦',t:'출력 패키지',s:'복사·외부툴 핸드오프·보관함·JSON',
+      bg:'bg-purple',tag:'🎯 단계', url:'engines/media/index.html?mode=builder&tab=t8'},
+    /* 🎬 기존 미디어 위자드 도구 (보존, 모두 wizard 모드로 이동) */
+    {i:'🎤',t:'변환허브',s:'ElevenLabs·InVideo 변환',bg:'bg-peach',tag:'🎬 기존',
+      engine:'script',tab:'hub', url:'engines/media/index.html?mode=wizard'},
+    {i:'🖼️',t:'썸네일 생성',s:'CTR 높은 썸네일 자동화',bg:'bg-pink',  tag:'🎬 기존',
+      url:'engines/media/index.html?mode=wizard'},
+    {i:'🎥',t:'영상 조립',  s:'장면별 영상 자동 편집',  bg:'bg-purple',tag:'🎬 기존',
+      url:'engines/media/index.html?mode=wizard'},
+    {i:'💬',t:'자막 싱크',  s:'SRT·VTT 자동 생성',     bg:'bg-green', tag:'🎬 기존',
+      url:'engines/media/index.html?mode=wizard'},
+    {i:'🎙️',t:'TTS 음성',  s:'ElevenLabs 연동',       bg:'bg-blue',  tag:'🎬 기존',
+      url:'engines/media/index.html?mode=wizard'},
+    {i:'🎞️',t:'프레임 유지',s:'InVideo 구조 변환',    bg:'bg-mint',  tag:'🎬 기존',
+      url:'engines/media/index.html?mode=wizard'},
+    {i:'🎨',t:'스타일 프리셋',s:'채널별 톤앤매너',     bg:'bg-pink',  tag:'🎬 기존',
+      url:'engines/media/index.html?mode=wizard'}
   ],
   monetize:[
     {i:'📝',t:'블로그',          s:'네이버·브런치·티스토리',           bg:'bg-pink',  tag:'블로그',  bldId:'blog'},
@@ -374,6 +400,8 @@ function renderGrid(){
     b.className = 'q ' + c.bg;
     b.innerHTML = `<span class="tag">${c.tag}</span><div class="i">${c.i}</div><strong>${c.t}</strong><span>${c.s}</span>`;
     b.onclick = () => {
+      /* c.url 이 있으면 최우선 — 직접 이동 (콘텐츠 빌더 카드 등) */
+      if (c.url) { location.href = c.url; return; }
       const targetEngine = c.engine || state.category;
       if ((targetEngine === 'script') && c.tab) {
         // 대본 생성기는 iframe으로만 사용 — 숏츠 스튜디오로 라우팅
