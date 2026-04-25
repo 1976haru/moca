@@ -34,6 +34,14 @@ const SP_SAYING_TYPES = [
   '혼합형', '고사형', '인생·노년형', '건강·마음형',
 ];
 
+/* ── 키 매핑 (사용자 지정 키명 우선) ── */
+const SP_KEY_MAP = {
+  'emotional': 'emotionSettings',
+  'info':      'infoSettings',
+  'senior':    'seniorSettings',
+};
+function _spKey(genre) { return SP_KEY_MAP[genre] || (genre + 'Settings'); }
+
 /* ── 기본값 ── */
 function _spDefault(genre) {
   if (genre === 'tikitaka') {
@@ -59,6 +67,22 @@ function _spDefault(genre) {
   if (genre === 'saying') {
     return { type:'사자성어', theme:'', format:'원문→뜻→적용', extra:'' };
   }
+  if (genre === 'emotional') {
+    return { emotionType:'가족 감동', emotionFlow:'잔잔하게 시작 → 따뜻한 결말',
+             emotionLevel:'감동', endingTone:'따뜻한 마무리',
+             emotionDevice:'마지막 한마디', extraInstruction:'' };
+  }
+  if (genre === 'info') {
+    return { infoType:'꿀팁', structure:'3가지 핵심 정리', difficulty:'일반인 수준',
+             trustStyle:'일반 상식 기반', viewerBenefit:'시간 절약',
+             ctaType:'저장 유도', extraInstruction:'' };
+  }
+  if (genre === 'senior') {
+    return { interest:'건강 관리', ageTarget:'60대',
+             speechTone:'따뜻한 존댓말', mood:'따뜻함',
+             structure:'공감 → 정보 → 위로', captionBreath:'짧은 문장',
+             cautionRules:'나이 비하 표현 금지', extraInstruction:'' };
+  }
   return {};
 }
 
@@ -66,7 +90,7 @@ function _spDefault(genre) {
 function _spGet(genre) {
   const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   if (!proj.s1) proj.s1 = {};
-  const key = genre + 'Settings';
+  const key = _spKey(genre);
   if (!proj.s1[key]) proj.s1[key] = _spDefault(genre);
   return proj.s1[key];
 }
@@ -82,6 +106,9 @@ window._spSet = _spSet;
    디스패처 (s1-script-step.js 가 호출)
    ════════════════════════════════════════════════ */
 function _s1RenderStylePanel(genre, wid) {
+  if (genre === 'emotional')  return _spRenderEmotion(wid);
+  if (genre === 'info')       return _spRenderInfo(wid);
+  if (genre === 'senior')     return _spRenderSenior(wid);
   if (genre === 'tikitaka')   return _spRenderTikitaka(wid);
   if (genre === 'humor')      return _spRenderHumor(wid);
   if (genre === 'drama')      return _spRenderDrama(wid);
@@ -242,6 +269,122 @@ function _spRenderSaying(wid) {
     ${_spInput('테마', s.theme, 'saying', 'theme', '예: 인생·건강·관계')}
     ${_spInput('포맷', s.format, 'saying', 'format', '예: 원문→뜻→현대적용')}
     <div class="sp-hint">📌 다음 PR: CTA·언어별 출력 옵션 추가 예정</div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════
+   7) 💗 감동 전용 (신규)
+   ════════════════════════════════════════════════ */
+const SP_EMOTION_TYPES = [
+  '가족 감동','부모님 이야기','부부/연인 감동','친구/이웃 감동','반려동물 감동',
+  '인생 회상','후회와 화해','작은 친절','기적 같은 순간',
+];
+const SP_EMOTION_FLOWS = [
+  '잔잔하게 시작 → 따뜻한 결말', '평범한 일상 → 마지막 반전',
+  '후회 → 깨달음', '이별/그리움 → 위로', '갈등 → 화해', '외로움 → 연결',
+];
+const SP_EMOTION_LEVELS = ['잔잔', '감동', '눈물', '깊은 여운'];
+const SP_ENDING_TONES = [
+  '따뜻한 마무리', '눈물 나는 마무리', '희망적인 마무리',
+  '여운 남기는 마무리', '댓글 유도형 마무리',
+];
+const SP_EMOTION_DEVICES = [
+  '마지막 한마디', '오래된 사진/물건', '뒤늦은 고백', '예상 못 한 배려',
+  '부모님의 침묵', '잊고 있던 약속', '세월의 흔적',
+];
+
+function _spRenderEmotion(wid) {
+  const s = _spGet('emotional');
+  return `
+  <div class="sp-block">
+    <div class="sp-title">💗 감동 전용 설정</div>
+    ${_spChips('감동 유형', SP_EMOTION_TYPES, s.emotionType, 'emotional', 'emotionType')}
+    ${_spChips('감정 흐름', SP_EMOTION_FLOWS, s.emotionFlow, 'emotional', 'emotionFlow')}
+    ${_spChips('감정 강도', SP_EMOTION_LEVELS, s.emotionLevel, 'emotional', 'emotionLevel')}
+    ${_spChips('결말 톤', SP_ENDING_TONES, s.endingTone, 'emotional', 'endingTone')}
+    ${_spChips('감동 장치', SP_EMOTION_DEVICES, s.emotionDevice, 'emotional', 'emotionDevice')}
+    ${_spTextarea('추가 지시', s.extraInstruction, 'emotional', 'extraInstruction',
+      '예: 너무 신파스럽지 않게, 현실적인 가족 이야기로, 마지막에 댓글을 유도해줘')}
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════
+   8) 📊 정보 전용 (신규)
+   ════════════════════════════════════════════════ */
+const SP_INFO_TYPES = [
+  '꿀팁','체크리스트','비교 정리','실수 방지','단계별 방법',
+  '오해 바로잡기','트렌드 요약','돈/생활 정보','건강/생활 습관','정책/지원금 안내',
+];
+const SP_INFO_STRUCTURES = [
+  '3가지 핵심 정리', 'Before / After 비교', '문제 → 원인 → 해결',
+  '체크리스트 5개', '실수 TOP3', '모르면 손해 보는 정보',
+  '질문 → 답변형', '사례 → 설명 → 결론',
+];
+const SP_INFO_DIFFICULTY = ['아주 쉽게', '일반인 수준', '조금 전문적으로', '핵심만 짧게'];
+const SP_INFO_TRUST = ['경험 기반', '일반 상식 기반', '자료 참고 느낌', '전문가 설명 느낌', '주의사항 포함'];
+const SP_INFO_BENEFIT = ['시간 절약', '돈 절약', '실수 방지', '건강 관리', '선택 기준 제공', '바로 따라 하기'];
+const SP_INFO_CTA = ['저장 유도', '공유 유도', '댓글 질문 유도', '다음 편 예고', '체크리스트 요청 유도'];
+
+function _spRenderInfo(wid) {
+  const s = _spGet('info');
+  return `
+  <div class="sp-block">
+    <div class="sp-title">📊 정보 전용 설정</div>
+    ${_spChips('정보 유형', SP_INFO_TYPES, s.infoType, 'info', 'infoType')}
+    ${_spChips('전달 구조', SP_INFO_STRUCTURES, s.structure, 'info', 'structure')}
+    ${_spChips('난이도', SP_INFO_DIFFICULTY, s.difficulty, 'info', 'difficulty')}
+    ${_spChips('신뢰도 표현', SP_INFO_TRUST, s.trustStyle, 'info', 'trustStyle')}
+    ${_spChips('시청자 이득', SP_INFO_BENEFIT, s.viewerBenefit, 'info', 'viewerBenefit')}
+    ${_spChips('CTA 유형', SP_INFO_CTA, s.ctaType, 'info', 'ctaType')}
+    ${_spTextarea('추가 지시', s.extraInstruction, 'info', 'extraInstruction',
+      '예: 60대도 이해하기 쉽게, 숫자와 예시를 넣어서, 너무 어려운 용어는 피해서')}
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════
+   9) 👵 시니어 전용 (신규)
+   ════════════════════════════════════════════════ */
+const SP_SENIOR_INTERESTS = [
+  '건강 관리','노후 준비','가족 관계','자녀와의 관계','배우자/혼자 사는 삶',
+  '연금/생활비','취미/여행','스마트폰/생활기술','추억/인생 이야기',
+  '생활 안전','외로움/마음 건강',
+];
+const SP_SENIOR_AGES = [
+  '50대','60대','70대','80대 이상','자녀 세대가 부모님께 알려주는 느낌',
+];
+const SP_SENIOR_TONES = [
+  '따뜻한 존댓말','천천히 설명하는 말투','아들이/딸이 설명하는 느낌',
+  '전문가가 쉽게 설명하는 느낌','친구처럼 다정한 말투',
+];
+const SP_SENIOR_MOODS = ['따뜻함','차분함','공감','실용적','희망적','경각심','추억 감성'];
+const SP_SENIOR_STRUCTURES = [
+  '공감 → 정보 → 위로','문제 → 쉬운 해결법','이야기 → 교훈',
+  '체크리스트','가족 대화형','오늘 바로 할 일 3가지',
+];
+const SP_SENIOR_BREATHS = [
+  '짧은 문장','쉬운 단어','천천히 읽기 좋게',
+  '한 문장 20자 이하 권장','어려운 외래어 줄이기',
+];
+const SP_SENIOR_CAUTIONS = [
+  '나이 비하 표현 금지','겁주는 표현 과도하게 사용 금지',
+  '건강/돈 문제 단정 금지','자녀 비난으로 몰아가지 않기',
+  '너무 어린아이 대하듯 말하지 않기',
+];
+
+function _spRenderSenior(wid) {
+  const s = _spGet('senior');
+  return `
+  <div class="sp-block">
+    <div class="sp-title">👵 시니어 전용 설정</div>
+    ${_spChips('시니어 관심 분야', SP_SENIOR_INTERESTS, s.interest, 'senior', 'interest')}
+    ${_spChips('대상 연령 느낌', SP_SENIOR_AGES, s.ageTarget, 'senior', 'ageTarget')}
+    ${_spChips('말투', SP_SENIOR_TONES, s.speechTone, 'senior', 'speechTone')}
+    ${_spChips('영상 분위기', SP_SENIOR_MOODS, s.mood, 'senior', 'mood')}
+    ${_spChips('구성 방식', SP_SENIOR_STRUCTURES, s.structure, 'senior', 'structure')}
+    ${_spChips('자막/호흡', SP_SENIOR_BREATHS, s.captionBreath, 'senior', 'captionBreath')}
+    ${_spChips('주의할 표현', SP_SENIOR_CAUTIONS, s.cautionRules, 'senior', 'cautionRules')}
+    ${_spTextarea('추가 지시', s.extraInstruction, 'senior', 'extraInstruction',
+      '예: 부모님께 설명하듯 따뜻하게, 너무 겁주지 말고 현실적인 조언으로, 댓글을 남기고 싶게')}
   </div>`;
 }
 

@@ -50,6 +50,55 @@ window._s1Prompt = (function(){
     var genre = opts.genre || opts.style;
     var s = opts.s1 || {};
 
+    /* 💗 감동 (emotional) */
+    if (genre === 'emotional') {
+      var em = s.emotionSettings || {};
+      lines.push('');
+      lines.push('[감동 모드]');
+      if (em.emotionType)   lines.push('감동 유형: ' + em.emotionType);
+      if (em.emotionFlow)   lines.push('감정 흐름: ' + em.emotionFlow);
+      if (em.emotionLevel)  lines.push('감정 강도: ' + em.emotionLevel);
+      if (em.endingTone)    lines.push('결말 톤: ' + em.endingTone);
+      if (em.emotionDevice) lines.push('감동 장치: ' + em.emotionDevice);
+      if (em.extraInstruction) lines.push('추가 지시: ' + em.extraInstruction);
+      lines.push('주의: 과도한 신파·억지 눈물 금지. 장면이 머릿속에 그려지게 작성.');
+      lines.push('마지막 1문장은 시청자가 댓글을 남기고 싶게 만드는 한 줄로 마무리.');
+    }
+
+    /* 📊 정보 (info) */
+    else if (genre === 'info') {
+      var inf = s.infoSettings || {};
+      lines.push('');
+      lines.push('[정보 모드]');
+      if (inf.infoType)      lines.push('정보 유형: ' + inf.infoType);
+      if (inf.structure)     lines.push('전달 구조: ' + inf.structure + ' — 이 구조를 실제 대본 흐름에 그대로 반영하세요.');
+      if (inf.difficulty)    lines.push('난이도: ' + inf.difficulty);
+      if (inf.trustStyle)    lines.push('신뢰도 표현: ' + inf.trustStyle);
+      if (inf.viewerBenefit) lines.push('시청자 이득: ' + inf.viewerBenefit + ' (첫 문장에 격차/손실 회피 훅으로 강조)');
+      if (inf.ctaType)       lines.push('CTA 유형: ' + inf.ctaType);
+      if (inf.extraInstruction) lines.push('추가 지시: ' + inf.extraInstruction);
+      lines.push('주의: 추상적 설명보다 구체적 예시·숫자 포함. 어려운 용어는 쉬운 말로 풀기.');
+      lines.push('주의: 과장된 단정 금지. 건강·금융·법률 관련은 단정적 조언이 아닌 일반 정보 형태로.');
+    }
+
+    /* 👵 시니어 (senior) */
+    else if (genre === 'senior') {
+      var se = s.seniorSettings || {};
+      lines.push('');
+      lines.push('[시니어 모드]');
+      if (se.interest)      lines.push('관심 분야: ' + se.interest);
+      if (se.ageTarget)     lines.push('대상 연령 느낌: ' + se.ageTarget);
+      if (se.speechTone)    lines.push('말투: ' + se.speechTone);
+      if (se.mood)          lines.push('영상 분위기: ' + se.mood);
+      if (se.structure)     lines.push('구성 방식: ' + se.structure + ' — 이 흐름을 실제 대본에 반영하세요.');
+      if (se.captionBreath) lines.push('자막/호흡 규칙: ' + se.captionBreath);
+      if (se.cautionRules)  lines.push('주의할 표현: ' + se.cautionRules + ' (반드시 준수)');
+      if (se.extraInstruction) lines.push('추가 지시: ' + se.extraInstruction);
+      lines.push('주의: 문장은 짧고 천천히 읽히게. 시니어가 실제로 공감할 생활 장면 포함.');
+      lines.push('주의: 존중하는 표현 사용. 불안 조장보다 해결책 중심.');
+      lines.push('마지막에는 저장·공유·댓글 유도 중 하나를 자연스럽게 포함.');
+    }
+
     if (genre === 'tikitaka') {
       var t = s.tikiSettings || {};
       lines.push('');
