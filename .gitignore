@@ -29,5 +29,12 @@ build/
 patch_*.py
 split_*.py
 scan_*.py
+extract_*.py
 redistribute*.py
 *.bak
+
+# 일회성 분석/스캔 결과
+scan_*.txt
+
+# 작업 임시 폴더 (draft 파일들 — modules/ 로 복사 후 사용)
+test/
