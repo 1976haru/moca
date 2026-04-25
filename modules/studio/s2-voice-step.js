@@ -108,11 +108,12 @@ function _studioS2Step(wrapId) {
   wrap.innerHTML = `
   <div class="v2-wrap">
 
-    <!-- AI 자동 추천 배너 -->
+    <!-- AI 자동 추천 배너 (이슈 2 — 추천 근거 + 한·일 동일 구조 명확화) -->
     <div class="v2-recommend-banner">
       <div class="v2-rec-hd">
         🤖 AI 음성 자동 추천
         <span class="v2-rec-badge">장르: ${_v2StyleLabel(style)}</span>
+        <span class="v2-rec-why" title="장르·길이·언어 기반 자동 매칭">왜 이 음성?</span>
       </div>
       <div class="v2-rec-voices">
         ${lang !== 'ja' ? `
@@ -123,6 +124,7 @@ function _studioS2Step(wrapId) {
               <span class="v2-rec-provider">${rec.ko.provider}</span>
             </div>
             <div class="v2-rec-desc">${rec.ko.desc}</div>
+            <div class="v2-rec-reason">💡 ${_v2StyleLabel(style)} 장르 · ${proj.lengthSec||60}초 분량에 적합</div>
           </div>
           <button class="v2-rec-apply ${_v2Voice.voiceKo===rec.ko.id?'applied':''}"
             onclick="_v2ApplyRecommend('ko','${wrapId||'studioS2Wrap'}')">
@@ -137,6 +139,7 @@ function _studioS2Step(wrapId) {
               <span class="v2-rec-provider">${rec.ja.provider}</span>
             </div>
             <div class="v2-rec-desc">${rec.ja.desc}</div>
+            <div class="v2-rec-reason">💡 ${_v2StyleLabel(style)} 장르 · ${proj.lengthSec||60}초 분량에 적합</div>
           </div>
           <button class="v2-rec-apply ${_v2Voice.voiceJa===rec.ja.id?'applied':''}"
             onclick="_v2ApplyRecommend('ja','${wrapId||'studioS2Wrap'}')">
@@ -245,11 +248,14 @@ function _studioS2Step(wrapId) {
       </div>
     </div>
 
-    <!-- 기존 화자 설정 (고급) -->
-    <details class="v2-advanced">
-      <summary>⚙️ 고급 화자 설정 (기존 기능)</summary>
+    <!-- 기존 화자 설정 (고급) — 이슈 3: details 열릴 때 _vAdvRender 호출 -->
+    <details class="v2-advanced"
+      ontoggle="if(this.open && typeof _vAdvRender==='function') _vAdvRender('v2AdvancedInner');">
+      <summary>⚙️ 고급 화자 설정 (다중 화자·감정·발음·씬적용)</summary>
       <div id="v2AdvancedInner">
-        ${typeof _studioS4 === 'function' ? '' : '기존 s2-voice.js 함수를 로드해주세요.'}
+        ${typeof _vAdvRender === 'function'
+          ? '<div style="padding:10px;color:#9b8a93;font-size:12px">열기 버튼을 클릭하면 고급 화자 설정이 나타납니다.</div>'
+          : '<div style="padding:10px;color:#dc2626;font-size:12px">⚠️ s2-voice-advanced.js 가 로드되지 않았습니다.</div>'}
       </div>
     </details>
 
@@ -575,15 +581,20 @@ function _v2InjectCSS() {
   background:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.12s}
 .v2-mini-btn.danger{border-color:#fca5a5;color:#dc2626}
 
-/* BGM */
+/* BGM (이슈 4 — 세로형 카드 + 라디오 우상단) */
 .v2-bgm-rec{font-size:10px;color:#9b8a93;font-weight:400}
-.v2-bgm-list{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
+.v2-bgm-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 @media(max-width:500px){.v2-bgm-list{grid-template-columns:1fr}}
-.v2-bgm-item{display:flex;align-items:center;gap:8px;padding:8px;
-  border:1.5px solid #f1dce7;border-radius:10px;cursor:pointer;transition:.12s}
-.v2-bgm-item.on{border-color:#9181ff;background:#ede9ff}
-.v2-bgm-label{font-size:12px;font-weight:700}
-.v2-bgm-desc{font-size:10px;color:#9b8a93}
+.v2-bgm-item{position:relative;display:flex;flex-direction:column;align-items:flex-start;
+  gap:4px;padding:14px 12px 12px;border:1.5px solid #f1dce7;border-radius:12px;
+  cursor:pointer;transition:.12s;background:#fff;min-height:64px}
+.v2-bgm-item:hover{border-color:#9181ff;background:#fbf7ff}
+.v2-bgm-item.on{border-color:#9181ff;background:#ede9ff;box-shadow:0 2px 8px rgba(145,129,255,.15)}
+.v2-bgm-item input[type="radio"]{position:absolute;top:8px;right:8px;
+  width:14px;height:14px;margin:0;cursor:pointer;accent-color:#9181ff}
+.v2-bgm-label{font-size:13px;font-weight:800;color:#2b2430;line-height:1.3;
+  padding-right:24px}
+.v2-bgm-desc{font-size:11px;color:#9b8a93;line-height:1.4}
 .v2-vol-rows{display:flex;flex-direction:column;gap:8px}
 .v2-vol-row{display:flex;align-items:center;gap:10px}
 .v2-vol-row span:first-child{font-size:11px;font-weight:700;min-width:64px}

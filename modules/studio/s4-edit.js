@@ -446,15 +446,24 @@ function _s4eInjectCSS() {
 .s4e-seg-btn.on{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border-color:transparent}
 .s4e-font-warn{background:#fff1f1;border-radius:10px;padding:10px 12px;
   font-size:12px;color:#c0392b;font-weight:700;margin-bottom:10px}
-.s4e-font-row{display:flex;align-items:flex-start;gap:10px;padding:10px;
-  border:1.5px solid #f1dce7;border-radius:12px;margin-bottom:6px;cursor:pointer;transition:.12s}
-.s4e-font-row.on{border-color:#9181ff;background:#ede9ff}
-.s4e-font-row input{flex-shrink:0;margin-top:3px}
-.s4e-font-name{font-size:13px;font-weight:800;margin-bottom:3px;display:flex;align-items:center;gap:6px}
-.s4e-font-preview{font-size:14px;color:#3a3038;margin-bottom:2px;line-height:1.5}
-.s4e-font-desc{font-size:11px;color:#9b8a93}
-.s4e-badge-rec{padding:2px 8px;background:#effbf7;color:#1a7a5a;border-radius:20px;font-size:10px}
-.s4e-badge-safe{padding:2px 8px;background:#ede9ff;color:#5b4ecf;border-radius:20px;font-size:10px}
+/* 폰트 카드 (이슈 5+6 — 카드형 grid + 미리보기 강화) */
+.s4e-font-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px}
+@media(max-width:500px){.s4e-font-list{grid-template-columns:1fr}}
+.s4e-font-row{position:relative;display:flex;flex-direction:column;align-items:stretch;
+  gap:6px;padding:14px 12px 12px;border:1.5px solid #f1dce7;border-radius:12px;
+  cursor:pointer;transition:.12s;background:#fff;min-height:84px}
+.s4e-font-row:hover{border-color:#9181ff;background:#fbf7ff}
+.s4e-font-row.on{border-color:#9181ff;background:#ede9ff;box-shadow:0 2px 8px rgba(145,129,255,.15)}
+.s4e-font-row input[type="radio"]{position:absolute;top:8px;right:8px;
+  width:14px;height:14px;margin:0;cursor:pointer;accent-color:#9181ff}
+.s4e-font-name{font-size:13px;font-weight:800;color:#2b2430;display:flex;
+  align-items:center;gap:6px;flex-wrap:wrap;padding-right:24px;line-height:1.3}
+.s4e-font-preview{font-size:15px;color:#3a3038;line-height:1.5;
+  padding:6px 10px;background:#fbf7f9;border-radius:8px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s4e-font-desc{font-size:11px;color:#9b8a93;line-height:1.4}
+.s4e-badge-rec{padding:2px 8px;background:#effbf7;color:#1a7a5a;border-radius:20px;font-size:10px;font-weight:700}
+.s4e-badge-safe{padding:2px 8px;background:#ede9ff;color:#5b4ecf;border-radius:20px;font-size:10px;font-weight:700}
 .s4e-style-presets{display:flex;gap:6px;margin-bottom:10px}
 .s4e-preset-btn{flex:1;padding:8px;border:1.5px solid #f1dce7;border-radius:10px;
   background:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:.12s}

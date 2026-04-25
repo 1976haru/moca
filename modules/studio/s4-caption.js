@@ -115,6 +115,7 @@ function _s4eT2Caption(scenes, proj) {
           ⚠️ ${fontCheck.msg}
         </div>` : ''}
 
+      <div class="s4e-font-list">
       ${S4_FONTS.filter(f =>
           chLang === 'both' ? true :
           f.lang === chLang || f.lang === 'both'
@@ -123,21 +124,20 @@ function _s4eT2Caption(scenes, proj) {
           <input type="radio" name="s4font" value="${f.id}"
             ${cap.fontId===f.id?'checked':''}
             onchange="_s4Edit.caption.fontId='${f.id}';_studioS4Edit('studioS4EditWrap')">
-          <div class="s4e-font-info">
-            <div class="s4e-font-name">
-              ${f.label}
-              ${f.recommended?'<span class="s4e-badge-rec">✅ 권장</span>':''}
-              ${f.lang==='both'?'<span class="s4e-badge-safe">한일 안전</span>':''}
-            </div>
-            <div class="s4e-font-preview" style="font-family:${f.css}">
-              ${chLang==='ja' ? (f.preview_ja||f.preview_ko||'') :
-                chLang==='ko' ? (f.preview_ko||'') :
-                (f.preview_ko||'')+' / '+(f.preview_ja||'')}
-            </div>
-            <div class="s4e-font-desc">${f.desc}</div>
+          <div class="s4e-font-name">
+            ${f.label}
+            ${f.recommended?'<span class="s4e-badge-rec">✅ 권장</span>':''}
+            ${f.lang==='both'?'<span class="s4e-badge-safe">한일 안전</span>':''}
           </div>
+          <div class="s4e-font-preview" style="font-family:${f.css}">
+            ${chLang==='ja' ? (f.preview_ja||f.preview_ko||'') :
+              chLang==='ko' ? (f.preview_ko||'') :
+              (f.preview_ko||'')+' / '+(f.preview_ja||'')}
+          </div>
+          <div class="s4e-font-desc">${f.desc}</div>
         </label>
       `).join('')}
+      </div>
     </div>
 
     <!-- 자막 스타일 -->

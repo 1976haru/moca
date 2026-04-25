@@ -93,6 +93,7 @@ function _studioS5Upload(wrapId) {
 
   _s5vInjectCSS();
   _s5vRenderQualityDashboard();
+  _s5vRenderUploadPlatforms();
 }
 
 /* studio-quality.js 통합 — placeholder가 있을 때만, 함수가 있을 때만 동작 */
@@ -256,22 +257,34 @@ function _s5vT2() {
           </div>`).join('')}
     </div>
 
-    <!-- 제목 3안 -->
+    <!-- 제목 3안 (이슈 7 — 카드형 + 글자수 + 선택 강조 + 복사) -->
     <div class="s5v-meta-block">
       <div class="s5v-meta-label">
         📌 제목 3안
         <button class="s5v-regen-btn" onclick="_s5vRegenMeta()">🔄 재생성</button>
       </div>
-      ${(_s5vMeta.titles||[]).map((t,i)=>`
-        <label class="s5v-title-row">
-          <input type="radio" name="s5vtitle" value="${i}"
-            ${_s5vMeta.selectedTitle===i?'checked':''}
-            onchange="_s5vMeta.selectedTitle=${i}">
-          <span class="s5v-title-text">${t}</span>
-          <button class="s5v-mini-copy"
-            onclick="_s5vCopy(this,'${_esc(t)}')">복사</button>
-        </label>
-      `).join('')}
+      <div class="s5v-title-list">
+        ${(_s5vMeta.titles||[]).map((t,i)=>{
+          const sel = _s5vMeta.selectedTitle===i;
+          const len = (t||'').length;
+          const lenWarn = len > 100;
+          return `
+          <label class="s5v-title-card ${sel?'selected':''}">
+            <input type="radio" name="s5vtitle" value="${i}"
+              ${sel?'checked':''}
+              onchange="_s5vMeta.selectedTitle=${i};_studioS5Upload(_s5vWrapId())">
+            <div class="s5v-title-card-body">
+              <div class="s5v-title-card-hd">
+                <span class="s5v-title-tag">안 ${i+1}${sel?' · 선택됨':''}</span>
+                <span class="s5v-title-len ${lenWarn?'warn':''}">${len}자${lenWarn?' ⚠️':''}</span>
+              </div>
+              <div class="s5v-title-text">${t}</div>
+              <button type="button" class="s5v-title-copy"
+                onclick="event.preventDefault();_s5vCopy(this,'${_esc(t)}')">📋 복사</button>
+            </div>
+          </label>`;
+        }).join('')}
+      </div>
     </div>
 
     <!-- 설명문 -->
@@ -435,7 +448,19 @@ function _s5vT3() {
         <button class="s5v-btn-outline" onclick="_s5vDl('guide')">📋 업로드 가이드</button>
       </div>
     </div>
+
+    <!-- 플랫폼 업로드 계획 (이슈 8 — s5-upload-platforms.js) -->
+    <div id="s5UpPlatformsWrap"></div>
   </div>`;
+}
+
+/* ── T3 렌더 후 플랫폼 섹션 채우기 (s5-upload-platforms.js 가 로드된 경우) ── */
+function _s5vRenderUploadPlatforms() {
+  if (_s5vTab !== 't3') return;
+  if (typeof _s5upRender !== 'function') return;
+  const el = document.getElementById('s5UpPlatformsWrap');
+  if (!el) return;
+  _s5upRender('s5UpPlatformsWrap');
 }
 
 /* ════════════════════════════════════════════════
@@ -807,10 +832,32 @@ function _s5vInjectCSS() {
 .s5v-risk-text{color:#9b8a93}
 .s5v-regen-btn{padding:3px 10px;border:1.5px solid #9181ff;border-radius:20px;
   background:#fff;color:#9181ff;font-size:11px;cursor:pointer;font-weight:700}
+/* 제목 3안 (이슈 7 — 카드형) */
+.s5v-title-list{display:flex;flex-direction:column;gap:8px}
+.s5v-title-card{position:relative;display:block;cursor:pointer;
+  border:2px solid #f1dce7;border-radius:14px;padding:12px 14px;background:#fff;transition:.14s}
+.s5v-title-card:hover{border-color:#9181ff;background:#fbf7ff}
+.s5v-title-card.selected{border-color:#ef6fab;background:linear-gradient(135deg,#fff1f8,#f5f0ff);
+  box-shadow:0 2px 10px rgba(239,111,171,.18)}
+.s5v-title-card input[type="radio"]{position:absolute;top:10px;right:10px;
+  width:14px;height:14px;margin:0;cursor:pointer;accent-color:#ef6fab}
+.s5v-title-card-body{padding-right:24px}
+.s5v-title-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.s5v-title-tag{font-size:11px;font-weight:800;color:#ef6fab;background:#fff1f8;
+  border-radius:20px;padding:2px 10px}
+.s5v-title-card.selected .s5v-title-tag{background:#ef6fab;color:#fff}
+.s5v-title-len{font-size:11px;color:#9b8a93;font-weight:700;margin-left:auto}
+.s5v-title-len.warn{color:#dc2626}
+.s5v-title-card .s5v-title-text{font-size:14px;font-weight:700;color:#2b2430;
+  line-height:1.5;margin-bottom:8px;display:block}
+.s5v-title-copy{padding:5px 12px;border:1.5px solid #9181ff;border-radius:8px;
+  background:#fff;color:#9181ff;font-size:11px;font-weight:700;cursor:pointer;
+  font-family:inherit;transition:.12s}
+.s5v-title-copy:hover{background:#9181ff;color:#fff}
+/* 기존 row 호환 (다른 위치에서 쓰이는 경우 대비) */
 .s5v-title-row{display:flex;align-items:center;gap:8px;padding:8px;
   border:1.5px solid #f1dce7;border-radius:10px;margin-bottom:4px;cursor:pointer}
 .s5v-title-row:has(input:checked){border-color:#ef6fab;background:#fff1f8}
-.s5v-title-text{flex:1;font-size:13px}
 .s5v-desc-area{width:100%;border:1.5px solid #f1dce7;border-radius:10px;
   padding:10px;font-size:12.5px;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box}
 .s5v-tags{display:flex;flex-wrap:wrap;gap:4px}
