@@ -158,15 +158,15 @@ const NAV_SEARCH_INDEX = [
   bc.id = 'breadcrumb';
   bc.className = 'breadcrumb';
   bc.innerHTML =
-    '<button class="bc-back" onclick="bcGoBack()">← 이전</button>' +
+    '<button class="bc-back" onclick="(typeof bcGoBack===\'function\'?bcGoBack():void 0)">← 이전</button>' +
     '<div class="bc-path" id="bcPath"></div>' +
     '<span class="bc-save saved" id="bcSave">✓ 저장됨</span>';
   const app = document.querySelector('.app');
   const navC = document.getElementById('navCtrl');
   if(app && navC) app.insertBefore(bc, navC.nextSibling);
-  _bcUpdate();
+  if(typeof _bcUpdate === 'function') _bcUpdate();
   // state.category 변경 감지 (주기적 갱신)
-  setInterval(_bcUpdate, 800);
+  if(typeof _bcUpdate === 'function') setInterval(_bcUpdate, 800);
 })();
 
 
