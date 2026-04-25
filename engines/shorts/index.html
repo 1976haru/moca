@@ -35,6 +35,12 @@
   <div id="studio-body"></div>
 </main>
 
+<!-- ───── standalone 페이지용 최소 fallback (s1-script.js 의 openStudio/studioClose 가 참조) ───── -->
+<script>
+window.state     = window.state     || { category:'shorts', studioOpen:true };
+window.renderAll = window.renderAll || function(){};
+</script>
+
 <!-- ───── 코어 ───── -->
 <script src="../../config/providers.js"></script>
 <script src="../../core/api-adapter.js"></script>
@@ -89,6 +95,17 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   /* 2) 누락된 필수 함수가 있으면 화면에 안내 후 중단 */
+  var FN_TO_FILE = {
+    _studioDashboard:    'modules/studio/dashboard.js',
+    _studioS1Step:       'modules/studio/s1-script-step.js',
+    _studioS3Source:     'modules/studio/s3-source-tabs.js',
+    _studioS2Step:       'modules/studio/s2-voice-step.js',
+    _studioS4Edit:       'modules/studio/s4-edit.js',
+    _studioS5Upload:     'modules/studio/s5-upload-v2.js',
+    renderStudio:        'modules/studio/s1-script.js',
+    studioGoto:          'modules/studio/s1-script.js',
+    studioNewProjectObj: 'modules/studio/s1-script.js',
+  };
   var missing = Object.keys(required).filter(function(k){
     return required[k] !== 'function';
   });
@@ -100,9 +117,12 @@ document.addEventListener('DOMContentLoaded', function() {
           '<h3>⚠️ 모듈 로드 실패</h3>' +
           '<p>다음 함수를 찾을 수 없어 화면을 그릴 수 없습니다:</p>' +
           '<ul>' +
-            missing.map(function(m){ return '<li><code>'+m+'</code></li>'; }).join('') +
+            missing.map(function(m){
+              var file = FN_TO_FILE[m] || '(unknown)';
+              return '<li><code>'+m+'</code> → <code>'+file+'</code> 경로를 확인하세요.</li>';
+            }).join('') +
           '</ul>' +
-          '<p class="hint">F12 → Network/Console 탭에서 <code>modules/studio/*.js</code> 로드 오류를 확인하세요.</p>' +
+          '<p class="hint">F12 → Network 탭에서 위 파일들의 HTTP 상태(200 vs 404)를 확인하세요.</p>' +
         '</div>';
     }
     return;
@@ -112,6 +132,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!window.STUDIO) window.STUDIO = {};
   if (!window.STUDIO.project) {
     window.STUDIO.project = studioNewProjectObj();
+  }
+  /* 진입은 항상 대시보드(0단계)에서 시작 */
+  if (typeof window.STUDIO.project.step !== 'number') {
+    window.STUDIO.project.step = 0;
   }
 
   /* 4) 진입 — renderStudio() 우선, 없으면 openStudio(0) fallback */
