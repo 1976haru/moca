@@ -96,8 +96,13 @@
     const ld = document.getElementById('navLangDd');
     if(ld && !ld.contains(e.target)) ld.classList.remove('open');
   });
-  _refreshNavAiStatus();
-  setInterval(_refreshNavAiStatus, 5000);
+  const __kickAiStatus = () => {
+    if(typeof _refreshNavAiStatus !== 'function') return;
+    _refreshNavAiStatus();
+    setInterval(_refreshNavAiStatus, 5000);
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __kickAiStatus);
+  else __kickAiStatus();
 })();
 
 
