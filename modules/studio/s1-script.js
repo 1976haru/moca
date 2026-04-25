@@ -36,22 +36,49 @@ function studioLoadProject(id){
   try{ const raw = localStorage.getItem(LS_STUDIO_ONE+id); if(raw) return JSON.parse(raw); }catch(_){}
   return null;
 }
+/* 빈 프로젝트(=의미 있는 입력/결과 없음)는 목록에 누적시키지 않는다 */
+function _studioHasMeaningful(p){
+  if(!p) return false;
+  if(p.topic && String(p.topic).trim()) return true;
+  if(p.scriptText || p.scriptKo || p.scriptJa) return true;
+  if(p.scenes && p.scenes.length) return true;
+  if(p.s1 && (p.s1.topic || p.s1.scriptText)) return true;
+  if(typeof p.step === 'number' && p.step > 0) return true;
+  return false;
+}
+
 function studioSave(){
   if(!STUDIO.project) return;
   STUDIO.project.updatedAt = Date.now();
   try{
-    localStorage.setItem(LS_STUDIO_ONE + STUDIO.project.id, JSON.stringify(STUDIO.project));
+    const meaningful = _studioHasMeaningful(STUDIO.project);
+    /* 의미 있을 때만 개별 프로젝트도 저장 — 빈 프로젝트로 디스크 낭비 방지 */
+    if(meaningful){
+      localStorage.setItem(LS_STUDIO_ONE + STUDIO.project.id, JSON.stringify(STUDIO.project));
+    }
     const list = studioList();
     const i = list.findIndex(x => x.id === STUDIO.project.id);
     const summary = {
       id: STUDIO.project.id,
-      name: STUDIO.project.name || STUDIO.project.s1.topic || '(제목없음)',
+      name: STUDIO.project.name || (STUDIO.project.s1 && STUDIO.project.s1.topic) || STUDIO.project.topic || '(제목없음)',
       channel: STUDIO.project.channel,
       step: STUDIO.project.step,
       updatedAt: STUDIO.project.updatedAt
     };
-    if(i >= 0) list[i] = summary; else list.unshift(summary);
-    localStorage.setItem(LS_STUDIO_LIST, JSON.stringify(list.slice(0,50)));
+    if(meaningful){
+      if(i >= 0) list[i] = summary; else list.unshift(summary);
+    } else if(i >= 0){
+      /* 의미 없으면 기존 항목도 제거 (사용자가 입력 지웠을 때) */
+      list.splice(i, 1);
+    }
+    /* 추가 안전망 — 누적된 빈 항목 정리 */
+    const cleaned = list.filter(function(x){
+      if(!x) return false;
+      if(x.name && x.name !== '(제목없음)') return true;
+      if(typeof x.step === 'number' && x.step > 0) return true;
+      return false;
+    });
+    localStorage.setItem(LS_STUDIO_LIST, JSON.stringify(cleaned.slice(0,50)));
     const s = document.getElementById('studio-savestate'); if(s) s.innerHTML = '자동저장 ✅';
   }catch(e){ console.warn('[studio save]', e); }
 }

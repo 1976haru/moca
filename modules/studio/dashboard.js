@@ -104,23 +104,28 @@ function _studioDashboard(wrapId) {
       </button>
     </div>
 
-    <!-- 3. 최근 프로젝트 -->
-    ${recent.length > 0 ? `
+    <!-- 3. 최근 프로젝트 (이어 만들기) -->
     <div class="dash-section">
       <div class="dash-section-title">
         📂 이어 만들기
-        <button class="dash-del-all-btn"
+        ${recent.length > 0 ? `<button class="dash-del-all-btn"
           onclick="_dashDeleteAll('${wrapId||'studio-body'}')"
-          title="모든 기록 삭제">전체 삭제</button>
+          title="모든 기록 삭제">전체 삭제</button>` : ''}
       </div>
+      ${recent.length === 0 ? `
+        <div class="dash-recent-empty">아직 이어 만들기 작업이 없습니다.</div>
+      ` : `
       <div class="dash-recent-list">
-        ${recent.slice(0,3).map(p=>`
+        ${recent.slice(0,3).map(p=>{
+          const ttl  = p.name || p.title || '제목 없음';
+          const when = _dashFmtDate(p.updatedAt || p.savedAt || 0);
+          return `
           <div class="dash-recent-item">
             <div class="dash-recent-info"
               onclick="_dashLoadProject('${p.id}')">
-              <div class="dash-recent-name">${p.title||'제목 없음'}</div>
+              <div class="dash-recent-name">${ttl}</div>
               <div class="dash-recent-meta">
-                ${_dashStepLabel(p.step)} · ${_dashFmtDate(p.savedAt)}
+                ${_dashStepLabel(p.step)} · ${when}
               </div>
             </div>
             <div class="dash-recent-step"
@@ -135,10 +140,10 @@ function _studioDashboard(wrapId) {
             <button class="dash-del-one-btn"
               onclick="event.stopPropagation();_dashDeleteOne('${p.id}','${wrapId||'studio-body'}')"
               title="이 프로젝트 삭제">🗑</button>
-          </div>
-        `).join('')}
-      </div>
-    </div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
 
     <!-- 4. 오늘 추천 주제 -->
     <div class="dash-section">
@@ -188,11 +193,33 @@ function _studioDashboard(wrapId) {
 }
 
 /* ── 헬퍼 ── */
+
+/* 의미 있는 프로젝트인지 — 빈 프로젝트(자동 누적)는 제외 */
+function _dashHasMeaningful(p) {
+  if (!p) return false;
+  /* summary 객체 (목록 캐시) — name 또는 step>0 또는 의미있는 데이터 표시 */
+  if (p.name && p.name !== '(제목없음)' && p.name.trim() !== '') return true;
+  if (typeof p.step === 'number' && p.step > 0) return true;
+  /* 전체 프로젝트 객체 */
+  if (p.topic) return true;
+  if (p.scriptText || p.scriptKo || p.scriptJa) return true;
+  if (p.scenes && p.scenes.length) return true;
+  if (p.s1 && (p.s1.topic || p.s1.scriptText)) return true;
+  return false;
+}
+window._dashHasMeaningful = _dashHasMeaningful;
+
 function _dashGetRecent() {
   try {
     const ls = localStorage.getItem('uc_studio_projects');
     const list = ls ? JSON.parse(ls) : [];
-    return list.sort((a,b) => (b.savedAt||0) - (a.savedAt||0));
+    /* 빈 프로젝트 필터링 + 사이드 이펙트로 정리도 수행 */
+    const cleaned = (list || []).filter(_dashHasMeaningful);
+    /* 누적된 빈 항목이 있으면 LS도 정리 */
+    if (cleaned.length !== (list||[]).length) {
+      try { localStorage.setItem('uc_studio_projects', JSON.stringify(cleaned)); } catch(_){}
+    }
+    return cleaned.sort((a,b) => (b.updatedAt||b.savedAt||0) - (a.updatedAt||a.savedAt||0));
   } catch(e) { return []; }
 }
 
@@ -370,6 +397,8 @@ function _dashInjectCSS() {
   border-radius:8px;background:transparent;color:#9b8a93;font-size:14px;
   cursor:pointer;transition:.12s;flex-shrink:0}
 .dash-del-one-btn:hover{border-color:#fca5a5;background:#fef2f2;color:#dc2626}
+.dash-recent-empty{padding:18px;text-align:center;color:#9b8a93;font-size:12.5px;
+  background:#fbf7f9;border:1px dashed #f1dce7;border-radius:10px}
 `;
   document.head.appendChild(st);
 }
@@ -377,28 +406,38 @@ function _dashInjectCSS() {
 /* ════════════════════════════════════════════════
    이슈 1 — 삭제 함수 (단건/전체)
    ════════════════════════════════════════════════ */
+/* 실제 LS key (s1-script.js / index.js 와 동기화)
+   - 목록:    'uc_studio_projects'      (배열)
+   - 개별:    'uc_studio_project_<id>'  (prefix)
+*/
+const _DASH_LS_LIST = 'uc_studio_projects';
+const _DASH_LS_ONE  = 'uc_studio_project_';
+
 window._dashDeleteOne = function(id, wid) {
+  if (!id) return;
   if (!confirm('이 프로젝트를 삭제할까요?')) return;
   try {
-    /* localStorage에서 단건 제거 — 키 패턴: studio_project_<id> 또는 ms_studio_<id> */
-    const allKeys = Object.keys(localStorage);
-    allKeys.forEach(function(k){
-      if (k.indexOf(id) !== -1 && (k.indexOf('studio') !== -1 || k.indexOf('project') !== -1)) {
-        localStorage.removeItem(k);
+    /* 1) 개별 프로젝트 자료 제거 */
+    localStorage.removeItem(_DASH_LS_ONE + id);
+    /* 2) 목록 배열에서 항목 제거 + 빈 프로젝트도 같이 정리 */
+    const raw = localStorage.getItem(_DASH_LS_LIST);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const filtered = list
+          .filter(function(x){ return x && x.id !== id; })
+          .filter(_dashHasMeaningful);
+        localStorage.setItem(_DASH_LS_LIST, JSON.stringify(filtered));
       }
-    });
-    /* studioList 인덱스 갱신 (s1-script.js 의 LS_STUDIO_LIST) */
-    try {
-      const listKey = 'studio_project_list';
-      const raw = localStorage.getItem(listKey);
-      if (raw) {
-        const list = JSON.parse(raw);
-        if (Array.isArray(list)) {
-          const filtered = list.filter(function(x){ return x && x.id !== id; });
-          localStorage.setItem(listKey, JSON.stringify(filtered));
-        }
+    }
+    /* 3) 현재 STUDIO.project 가 삭제 대상이면 새로 시작 (재저장 방지) */
+    if (typeof STUDIO !== 'undefined' && STUDIO.project && STUDIO.project.id === id) {
+      if (typeof studioNewProjectObj === 'function') {
+        STUDIO.project = studioNewProjectObj();
+      } else {
+        STUDIO.project = null;
       }
-    } catch(_) { /* ignore */ }
+    }
   } catch(e) {
     console.warn('[dash] delete one 오류:', e);
   }
@@ -406,15 +445,23 @@ window._dashDeleteOne = function(id, wid) {
 };
 
 window._dashDeleteAll = function(wid) {
-  if (!confirm('모든 기록을 삭제할까요? 되돌릴 수 없습니다.')) return;
+  if (!confirm('이어 만들기 목록을 모두 삭제할까요? 되돌릴 수 없습니다.')) return;
   try {
+    /* 1) 모든 개별 프로젝트 (uc_studio_project_*) 제거 */
     const allKeys = Object.keys(localStorage);
     allKeys.forEach(function(k){
-      if (k.indexOf('studio_project') === 0 || k.indexOf('ms_studio_') === 0
-          || k === 'studio_project_list') {
-        localStorage.removeItem(k);
-      }
+      if (k.indexOf(_DASH_LS_ONE) === 0) localStorage.removeItem(k);
     });
+    /* 2) 목록 배열 비우기 */
+    localStorage.setItem(_DASH_LS_LIST, JSON.stringify([]));
+    /* 3) 현재 STUDIO.project 새로 시작 (재저장 방지) */
+    if (typeof STUDIO !== 'undefined') {
+      if (typeof studioNewProjectObj === 'function') {
+        STUDIO.project = studioNewProjectObj();
+      } else {
+        STUDIO.project = null;
+      }
+    }
   } catch(e) {
     console.warn('[dash] delete all 오류:', e);
   }
