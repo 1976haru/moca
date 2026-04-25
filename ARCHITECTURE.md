@@ -98,3 +98,26 @@ studioGet('edit')     // proj.edit || localStorage moca_s4_edit
 1. 시크릿 창 → 1976haru.github.io/moca/engines/shorts/index.html
 2. 0~5단계 탭 클릭 → 각 화면 렌더링 확인
 3. F12 콘솔 에러 없음 확인
+
+---
+
+## 모듈 현황
+
+줄 수 대신 상태로 관리합니다. 코드 변경 시 상태(✅/🚧/❌)만 업데이트하세요.
+
+| 파일 | 역할 | 상태 |
+|---|---|---|
+| modules/studio/dashboard.js | 채널·모드 선택 | ✅ 완료 |
+| modules/studio/s1-script-step.js | 대본 생성·훅 A/B | ✅ 완료 |
+| modules/studio/s2-voice-step.js | TTS·BGM 매칭 | ✅ 완료 |
+| modules/studio/s3-source-tabs.js | 이미지·소스 탭 | ✅ 완료 |
+| modules/studio/s4-edit.js | 편집·리훅·사운드FX | ✅ 완료 |
+| modules/studio/s5-upload-v2.js | 최종검수·출력 | ✅ 완료 |
+| studio-quality.js | 품질관리 시스템 | ✅ 완료 |
+| s2-voice-quality.js | 음성 품질 강화 | ✅ 완료 |
+| s3-video-tools.js | 영상 프롬프트 | ✅ 완료 |
+| engines/script/js/script-music.js | 노래강화 5탭 | ✅ 완료 |
+| core/intent-system.js | 이미지 의도 고정 | 🚧 진행중 |
+| s5 품질 대시보드 연결 | 통합 품질 대시보드 | 🚧 진행중 |
+
+> 새 파일 추가 시 이 표에 행 추가. 줄 수는 기록하지 않습니다.

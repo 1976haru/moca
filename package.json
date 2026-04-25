@@ -4,6 +4,8 @@
   "description": "MOCA — 통합콘텐츠 생성기 (MOCA Content Studio)",
   "private": true,
   "scripts": {
+    "dev": "npx serve . -p 3000 --no-clipboard",
+    "start": "npx serve . -p 3000",
     "lint": "eslint \"core/**/*.js\" \"modules/**/*.js\" \"shared/**/*.js\" \"engines/**/*.js\"",
     "lint:fix": "eslint --fix \"core/**/*.js\" \"modules/**/*.js\" \"shared/**/*.js\" \"engines/**/*.js\"",
     "format": "prettier --write \"**/*.{js,html,css,md,json}\"",
