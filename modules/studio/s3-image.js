@@ -2,9 +2,13 @@
    s3-image.js
    STEP3 image / art-style / scene-gen / stock-search / image-reuse
    modules/studio/ -- split_studio2.py
+   + 소스 탭(이미지/영상프롬프트/직접업로드) 라우팅
    ================================================ */
 
-/* ═════════════ STEP 3 이미지 ═════════════ */
+/* ── 소스 탭 상태 ── */
+let _s3SourceTab = 'image'; // 'image' | 'video' | 'upload'
+
+/* ═════════════ STEP 3 이미지·영상 소스 ═════════════ */
 function _studioS3(){
   const p  = STUDIO.project;
   const s3 = p.s3 || {};
@@ -12,6 +16,19 @@ function _studioS3(){
   const script = s2.scriptKo || s2.scriptJa || p.script || '';
   const scenes = s3.scenes || _studioS3ParseScenes(script);
   if(!s3.scenes){ s3.scenes = scenes; STUDIO.project.s3 = s3; }
+
+  /* 소스 탭 헤더 (이미지/영상프롬프트/직접업로드) */
+  const tabsHtml =
+    '<div class="s3-source-tabs">' +
+      '<button class="s3-src-tab' + (_s3SourceTab==='image'?' on':'') + '" onclick="window._s3SetSourceTab(\'image\')">🖼 이미지 생성</button>' +
+      '<button class="s3-src-tab' + (_s3SourceTab==='video'?' on':'') + '" onclick="window._s3SetSourceTab(\'video\')">🎬 영상 프롬프트</button>' +
+      '<button class="s3-src-tab' + (_s3SourceTab==='upload'?' on':'') + '" onclick="window._s3SetSourceTab(\'upload\')">📁 직접 업로드</button>' +
+    '</div>';
+
+  /* 비-image 모드: s3-video.js 가 _studioBindS3 에서 wrap 채움 */
+  if(_s3SourceTab !== 'image'){
+    return '<div class="studio-panel">' + tabsHtml + '<div id="studioS3VideoWrap"></div></div>';
+  }
 
   const api      = s3.api      || 'dalle3';
   const genMode  = s3.genMode  || 'balance';
@@ -102,10 +119,10 @@ function _studioS3(){
     '</div>';
   }).join('');
 
-  return '<div class="studio-panel">' +
+  return '<div class="studio-panel">' + tabsHtml +
 
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
-      '<div><h4 style="margin:0 0 2px">② 이미지 생성</h4><div style="font-size:12px;color:var(--sub)">씬별 이미지 + 썸네일 · 내 사진 업로드 가능</div></div>' +
+      '<div><h4 style="margin:0 0 2px">② 이미지·영상 소스</h4><div style="font-size:12px;color:var(--sub)">씬별 이미지 + 썸네일 · 내 사진 업로드 가능</div></div>' +
       '<div style="text-align:right"><div style="font-size:11px;color:var(--sub)">예상비용</div><div style="font-size:20px;font-weight:900;color:var(--pink)">₩'+totalCost+'</div></div>' +
     '</div>' +
 
@@ -233,7 +250,15 @@ function _studioS3ParseScenes(script){
   return defaults;
 }
 
-function _studioBindS3(){}
+function _studioBindS3(){
+  _s3InjectSourceTabCSS();
+  if(_s3SourceTab !== 'image' && typeof _studioS3Video === 'function'){
+    _studioS3Video('studioS3VideoWrap');
+    if(_s3SourceTab === 'upload' && typeof _s3vSetTab === 'function'){
+      _s3vSetTab('c', 'studioS3VideoWrap');
+    }
+  }
+}
 
 function studioS3SetApi(api){
   STUDIO.project.s3 = STUDIO.project.s3 || {};
@@ -542,8 +567,16 @@ async function studioS3GenThumb(variant){
 
 function studioS3Next(){
   var s3 = STUDIO.project.s3||{};
-  var hasImg = (s3.images||[]).some(function(i){ return !!i; });
-  if(!hasImg && !confirm('이미지 없이 다음 단계로 진행할까요?')) return;
+  var src = STUDIO.project.sources||{};
+  var mode = src.mode || 'image';
+  if(mode === 'video_prompt' && !(src.videoPrompts||[]).length){
+    if(!confirm('영상 프롬프트가 없어요. 그냥 넘어갈까요?')) return;
+  } else if(mode === 'upload' && !(src.uploadedFiles||[]).length){
+    if(!confirm('업로드된 파일이 없어요. 그냥 넘어갈까요?')) return;
+  } else if(mode === 'image'){
+    var hasImg = (s3.images||[]).some(function(i){ return !!i; });
+    if(!hasImg && !confirm('이미지 없이 다음 단계로 진행할까요?')) return;
+  }
   STUDIO.project.step = 3;
   studioSave(); renderStudio();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -553,5 +586,35 @@ function studioS3Next(){
 async function studioS3GenScenes(){ studioS3GenAll(); }
 async function studioS3GenThumbs(){ studioS3GenThumb('A'); }
 function studioS3Regen(i){ studioS3RegenScene(i); }
+
+/* ── 소스 탭 전환 ── */
+window._s3SetSourceTab = function(tab){
+  _s3SourceTab = tab;
+  if(typeof STUDIO !== 'undefined' && STUDIO.project){
+    if(!STUDIO.project.sources){
+      STUDIO.project.sources = { mode:'image', images:[], videoPrompts:[], uploadedFiles:[],
+        externalTool:{ name:'invideo', prompt:'', outputVideo:null } };
+    }
+    STUDIO.project.sources.mode =
+      tab === 'image' ? 'image' : tab === 'video' ? 'video_prompt' : 'upload';
+    if(typeof studioSave === 'function') studioSave();
+  }
+  if(typeof renderStudio === 'function') renderStudio();
+};
+
+function _s3InjectSourceTabCSS(){
+  if(document.getElementById('s3-src-tab-style')) return;
+  const st = document.createElement('style');
+  st.id = 's3-src-tab-style';
+  st.textContent = `
+.s3-source-tabs{display:flex;gap:6px;margin-bottom:14px}
+.s3-src-tab{flex:1;padding:10px;border:2px solid var(--line);border-radius:12px;
+  background:#fff;font-size:13px;font-weight:800;color:var(--sub);cursor:pointer;transition:.14s}
+.s3-src-tab:hover{border-color:var(--pink)}
+.s3-src-tab.on{background:linear-gradient(135deg,#ef6fab,#9181ff);
+  color:#fff;border-color:transparent}
+`;
+  document.head.appendChild(st);
+}
 
 

@@ -18,7 +18,14 @@ function studioNewProjectObj(){
     s4: { voiceKo:'senior-f', voiceJa:'yuki', speed:1.0, emotion:'중립', pitch:0, bgm:'soft piano', bgmVolume:15 },
     s5: { template:'시니어감동v1', transitions:[], motion:'kenburns', filter:'원본', opening:true, closing:true, branding:{logo:'',watermark:'',color:'#ef6fab'}, effects:[] },
     s6: { fontKo:'Pretendard', fontJa:'Noto Sans JP', subtitleLayout:'bottom', keywordHighlight:true, animation:'popup', jpVertical:false, jpFurigana:false, jpKeigo:false },
-    s7: { titles:[], hashtags:{ko:[],ja:[]}, scoreKo:{}, scoreJa:{}, suggestions:[] }
+    s7: { titles:[], hashtags:{ko:[],ja:[]}, scoreKo:{}, scoreJa:{}, suggestions:[] },
+    sources: {
+      mode: 'image',                   // 'image' | 'video_prompt' | 'upload'
+      images: [],
+      videoPrompts: [],
+      uploadedFiles: [],
+      externalTool: { name:'invideo', prompt:'', outputVideo:null }
+    }
   };
 }
 
@@ -193,7 +200,7 @@ function studioDelete(id){
 const STUDIO_STEPS = [
   { n:0, label:'🏠 대시보드' },
   { n:1, label:'① 대본 생성' },
-  { n:2, label:'② 이미지 생성' },
+  { n:2, label:'② 이미지·영상 소스' },
   { n:3, label:'③ 음성·BGM' },
   { n:4, label:'④ 편집' },
   { n:5, label:'⑤ 최종검수·업로드' },
@@ -249,7 +256,7 @@ function _studioS0(){
   const p = STUDIO.project;
   const steps = [
     { n:1, icon:'📝', title:'대본 생성',          desc:'장르·주제·훅·길이 설정 → 대본 완성' },
-    { n:2, icon:'🖼',  title:'이미지 생성',        desc:'화풍 18종·조명 9종 씬별 자동 생성' },
+    { n:2, icon:'🖼',  title:'이미지·영상 소스',    desc:'이미지 / AI 영상 프롬프트 / 직접 업로드 — 3가지 소스' },
     { n:3, icon:'🔊', title:'음성·BGM',           desc:'TTS 보이스·감정·BGM 선곡' },
     { n:4, icon:'✂️', title:'편집',               desc:'컷·자막·효과·전환' },
     { n:5, icon:'✅', title:'최종검수·업로드',    desc:'제목·해시태그·업로드 패키지' }
