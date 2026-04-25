@@ -13,9 +13,13 @@ function _studioS3(){
   const p  = STUDIO.project;
   const s3 = p.s3 || {};
   const s2 = p.s2 || {};
-  const script = s2.scriptKo || s2.scriptJa || p.script || '';
+  const script = s2.scriptKo || s2.scriptJa || p.script || p.scriptText || '';
   const scenes = s3.scenes || _studioS3ParseScenes(script);
   if(!s3.scenes){ s3.scenes = scenes; STUDIO.project.s3 = s3; }
+
+  /* 이슈 2 — 1단계 대본/imagePrompts → 2단계 씬별 prompt textarea 자동 채움
+     사용자가 직접 입력한 prompt 가 있으면 보존. 처음 진입에서만 빈 슬롯을 채움. */
+  _s3HydratePromptsFromScript(scenes, s3, p);
 
   /* 소스 탭 헤더 (이미지/영상프롬프트/직접업로드) */
   const tabsHtml =
@@ -128,7 +132,22 @@ function _studioS3(){
 
     '<div class="studio-section"><div class="studio-label">🤖 A. 이미지 API 선택</div>' +
     apiHtml +
-    (function(){var keyStatus=(typeof ucApiKeyStatus==='function')?ucApiKeyStatus(api):{ok:false,label:'확인불가'};return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px">' +'<span style="font-size:12px;font-weight:700;color:'+(keyStatus.ok?'#27ae60':'#e74c3c')+'">'+keyStatus.label+'</span>' +'<span style="font-size:12px;color:var(--sub)">'+api+' API 키</span>' +'<button onclick="renderApiSettings()" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>' +'</div></div>';})() +
+    (function(){
+      /* 신규 모달 (s3-image-keys.js) 가 로드됐으면 그것을 우선 사용 */
+      var hasNewModal = (typeof window.s3OpenImageApiKeyModal === 'function');
+      var hasKeyFn    = (typeof window.s3HasImageApiKey === 'function');
+      var keyOk       = hasKeyFn ? window.s3HasImageApiKey(api) :
+                        (typeof ucApiKeyStatus === 'function' ? ucApiKeyStatus(api).ok : !!savedKey);
+      var keyLabel    = keyOk ? '✅ 키 저장됨' : '⚠️ 키 필요';
+      var openCall    = hasNewModal ? 's3OpenImageApiKeyModal()'
+                       : (typeof renderApiSettings === 'function' ? 'renderApiSettings()'
+                       : 'alert(\'키 설정 모달이 로드되지 않았습니다.\')');
+      return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px">' +
+        '<span style="font-size:12px;font-weight:700;color:'+(keyOk?'#27ae60':'#e74c3c')+'">'+keyLabel+'</span>' +
+        '<span style="font-size:12px;color:var(--sub)">'+api+' API 키</span>' +
+        '<button onclick="'+openCall+'" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>' +
+        '</div></div>';
+    })() +
 
     '<div class="studio-section"><div class="studio-label">🎨 B. 화풍 선택</div>' +
     '<div class="studio-chips" id="s3-art">' +
@@ -630,5 +649,86 @@ function _s3InjectSourceTabCSS(){
 `;
   document.head.appendChild(st);
 }
+
+/* ═════════════ 이슈 2 — 1단계 → 2단계 이미지 프롬프트 자동 전달 ═════════════ */
+function _s3HydratePromptsFromScript(scenes, s3, proj){
+  if(!scenes || !scenes.length) return;
+  s3.prompts = s3.prompts || [];
+
+  /* 우선순위 소스 — 사용자가 가능한 한 그대로 받게 */
+  var srcA = (proj && proj.imagePrompts) || [];
+  var srcB = (proj && proj.s1 && proj.s1.imagePrompts) || [];
+  var primary = (srcA.length ? srcA : srcB) || [];
+
+  /* 6→3 묶기 옵션: scenes 수가 이미지 textarea 수보다 많고 정확히 2배일 때만 자동 묶기 */
+  var bundleMap = null;
+  if (primary.length === scenes.length / 2 && scenes.length % 2 === 0 && scenes.length >= 4) {
+    bundleMap = {}; /* not used for now — primary 가 이미 적절한 수면 그대로 사용 */
+  }
+
+  /* 장르별 스타일 키워드 (auto-generate fallback) */
+  var styleKw = _s3StyleKeywordsForGenre((proj && proj.style) || (proj && proj.s1 && proj.s1.style));
+
+  var anyHydrated = false;
+  scenes.forEach(function(sc, i){
+    /* 이미 사용자 입력 있으면 보존 */
+    if (s3.prompts[i] && String(s3.prompts[i]).trim()) return;
+
+    /* 1) primary imagePrompts */
+    if (primary[i] && String(primary[i]).trim()) {
+      s3.prompts[i] = String(primary[i]).trim();
+      anyHydrated = true; return;
+    }
+    /* 2) scene 객체의 다양한 필드 */
+    var fromScene = sc.imagePrompt || sc.visual_description || sc.prompt_en || sc.promptKo || sc.prompt;
+    if (fromScene && String(fromScene).trim()) {
+      s3.prompts[i] = String(fromScene).trim();
+      anyHydrated = true; return;
+    }
+    /* 3) 본문(label/desc/text)으로 영어 자동 생성 */
+    var seed = sc.label || sc.desc || sc.text || sc.caption || ('Scene ' + (i+1));
+    s3.prompts[i] = _s3BuildAutoPrompt(seed, styleKw, i, scenes.length);
+    anyHydrated = true;
+  });
+
+  /* 안내 상태 (다른 모듈이 읽음) */
+  s3._hydrateSource =
+    primary.length ? 'script-imagePrompts'
+    : scenes.some(function(sc){ return sc.imagePrompt || sc.visual_description; }) ? 'scenes-visual'
+    : (anyHydrated ? 'auto-generated' : 'empty');
+
+  /* STUDIO.project.imagePrompts 도 동기화 */
+  if (proj) {
+    proj.imagePrompts = s3.prompts.slice();
+  }
+}
+
+function _s3StyleKeywordsForGenre(genre){
+  var map = {
+    emotional:  'warm emotional cinematic scene, soft golden light, nostalgic atmosphere, realistic photography style',
+    info:       'clean informational scene with clear visual metaphor, bright lighting, minimal modern style',
+    senior:     'elderly Korean people in warm home setting, respectful gentle tone, soft natural light',
+    humor:      'expressive characters in light comedy scene, vibrant colors, playful mood',
+    drama:      'cinematic dramatic scene with strong emotion, contrast lighting, film-like composition',
+    tikitaka:   'split-screen comparison of two opposing sides, balanced framing, vivid contrast',
+    knowledge:  'professional documentary style, clean composition, factual presentation',
+    trivia:     'curiosity-evoking visual, eye-catching subject, clear focal point',
+    saying:     'classical wisdom-themed scene, calligraphy-friendly composition, timeless mood',
+    lyric:      'music album cover style, emotional atmosphere, rich color palette',
+    longform:   'cinematic documentary scene, multi-layered composition, professional lighting',
+    custom:     'high quality cinematic photography, balanced composition',
+  };
+  return map[genre] || 'high quality cinematic photography, balanced composition, natural lighting';
+}
+
+function _s3BuildAutoPrompt(seedText, styleKw, idx, total){
+  /* 첫·중간·마지막 씬에 따라 역할 강조 */
+  var role = idx === 0 ? 'opening hook scene'
+           : idx === total - 1 ? 'closing CTA scene'
+           : 'core narrative scene ' + (idx + 1);
+  var seed = String(seedText || '').slice(0, 80).replace(/[\r\n]+/g, ' ');
+  return '[' + role + '] ' + seed + ' — ' + styleKw + ', 9:16 vertical, high quality, no text overlay';
+}
+
 
 

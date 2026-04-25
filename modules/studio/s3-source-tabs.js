@@ -81,15 +81,30 @@ function _studioS3Source(wrapId) {
 
 /* ── 씬-소스 매핑 패널 ── */
 function _s3RenderSceneMap(scenes, proj) {
-  const hasAny = scenes.some(s => s.imageUrl || s.videoUrl);
+  const hasAny      = scenes.some(s => s.imageUrl || s.videoUrl);
+  /* 이슈 2 — 자동 채워진 prompt 가 있는지 / 어떤 소스인지 표시 */
+  const s3State     = (proj && proj.s3) || {};
+  const promptCount = (s3State.prompts || []).filter(function(p){ return p && String(p).trim(); }).length;
+  const hydrateSrc  = s3State._hydrateSource;
+
+  let statusBadge;
+  if (hasAny) {
+    statusBadge = `<span class="s3src-map-ok">✅ 일부 완료</span>`;
+  } else if (hydrateSrc === 'script-imagePrompts' && promptCount > 0) {
+    statusBadge = `<span class="s3src-map-ok">✅ 대본에서 ${promptCount}개 이미지 프롬프트를 가져왔어요</span>`;
+  } else if (hydrateSrc === 'scenes-visual' && promptCount > 0) {
+    statusBadge = `<span class="s3src-map-ok">✅ 씬 정보에서 ${promptCount}개 프롬프트를 추출했어요</span>`;
+  } else if (hydrateSrc === 'auto-generated' && promptCount > 0) {
+    statusBadge = `<span class="s3src-map-warn">⚠️ 대본은 있지만 이미지 프롬프트가 없어 ${promptCount}개를 자동 생성했어요</span>`;
+  } else {
+    statusBadge = `<span class="s3src-map-warn">⚠️ 소스 없음 — 직접 입력하거나 "프롬프트 AI생성"을 눌러주세요</span>`;
+  }
 
   return `
   <div class="s3src-map">
     <div class="s3src-map-hd">
       📋 씬별 소스 현황
-      ${hasAny
-        ? `<span class="s3src-map-ok">✅ 일부 완료</span>`
-        : `<span class="s3src-map-warn">⚠️ 소스 없음 — 건너뛰기 가능</span>`}
+      ${statusBadge}
     </div>
     <div class="s3src-map-grid">
       ${scenes.map((s,i) => {
