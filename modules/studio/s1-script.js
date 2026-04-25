@@ -262,39 +262,7 @@ function _studioBindStep(){
   if(typeof fn === 'function') fn();
 }
 
-/* ═════════════ STEP 0 대시보드 ═════════════ */
-function _studioS0(){
-  const p = STUDIO.project;
-  const steps = [
-    { n:1, icon:'📝', title:'대본 생성',          desc:'장르·주제·훅·길이 설정 → 대본 완성' },
-    { n:2, icon:'🖼',  title:'이미지·영상 소스',    desc:'이미지 / AI 영상 프롬프트 / 직접 업로드 — 3가지 소스' },
-    { n:3, icon:'🔊', title:'음성·BGM',           desc:'TTS 보이스·감정·BGM 선곡' },
-    { n:4, icon:'✂️', title:'편집',               desc:'컷·자막·효과·전환' },
-    { n:5, icon:'✅', title:'최종검수·업로드',    desc:'제목·해시태그·업로드 패키지' }
-  ];
-  const chLabel = (p.channel==='both'?'🇰🇷🇯🇵 동시':p.channel==='ja'?'🇯🇵 일본어':'🇰🇷 한국어');
-  return '<div class="studio-panel">' +
-    '<h4>🏠 자동숏츠 스튜디오 대시보드</h4>' +
-    '<p class="sub">채널: <b>' + chLabel + '</b> · 아래 단계를 순서대로 진행하거나 원하는 단계로 바로 이동할 수 있어요.</p>' +
-    '<div class="studio-dash" style="display:flex;flex-direction:column;gap:10px;margin-top:8px">' +
-    steps.map(function(s){
-      var active = (p.step === s.n);
-      var done   = (p.step > s.n);
-      return '<button onclick="studioGoto(' + s.n + ')" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1.5px solid ' + (active?'var(--pink)':'var(--line)') + ';border-radius:14px;background:' + (done?'#e8f6ef':active?'var(--pink-soft)':'#fff') + ';cursor:pointer;text-align:left;font-family:inherit">' +
-        '<div style="font-size:26px">' + s.icon + '</div>' +
-        '<div style="flex:1">' +
-          '<div style="font-size:14px;font-weight:900;color:' + (done?'#1a7a5a':active?'var(--pink)':'var(--text)') + '">' +
-            (done?'✅ ':'') + 'STEP ' + s.n + '. ' + s.title +
-          '</div>' +
-          '<div style="font-size:12px;color:var(--sub);margin-top:2px">' + s.desc + '</div>' +
-        '</div>' +
-        '<span style="font-size:18px;color:var(--sub)">›</span>' +
-      '</button>';
-    }).join('') +
-    '</div>' +
-  '</div>';
-}
-function _studioBindS0(){ /* 순수 static 렌더 — 별도 바인딩 불필요 */ }
+/* ═════════════ STEP 0 대시보드 — modules/studio/dashboard.js 로 이관됨 ═════════════ */
 
 function _studioBindS1(){
   const p = STUDIO.project.s1;

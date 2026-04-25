@@ -265,7 +265,7 @@ window._dashStartWithTopic = function(topic, wid) {
 };
 
 window._dashLoadProject = function(id) {
-  if (typeof studioLoadProject === 'function') studioLoadProject(id);
+  if (typeof studioResume === 'function') studioResume(id);
 };
 
 window._dashSetChannel = function() {
