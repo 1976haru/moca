@@ -186,11 +186,14 @@ function _studioS1Step(wrapId) {
     <!-- 모드별 전용 블록 (s1-modes.js 가 로드됐을 때만) -->
     ${typeof _s1RenderModeBlock === 'function' ? _s1RenderModeBlock(wid, _s1Mode) : ''}
 
-    <!-- 언어 -->
+    <!-- 장르별 세부 패널 (s1-style-panels.js / s1-lyric-panel.js 가 로드됐을 때만) -->
+    ${typeof _s1RenderStylePanel === 'function' ? _s1RenderStylePanel(_s1Style, wid) : ''}
+
+    <!-- 언어 (출력 언어) -->
     <div class="s1s-block">
-      <div class="s1s-label">🌐 언어</div>
+      <div class="s1s-label">🌐 출력 언어</div>
       <div class="s1s-seg">
-        ${[['ko','🇰🇷 한국어'],['ja','🇯🇵 일본어'],['both','🇰🇷🇯🇵 동시']].map(([v,l])=>`
+        ${[['ko','🇰🇷 한국어만'],['ja','🇯🇵 일본어만'],['both','🇰🇷🇯🇵 한일 동시']].map(([v,l])=>`
           <button class="s1s-seg-btn ${_s1Lang===v?'on':''}"
             onclick="_s1Lang='${v}';_studioS1Step('${wid}')">${l}</button>
         `).join('')}
@@ -200,20 +203,27 @@ function _studioS1Step(wrapId) {
     <!-- 고급 설정 (접이식, 8필드) -->
     ${_s1RenderAdv(wid)}
 
-    <!-- 생성 버튼 -->
-    <button class="s1s-gen-btn ${_s1Loading?'loading':''}"
-      onclick="_s1Generate('${wid}')"
-      ${_s1Loading?'disabled':''}>
-      ${_s1Loading ? '<span class="s1s-spin">⏳</span> 대본 생성 중...' : '✨ AI 대본 생성'}
-    </button>
+    <!-- 생성 버튼 (AI 단일 / A·B 비교) -->
+    <div class="s1s-gen-row">
+      <button class="s1s-gen-btn ${_s1Loading?'loading':''}"
+        onclick="_s1Generate('${wid}')"
+        ${_s1Loading?'disabled':''}>
+        ${_s1Loading ? '<span class="s1s-spin">⏳</span> 생성 중...' : '✨ AI 대본 생성'}
+      </button>
+      <button class="s1s-gen-btn s1s-gen-ab ${_s1Loading?'loading':''}"
+        onclick="_s1GenerateAB('${wid}')"
+        ${_s1Loading?'disabled':''}>
+        ${_s1Loading ? '<span class="s1s-spin">⏳</span> A/B 생성 중...' : '🔀 A/B 대본 생성'}
+      </button>
+    </div>
 
     <!-- 결과 -->
     ${_s1Result ? _s1RenderResult(wid) : ''}
 
-    <!-- 고급 모드 링크 -->
+    <!-- 대본생성기 전체 기능 페이지 열기 (현재 topic/mode/lang 전달) -->
     <div class="s1s-advanced-link">
-      <a href="../../engines/script/index.html?mode=shorts&embed=1" target="_blank" onclick="_s1SetupBridge()">
-        📝 대본생성기 전체 기능 열기 (고급)
+      <a href="javascript:void(0)" onclick="_s1OpenFullPage()">
+        📝 대본생성기 전체 기능 페이지 열기 →
       </a>
     </div>
 
@@ -367,6 +377,9 @@ function _s1RenderResult(wid) {
         oninput="_s1Result.ja=this.value;_s1SaveToProject()">${r.ja}</textarea>` : ''}
     </details>
 
+    <!-- A/B 버전 비교 (있을 때만) -->
+    ${(_s1Result && _s1Result.abVersions) ? _s1RenderABCompare() : ''}
+
     <!-- AI 검수 + A/B 버전 + 바이럴 점수 (s1-review.js 가 로드됐을 때만) -->
     ${typeof _s1RenderReviewSection === 'function' ? _s1RenderReviewSection(wid) : ''}
 
@@ -377,69 +390,212 @@ function _s1RenderResult(wid) {
   </div>`;
 }
 
+/* ── A/B 비교 카드 ── */
+function _s1RenderABCompare() {
+  const ab = _s1Result && _s1Result.abVersions;
+  if (!ab) return '';
+  const A = ab.A || {}, B = ab.B || {};
+  const adopted = ab.adopted || 'A';
+  const showText = function(v) {
+    return (v.primary || '').slice(0, 800) + ((v.primary||'').length > 800 ? '\n...(이하 생략)' : '');
+  };
+  return `
+  <div class="s1s-ab-section">
+    <div class="s1s-ab-hd">🔀 A / B 버전 비교 — 현재 채택: <b>${adopted}안</b></div>
+    <div class="s1s-ab-grid">
+      <div class="s1s-ab-col ${adopted==='A'?'on':''}">
+        <div class="s1s-ab-title">A안 — ${A.label||''}</div>
+        <textarea class="s1s-ab-text" readonly>${showText(A)}</textarea>
+        <button class="s1s-mini-btn ${adopted==='A'?'danger':''}"
+          onclick="_s1AdoptAB('A')" ${adopted==='A'?'disabled':''}>
+          ${adopted==='A'?'✅ 채택중':'A안 채택'}
+        </button>
+      </div>
+      <div class="s1s-ab-col ${adopted==='B'?'on':''}">
+        <div class="s1s-ab-title">B안 — ${B.label||''}</div>
+        <textarea class="s1s-ab-text" readonly>${showText(B)}</textarea>
+        <button class="s1s-mini-btn ${adopted==='B'?'danger':''}"
+          onclick="_s1AdoptAB('B')" ${adopted==='B'?'disabled':''}>
+          ${adopted==='B'?'✅ 채택중':'B안 채택'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
 /* ════════════════════════════════════════════════
-   AI 대본 생성 (모드 분기)
+   공통 — AI 호출 래퍼
+   ════════════════════════════════════════════════ */
+async function _s1CallAI(sys, user, maxTokens) {
+  if (typeof callAI === 'function') {
+    return await callAI(sys, user);
+  }
+  if (typeof APIAdapter !== 'undefined' && APIAdapter.callWithFallback) {
+    return await APIAdapter.callWithFallback(sys, user, { maxTokens, featureId:'s1-script' });
+  }
+  const apiKey = localStorage.getItem('claude_api_key') ||
+                 localStorage.getItem('uc_claude_key') ||
+                 localStorage.getItem('anthropic_key') || '';
+  if (!apiKey) throw new Error('API 키가 설정되지 않았습니다 (설정 탭에서 등록).');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version':'2023-06-01',
+    },
+    body: JSON.stringify({
+      model:'claude-opus-4-5',
+      max_tokens: maxTokens || 2000,
+      system: sys,
+      messages:[{ role:'user', content:user }],
+    }),
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || '';
+}
+
+/* ── prompt-builder 옵션 빌드 ── */
+function _s1BuildOpts(topic, abVariant) {
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  return {
+    topic: topic,
+    mode:  _s1Mode,
+    genre: _s1Style,
+    style: _s1Style,
+    length: _s1Length,
+    outputLang: _s1Lang,
+    hook: _s1Hook,
+    hookStr: _s1HookStr,
+    trustStr: _s1TrustStr,
+    adv: _s1Adv,
+    abVariant: abVariant || null,
+    s1: proj.s1 || {},
+  };
+}
+
+/* ════════════════════════════════════════════════
+   AI 대본 생성 (단일)
    ════════════════════════════════════════════════ */
 async function _s1Generate(wid) {
   const topic = document.getElementById('s1sTopic')?.value?.trim();
   if (!topic) { alert('주제를 입력해주세요!'); return; }
+  if (!window._s1Prompt || typeof window._s1Prompt.build !== 'function') {
+    alert('s1-prompt-builder.js 가 로드되지 않았습니다.');
+    return;
+  }
 
   _s1Loading = true;
   _s1Result  = null;
   _studioS1Step(wid);
 
   try {
-    const sysPrompt  = _s1BuildSystemPrompt(topic);
-    const userPrompt = _s1BuildUserPrompt(topic);
-    const maxTokens  = (_s1Mode === 'longform') ? 5000 : 2000;
+    const opts   = _s1BuildOpts(topic);
+    const built  = window._s1Prompt.build(opts);
+    const maxTok = (_s1Mode === 'longform') ? 5000 : 2000;
+    const raw    = await _s1CallAI(built.sys, built.user, maxTok);
 
-    let rawText = '';
-    if (typeof callAI === 'function') {
-      rawText = await callAI(sysPrompt, userPrompt);
-    } else if (typeof APIAdapter !== 'undefined' && APIAdapter.callWithFallback) {
-      rawText = await APIAdapter.callWithFallback(sysPrompt, userPrompt, { maxTokens, featureId:'s1-script' });
-    } else {
-      const apiKey = localStorage.getItem('claude_api_key') ||
-                     localStorage.getItem('uc_claude_key') ||
-                     localStorage.getItem('anthropic_key') || '';
-      if (!apiKey) {
-        alert('API 키를 설정해주세요 (설정 탭)');
-        _s1Loading = false; _studioS1Step(wid); return;
-      }
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version':'2023-06-01',
-        },
-        body: JSON.stringify({
-          model:'claude-opus-4-5',
-          max_tokens: maxTokens,
-          system: sysPrompt,
-          messages:[{ role:'user', content:userPrompt }],
-        }),
-      });
-      const data = await res.json();
-      rawText = data.content?.[0]?.text || '';
-    }
-
-    const parts  = rawText.split(/={3,}\s*일본어\s*={3,}/i);
-    const koText = parts[0]?.trim() || rawText;
-    const jaText = parts[1]?.trim() || '';
+    /* 출력 언어별 분기 파싱 */
+    const parsed = window._s1Prompt.parseOutput(raw, _s1Lang);
     const sceneCount = _s1CalcScenes(_s1Length);
-    const scenes = _s1ParseScenes(koText, sceneCount);
+    const scenes = _s1ParseScenes(parsed.primary || raw, sceneCount);
 
-    _s1Result = { ko: koText, ja: jaText, scenes };
+    _s1Result = {
+      ko: parsed.ko, ja: parsed.ja, scenes: scenes,
+      primary: parsed.primary,
+    };
     _s1SaveToProject(topic);
   } catch (err) {
     console.error('대본 생성 오류:', err);
-    alert('대본 생성 중 오류가 발생했습니다.\n' + err.message);
+    alert('대본 생성 중 오류: ' + err.message);
   }
 
   _s1Loading = false;
   _studioS1Step(wid);
 }
+
+/* ════════════════════════════════════════════════
+   A/B 대본 생성 (안정형 A + 자극형 B 동시)
+   ════════════════════════════════════════════════ */
+async function _s1GenerateAB(wid) {
+  const topic = document.getElementById('s1sTopic')?.value?.trim();
+  if (!topic) { alert('주제를 입력해주세요!'); return; }
+  if (!window._s1Prompt || typeof window._s1Prompt.build !== 'function') {
+    alert('s1-prompt-builder.js 가 로드되지 않았습니다.');
+    return;
+  }
+
+  _s1Loading = true;
+  _studioS1Step(wid);
+
+  try {
+    const optsA = _s1BuildOpts(topic, 'A');
+    const optsB = _s1BuildOpts(topic, 'B');
+    const builtA = window._s1Prompt.build(optsA);
+    const builtB = window._s1Prompt.build(optsB);
+    const maxTok = (_s1Mode === 'longform') ? 5000 : 2000;
+
+    const [rawA, rawB] = await Promise.all([
+      _s1CallAI(builtA.sys, builtA.user, maxTok),
+      _s1CallAI(builtB.sys, builtB.user, maxTok),
+    ]);
+
+    const parsedA = window._s1Prompt.parseOutput(rawA, _s1Lang);
+    const parsedB = window._s1Prompt.parseOutput(rawB, _s1Lang);
+    const sceneCount = _s1CalcScenes(_s1Length);
+    const scenesA = _s1ParseScenes(parsedA.primary || rawA, sceneCount);
+
+    /* 기본은 A 채택 */
+    _s1Result = {
+      ko: parsedA.ko, ja: parsedA.ja, scenes: scenesA,
+      primary: parsedA.primary,
+      abVersions: {
+        A: { ko: parsedA.ko, ja: parsedA.ja, primary: parsedA.primary, label:'안정형·정보·신뢰 중심' },
+        B: { ko: parsedB.ko, ja: parsedB.ja, primary: parsedB.primary, label:'자극형·후킹·댓글 유도' },
+        adopted: 'A',
+      },
+    };
+    _s1SaveToProject(topic);
+  } catch (err) {
+    console.error('A/B 생성 오류:', err);
+    alert('A/B 대본 생성 중 오류: ' + err.message);
+  }
+
+  _s1Loading = false;
+  _studioS1Step(wid);
+}
+
+/* ── A/B 채택 (B → 현재) ── */
+window._s1AdoptAB = function(which) {
+  if (!_s1Result || !_s1Result.abVersions) return;
+  const v = _s1Result.abVersions[which];
+  if (!v) return;
+  if (!confirm((which) + '안을 채택할까요? (씬도 다시 분리됩니다)')) return;
+  _s1Result.ko = v.ko;
+  _s1Result.ja = v.ja;
+  _s1Result.primary = v.primary;
+  _s1Result.scenes = _s1ParseScenes(v.primary, _s1CalcScenes(_s1Length));
+  _s1Result.abVersions.adopted = which;
+  _s1SaveToProject();
+  _studioS1Step(_s1WrapId());
+};
+
+/* ── 전체 기능 페이지로 이동 (topic/mode/lang 전달) ── */
+window._s1OpenFullPage = function() {
+  const topic = document.getElementById('s1sTopic')?.value?.trim() || '';
+  const params = [];
+  if (topic) params.push('topic=' + encodeURIComponent(topic));
+  if (_s1Mode) params.push('mode=' + encodeURIComponent(_s1Mode));
+  if (_s1Lang) params.push('lang=' + encodeURIComponent(_s1Lang));
+  const qs = params.length ? '?' + params.join('&') : '';
+  /* 새 탭 — 사용자가 의도적으로 '페이지 열기' 라고 인지함 */
+  window.open('../../engines/script/index.html' + qs, '_blank');
+};
+
+/* ── wrap ID helper (다른 모듈에서도 사용) ── */
+window._s1WrapId = function() {
+  return document.querySelector('.s1s-wrap')?.parentElement?.id || 'studioS1Wrap';
+};
 
 /* ── 시스템 프롬프트 빌더 (모드 분기) ── */
 function _s1BuildSystemPrompt(topic) {
@@ -537,21 +693,47 @@ function _s1ParseScenes(script, targetCount) {
 function _s1SaveToProject(topic) {
   if (typeof STUDIO === 'undefined' || !STUDIO.project) return;
   if (topic) STUDIO.project.topic = topic;
+
+  /* 선택값 — 결과 없어도 매번 저장 (UI에서 변경한 시점에 반영되도록) */
+  if (!STUDIO.project.s1) STUDIO.project.s1 = {};
+  const s1 = STUDIO.project.s1;
+  s1.topic       = STUDIO.project.topic || '';
+  s1.mode        = _s1Mode;
+  s1.genre       = _s1Style;
+  s1.style       = _s1Style;
+  s1.duration    = _s1Length;
+  s1.outputLang  = _s1Lang;
+  s1.inputLang   = _s1Lang;
+  s1.hookPattern = _s1Hook;
+  s1.hookStrength= _s1HookStr;
+  s1.trustStrength=_s1TrustStr;
+  s1.hook        = _s1Hook;       /* 호환 */
+  s1.hookStr     = _s1HookStr;    /* 호환 */
+  s1.trustStr    = _s1TrustStr;   /* 호환 */
+  s1.adv         = Object.assign({}, _s1Adv);
+  /* 장르별 설정은 _spSet/_lpSet 에서 자체 저장 */
+
+  /* 호환 — 기존 STUDIO.project 평면 키 */
+  STUDIO.project.style     = _s1Style;
+  STUDIO.project.lengthSec = _s1Length;
+  STUDIO.project.lang      = _s1Lang;
+
+  /* 결과 — 출력언어별 분기 저장 */
   if (_s1Result) {
-    STUDIO.project.scriptText = _s1Result.ko;
-    STUDIO.project.scriptJa   = _s1Result.ja;
-    STUDIO.project.scenes     = _s1Result.scenes;
-    STUDIO.project.style      = _s1Style;
-    STUDIO.project.lengthSec  = _s1Length;
-    STUDIO.project.lang       = _s1Lang;
-    if (!STUDIO.project.s1) STUDIO.project.s1 = {};
-    STUDIO.project.s1.mode    = _s1Mode;
-    STUDIO.project.s1.hook    = _s1Hook;
-    STUDIO.project.s1.hookStr = _s1HookStr;
-    STUDIO.project.s1.trustStr= _s1TrustStr;
-    STUDIO.project.s1.adv     = Object.assign({}, _s1Adv);
-    if (_s1Result.review)   STUDIO.project.s1.review   = _s1Result.review;
-    if (_s1Result.versionB) STUDIO.project.s1.versionB = _s1Result.versionB;
+    STUDIO.project.scriptKo   = _s1Result.ko   || '';
+    STUDIO.project.scriptJa   = _s1Result.ja   || '';
+    /* scriptText: 사용자가 선택한 언어 우선, both인 경우 ko 우선 */
+    STUDIO.project.scriptText = _s1Lang === 'ja'
+      ? (_s1Result.ja || _s1Result.ko || '')
+      : (_s1Result.ko || _s1Result.ja || '');
+    STUDIO.project.scenes     = _s1Result.scenes || [];
+
+    if (_s1Result.abVersions) {
+      s1.abVersions          = _s1Result.abVersions;
+      STUDIO.project.abVersions = _s1Result.abVersions;
+    }
+    if (_s1Result.review)   s1.review   = _s1Result.review;
+    if (_s1Result.versionB) s1.versionB = _s1Result.versionB;
   }
   if (typeof studioSave === 'function') studioSave();
 }
@@ -735,14 +917,32 @@ function _s1InjectCSS() {
   padding:8px 12px;font-size:12.5px;font-family:inherit;outline:none;box-sizing:border-box}
 .s1s-adv-extra{resize:vertical;line-height:1.5}
 .s1s-adv-extra:focus,.s1s-adv-inp:focus,.s1s-adv-sel:focus{border-color:#9181ff}
+/* 생성 버튼 row (AI 단일 / A·B) */
+.s1s-gen-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:480px){.s1s-gen-row{grid-template-columns:1fr}}
 .s1s-gen-btn{width:100%;padding:16px;border:none;border-radius:16px;
   background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;
-  font-size:16px;font-weight:900;cursor:pointer;transition:.14s;
-  display:flex;align-items:center;justify-content:center;gap:8px}
+  font-size:15px;font-weight:900;cursor:pointer;transition:.14s;
+  display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
 .s1s-gen-btn:hover:not(:disabled){opacity:.9;transform:translateY(-2px);box-shadow:0 8px 24px rgba(239,111,171,.3)}
 .s1s-gen-btn.loading{opacity:.7;cursor:not-allowed}
+.s1s-gen-btn.s1s-gen-ab{background:linear-gradient(135deg,#9181ff,#5b4ecf)}
 .s1s-spin{animation:s1spin 1s linear infinite;display:inline-block}
 @keyframes s1spin{to{transform:rotate(360deg)}}
+/* A/B 비교 카드 */
+.s1s-ab-section{margin:14px 0;padding:14px;background:#fbf7ff;
+  border:1.5px solid #d4c5ff;border-radius:14px}
+.s1s-ab-hd{font-size:13px;font-weight:800;color:#2b2430;margin-bottom:10px}
+.s1s-ab-hd b{color:#5b4ecf}
+.s1s-ab-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.s1s-ab-grid{grid-template-columns:1fr}}
+.s1s-ab-col{display:flex;flex-direction:column;gap:6px;padding:10px;
+  background:#fff;border:1.5px solid #f1dce7;border-radius:10px;transition:.12s}
+.s1s-ab-col.on{border-color:#5b4ecf;background:#f5f0ff;box-shadow:0 2px 8px rgba(91,78,207,.18)}
+.s1s-ab-title{font-size:12px;font-weight:800;color:#5b4ecf}
+.s1s-ab-text{width:100%;min-height:120px;border:1px solid #f1dce7;
+  border-radius:8px;padding:8px;font-size:11.5px;font-family:inherit;
+  resize:vertical;line-height:1.5;background:#fafafa;box-sizing:border-box}
 .s1s-result{background:#fff;border:2px solid #9181ff;border-radius:16px;padding:16px}
 .s1s-result-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px}
 .s1s-result-title{font-size:14px;font-weight:800;color:#2b2430}
