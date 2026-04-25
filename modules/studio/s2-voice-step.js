@@ -148,13 +148,11 @@ function _studioS2Step(wrapId) {
 
   const rec = V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional;
 
-  /* ⭐ 콘텐츠 종류별 API 추천 (provider 단위) */
-  const _recTaskKey = (lang === 'ja')                                ? 'japanese'
-                    : (style === 'info' || style === 'knowledge')    ? 'information'
-                    : (lang === 'ko')                                 ? 'korean'
-                    : 'seniorEmotion';
+  /* 💡 추천 음성 API (provider 단위) — 장르/언어 → task 자동 매핑 */
+  const _recTaskKey = _v2RecTaskKeyForProj({ style: style, lang: lang });
   const _recCardsHtml = (typeof window.renderRecommendationCards === 'function')
-    ? window.renderRecommendationCards('voice', _recTaskKey, {
+    ? '<div style="font-weight:800;font-size:12px;color:#5b1a4a;margin:6px 4px">💡 추천 음성 API</div>' +
+      window.renderRecommendationCards('voice', _recTaskKey, {
         onPick: "_v2PickRecommendedProvider('PROVIDER')"
       })
     : '';
@@ -162,7 +160,7 @@ function _studioS2Step(wrapId) {
   wrap.innerHTML = `
   <div class="v2-wrap">
 
-    <!-- ⭐ 콘텐츠 종류별 API 추천 (provider) -->
+    <!-- 💡 추천 음성 API (provider) -->
     ${_recCardsHtml}
 
     <!-- AI 자동 추천 (이슈 1 — 후보 2~3개 카드 + 미리듣기 + 단일 적용 표시) -->
@@ -603,10 +601,13 @@ window._v2PickRecommendedProvider = function(providerId) {
   /* STUDIO.project 에 추천 목록 저장 */
   const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   proj.s2 = proj.s2 || {};
+  const _taskKey = _v2RecTaskKeyForProj(proj);
   proj.s2.voiceProvider = providerId;
+  proj.s2.providerMode  = (typeof window._resolveMode === 'function')
+    ? window._resolveMode('voice', _taskKey) : 'balanced';
   proj.s2.recommendedVoiceProviders =
     (typeof window.getRecommendedProviders === 'function')
-      ? window.getRecommendedProviders('voice', _v2RecTaskKeyForProj(proj)) : [];
+      ? window.getRecommendedProviders('voice', _taskKey) : [];
   _v2Save();
   _studioS2Step();
 };

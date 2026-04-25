@@ -131,11 +131,11 @@ function _studioS3(){
     '</div>' +
 
     '<div class="studio-section"><div class="studio-label">🤖 A. 이미지 API 선택</div>' +
-    /* ⭐ 콘텐츠 종류별 API 추천 — 이미지 (가격 우선) */
+    /* 💡 추천 이미지 API — 씬별 대량 생성 (기본: 가격 우선) */
     (typeof window.renderRecommendationCards === 'function' ?
-       window.renderRecommendationCards('image', 'scenes', {
-         mode: 'budget',
-         onPick: '_s3PickRecommendedApi(\'PROVIDER\')'
+       '<div class="studio-label" style="margin-top:0;font-size:12px;color:#5b1a4a">💡 추천 이미지 API — 씬별 대량 생성</div>' +
+       window.renderRecommendationCards('image', 'sceneBulk', {
+         onPick: '_s3PickRecommendedApi(\'PROVIDER\',\'sceneBulk\')'
        }) : '') +
     apiHtml +
     (function(){
@@ -192,6 +192,12 @@ function _studioS3(){
     reuseBarHtml + stockBarHtml + scenesHtml + '</div>' +
 
     '<div class="studio-section"><div class="studio-label">🖼 F. 썸네일 생성</div>' +
+    /* 💡 추천 이미지 API — 썸네일 (기본: 품질 우선) */
+    (typeof window.renderRecommendationCards === 'function' ?
+       '<div class="studio-label" style="margin-top:0;font-size:12px;color:#5b1a4a">💡 추천 이미지 API — 썸네일 (CTR 우선)</div>' +
+       window.renderRecommendationCards('image', 'thumbnail', {
+         onPick: '_s3PickRecommendedApi(\'PROVIDER\',\'thumbnail\')'
+       }) : '') +
     '<input id="s3-thumb-title" class="studio-in" placeholder="썸네일 제목" value="'+(s3.thumbTitle||'')+'" style="margin-bottom:8px">' +
     '<div class="studio-chips" style="margin-bottom:10px">' +
     ['충격형','감성형','정보형','호기심형','숫자형'].map(function(t){ return '<button class="studio-chip'+(s3.thumbStyle===t?' on':'')+'" onclick="studioS3ThumbStyle(\''+t+'\',this)">'+t+'</button>'; }).join('') +
@@ -291,24 +297,33 @@ function studioS3SetApi(api){
   studioSave(); renderStudio();
 }
 
-/* 추천 카드 클릭 → registry id (geminiImg/stable) → s3 api id (gemini/sd) 매핑 */
-window._s3PickRecommendedApi = function(providerId){
+/* 추천 카드 클릭 → registry id (geminiImg/stable) → s3 api id (gemini/sd) 매핑
+   taskKey: 'sceneBulk' | 'thumbnail' | 'emotionalScene' 등 — 추천 목록과 mode 를 결정 */
+window._s3PickRecommendedApi = function(providerId, taskKey){
+  taskKey = taskKey || 'sceneBulk';
   var idMap = { dalle3:'dalle3', dalle2:'dalle2', flux:'flux', stable:'sd', geminiImg:'gemini', minimax:'minimax', ideogram:'ideogram' };
   var apiId = idMap[providerId] || providerId;
-  /* 키 없으면 키 모달 자동 오픈 */
+  /* 키 없으면 통합 설정 안내 */
   var hasKeyFn = (typeof window.s3HasImageApiKey === 'function');
   if (hasKeyFn && !window.s3HasImageApiKey(apiId)) {
-    if (confirm('이 API 의 키가 아직 없습니다. 키 입력 모달을 열까요?') &&
-        typeof window.s3OpenImageApiKeyModal === 'function') {
-      window.s3OpenImageApiKeyModal();
+    if (confirm('해당 API 키가 아직 없습니다. 통합 설정에서 먼저 입력해주세요.\n\n[통합 설정 열기]') &&
+        typeof window.renderApiSettings === 'function') {
+      window.renderApiSettings();
     }
     return;
   }
   STUDIO.project.s3 = STUDIO.project.s3 || {};
-  STUDIO.project.s3.api = apiId;
+  if (taskKey === 'thumbnail') {
+    STUDIO.project.s3.thumbnailApi = apiId;
+  } else {
+    STUDIO.project.s3.api = apiId;
+  }
+  STUDIO.project.s3.imageProvider = providerId;
+  STUDIO.project.s3.providerMode  = (typeof window._resolveMode === 'function')
+    ? window._resolveMode('image', taskKey) : 'budget';
   STUDIO.project.s3.recommendedImageProviders =
     (typeof window.getRecommendedProviders === 'function')
-      ? window.getRecommendedProviders('image', 'scenes') : [];
+      ? window.getRecommendedProviders('image', taskKey) : [];
   studioSave(); renderStudio();
 };
 

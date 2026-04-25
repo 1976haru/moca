@@ -50,6 +50,29 @@
     return 'empty';
   }
 
+  /* ── 슬롯 종류 → 추천 엔진 (group, taskType) 매핑 ── */
+  const _SLOT_REC_MAP = {
+    image:     { group:'image', taskType:'sceneBulk'      },
+    thumbnail: { group:'image', taskType:'thumbnail'      },
+    video:     { group:'video', taskType:'shortsAssembly' },
+    audio:     { group:'voice', taskType:'seniorEmotionVoice' },
+    music:     { group:'music', taskType:'songMaker'      },
+  };
+
+  /* 외부 호출용 후크 — cb-slots.js 의 슬롯 UI 가 추천을 표시할 때 사용
+     window.cbSlotRecommend('image') → [{rank,providerId,label,reason,priceHint,scores,hasKey,...}, ...]
+     아직 슬롯 UI 에 카드 그리드 통합 전이라 호출만 가능하도록 노출 (다음 PR 에서 UI 결합) */
+  window.cbSlotRecommend = function(slotKind) {
+    const m = _SLOT_REC_MAP[slotKind];
+    if (!m || typeof window.getApiRecommendations !== 'function') return [];
+    return window.getApiRecommendations(m.group, m.taskType);
+  };
+  window.cbSlotRecommendCardsHtml = function(slotKind) {
+    const m = _SLOT_REC_MAP[slotKind];
+    if (!m || typeof window.renderRecommendationCards !== 'function') return '';
+    return window.renderRecommendationCards(m.group, m.taskType);
+  };
+
   /* ════════════════════════════════════════════════
      탭5 — 미디어 슬롯
      ════════════════════════════════════════════════ */

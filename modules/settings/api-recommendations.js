@@ -149,6 +149,114 @@
   };
 
   /* ════════════════════════════════════════════════
+     3-1) Task 별칭 — 각 단계에서 자유로운 이름으로 호출 가능
+     ════════════════════════════════════════════════ */
+  const MOCA_TASK_ALIASES = {
+    script: {
+      shortsScript:    'shorts',
+      emotionalScript: 'emotionalShorts',
+      blogPost:        'blog',
+      newsletterPost:  'newsletter',
+      translate:       'translation',
+      report:          'publicReport',
+    },
+    image: {
+      sceneBulk:       'scenes',
+      cardNews:        'scenes',
+      thumbnail:       'thumbnail',
+      emotionalScene:  'emotional',
+      infoGraphic:     'info',
+    },
+    video: {
+      shortsAssembly:  'cinematic',
+      imageToVideo:    'cinematic',
+      avatarVideo:     'avatar',
+      templateVideo:   'template',
+    },
+    voice: {
+      seniorEmotionVoice: 'seniorEmotion',
+      infoVoice:          'information',
+      japaneseVoice:      'japanese',
+      koreanVoice:        'korean',
+    },
+    music: {
+      songMaker:  'song',
+      bgmMaker:   'bgm',
+    },
+    upload: {
+      youtubeUpload: 'youtube',
+      tiktokUpload:  'tiktok',
+    },
+  };
+
+  /* ════════════════════════════════════════════════
+     3-2) Task 별 기본 mode — 사용자 선호 기준이 없을 때 폴백
+        이미지 sceneBulk/cardNews → budget (가격 우선)
+        썸네일 → quality, 감동 장면 → balanced
+     ════════════════════════════════════════════════ */
+  const MOCA_TASK_DEFAULT_MODE = {
+    image: {
+      scenes:    'budget',     /* 씬별 대량 — 가격 우선 */
+      cardNews:  'budget',
+      thumbnail: 'quality',    /* 썸네일 — CTR/가독성 */
+      emotional: 'balanced',
+      info:      'balanced',
+    },
+    video: {
+      cinematic: 'quality',
+      avatar:    'quality',
+      template:  'speed',
+    },
+    voice: {
+      seniorEmotion: 'quality',
+      information:   'budget',
+      japanese:      'quality',
+      korean:        'balanced',
+    },
+    script: {
+      shorts:          'balanced',
+      emotionalShorts: 'quality',
+      blog:            'quality',
+      newsletter:      'balanced',
+      translation:     'budget',
+      publicReport:    'quality',
+    },
+    music:  { song:'quality', bgm:'balanced' },
+    upload: { youtube:'balanced', tiktok:'balanced' },
+  };
+
+  /* ════════════════════════════════════════════════
+     3-3) 사용자 선호 기준 (통합 설정에서 저장)
+        localStorage: moca_pref_mode = 'budget'|'balanced'|'quality'|'speed'
+     ════════════════════════════════════════════════ */
+  const PREF_MODE_KEY = 'moca_pref_mode';
+  function getUserPreferredMode() {
+    try { return localStorage.getItem(PREF_MODE_KEY) || ''; } catch(_) { return ''; }
+  }
+  function setUserPreferredMode(mode) {
+    if (!MOCA_MODE_WEIGHTS[mode]) return false;
+    try { localStorage.setItem(PREF_MODE_KEY, mode); return true; } catch(_) { return false; }
+  }
+  window.getUserPreferredMode = getUserPreferredMode;
+  window.setUserPreferredMode = setUserPreferredMode;
+
+  /* alias 해석 */
+  function _resolveTaskKey(category, taskKey) {
+    const aliases = MOCA_TASK_ALIASES[category] || {};
+    return aliases[taskKey] || taskKey;
+  }
+  /* 기본 mode 결정: opts.mode > userPref > taskDefault > 'balanced' */
+  function _resolveMode(category, taskKey, optsMode) {
+    if (optsMode && MOCA_MODE_WEIGHTS[optsMode]) return optsMode;
+    const userPref = getUserPreferredMode();
+    if (userPref && MOCA_MODE_WEIGHTS[userPref]) return userPref;
+    const td = (MOCA_TASK_DEFAULT_MODE[category] || {})[taskKey];
+    if (td && MOCA_MODE_WEIGHTS[td]) return td;
+    return 'balanced';
+  }
+  window._resolveMode = _resolveMode;
+
+  /* ════════════════════════════════════════════════
      4) 모드(가중치) — budget/balanced/quality/speed
      ════════════════════════════════════════════════ */
   const MOCA_MODE_WEIGHTS = {
@@ -199,8 +307,10 @@
     opts = opts || {};
     const tasks = MOCA_TASK_RECOMMENDATIONS[category];
     if (!tasks) return [];
-    const task = tasks[taskKey] || tasks[Object.keys(tasks)[0]];
+    const resolvedKey = _resolveTaskKey(category, taskKey);
+    const task = tasks[resolvedKey] || tasks[Object.keys(tasks)[0]];
     if (!task) return [];
+    const mode = _resolveMode(category, resolvedKey, opts.mode);
 
     const list = (task.recommended || []).map(function(pid, i){
       const reg   = (MOCA_PROVIDER_REGISTRY[category] || {})[pid] || {};
@@ -217,14 +327,16 @@
         scores:    reg.scores      || {},
         strengths: reg.strengths   || [],
         hasKey:    hasProviderKey(category, pid),
+        mode:      mode,
       };
     });
 
-    /* mode 가 명시되면 점수 기반 재정렬 */
-    if (opts.mode) {
+    /* opts.resort: true 일 때만 사용자 mode 기준으로 재정렬.
+       기본은 큐레이션된 1~3순위를 보존 (가격 우선 등 task priority 가 이미 반영돼 있음). */
+    if (opts.resort) {
       list.sort(function(a,b){
-        return getProviderScore(category, b.providerId, opts.mode)
-             - getProviderScore(category, a.providerId, opts.mode);
+        return getProviderScore(category, b.providerId, mode)
+             - getProviderScore(category, a.providerId, mode);
       });
       list.forEach(function(it, i){ it.rank = i + 1; });
     }

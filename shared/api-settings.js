@@ -184,25 +184,38 @@ function renderApiSettings(){
       '<div style="background:linear-gradient(135deg,var(--pink),var(--purple));height:100%;border-radius:999px;width:'+Math.round(doneApis/totalApis*100)+'%;transition:.5s"></div>' +
     '</div>';
 
-  /* 콘텐츠 종류별 API 추천 엔진 (대본·이미지·음성) */
-  if (typeof window.renderRecommendationCards === 'function') {
-    html += '<details open style="margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px">' +
-      '<summary style="cursor:pointer;list-style:none;font-weight:900;font-size:14px;display:flex;align-items:center;gap:8px">' +
-        '<span>⭐ 콘텐츠 종류별 API 추천</span>' +
-        '<span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:auto">가격·품질·속도 기준 1~3순위</span>' +
-        '<span style="font-size:12px;color:var(--sub)">▾</span>' +
-      '</summary>' +
-      '<div style="margin-top:10px">' +
-        '<div class="apirec-section-title">📝 대본 — 숏츠 기준</div>' +
-        window.renderRecommendationCards('script', 'shorts') +
-        '<div class="apirec-section-title">🖼 이미지 — 씬별 (가격 우선)</div>' +
-        window.renderRecommendationCards('image',  'scenes') +
-        '<div class="apirec-section-title">🖼 이미지 — 썸네일</div>' +
-        window.renderRecommendationCards('image',  'thumbnail') +
-        '<div class="apirec-section-title">🎙 음성 — 시니어 감동 내레이션</div>' +
-        window.renderRecommendationCards('voice',  'seniorEmotion') +
+  /* 기본 선호 기준 — 추천 엔진이 사용 (각 단계에서 자동 적용) */
+  if (typeof window.setUserPreferredMode === 'function') {
+    var curPref = (typeof window.getUserPreferredMode === 'function')
+      ? (window.getUserPreferredMode() || '') : '';
+    var prefOpts = [
+      { id:'budget',   ico:'💰', label:'가격 우선',  desc:'대량 생성·저비용 위주' },
+      { id:'balanced', ico:'⚖️', label:'가성비',     desc:'품질·속도·비용 균형' },
+      { id:'quality',  ico:'🎯', label:'품질 우선',  desc:'고품질·완성도 우선' },
+      { id:'speed',    ico:'⚡', label:'속도 우선',  desc:'빠른 생성 우선' },
+    ];
+    html += '<div style="margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px">' +
+      '<div style="font-weight:900;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px">' +
+        '<span>🎚 기본 선호 기준</span>' +
+        '<span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:auto">미선택 시 작업별 기본값 사용</span>' +
       '</div>' +
-    '</details>';
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">' +
+      prefOpts.map(function(o){
+        var on = (curPref === o.id);
+        return '<button onclick="ucSetPrefMode(\''+o.id+'\')" '+
+          'style="border:1.5px solid '+(on?'var(--pink)':'var(--line)')+';'+
+          'background:'+(on?'var(--pink-soft)':'#fff')+';border-radius:10px;padding:10px 8px;'+
+          'cursor:pointer;font-family:inherit;text-align:center;transition:.12s">'+
+          '<div style="font-size:18px;line-height:1">'+o.ico+'</div>'+
+          '<div style="font-size:12px;font-weight:800;color:'+(on?'var(--pink)':'var(--text)')+';margin-top:4px">'+o.label+'</div>'+
+          '<div style="font-size:10px;color:var(--sub);margin-top:2px;line-height:1.3">'+o.desc+'</div>'+
+        '</button>';
+      }).join('') +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.5;background:#f8f8f8;border-radius:8px;padding:8px 10px">'+
+        '💡 API 추천은 각 작업 단계에서 자동으로 표시됩니다. 예: 이미지 단계에서는 가격 우선 이미지 API를 추천하고, 음성 단계에서는 장르와 언어에 맞는 TTS를 추천합니다.'+
+      '</div>' +
+    '</div>';
   }
 
   /* 카테고리별 렌더링 */
@@ -303,6 +316,15 @@ function ucSaveApiKeyV2(apiId){
   /* 모달 새로고침 */
   document.getElementById('api-settings-overlay')?.remove();
   renderApiSettings();
+}
+
+function ucSetPrefMode(mode){
+  if(typeof window.setUserPreferredMode === 'function'){
+    window.setUserPreferredMode(mode);
+    if(typeof ucShowToast === 'function') ucShowToast('🎚 선호 기준 저장됨','success');
+    document.getElementById('api-settings-overlay')?.remove();
+    renderApiSettings();
+  }
 }
 
 function ucClearApiKeyV2(apiId){
