@@ -156,11 +156,14 @@ function _s3SrcRenderContent(wrapId) {
   }
 
   if (_s3Tab === 'video') {
-    if (typeof _studioS3Video === 'function') {
+    const el = document.getElementById('studioS3VideoWrap');
+    if (typeof _studioS3VideoTools === 'function' && el) {
+      el.innerHTML = '<div id="studioS3VTWrap"></div>';
+      _studioS3VideoTools('studioS3VTWrap');
+    } else if (typeof _studioS3Video === 'function') {
       _studioS3Video('studioS3VideoWrap');
-    } else {
-      const el = document.getElementById('studioS3VideoWrap');
-      if (el) el.innerHTML = '<div class="s3src-loading">🎬 영상 프롬프트 로딩 중...</div>';
+    } else if (el) {
+      el.innerHTML = '<div class="s3src-loading">🎬 영상 프롬프트 로딩 중...</div>';
     }
   }
 

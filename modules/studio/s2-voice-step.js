@@ -332,8 +332,12 @@ async function _v2GenScene(idx, wrapId) {
       return;
     }
 
-    if (!_v2Voice.scenes) _v2Voice.scenes = [];
-    _v2Voice.scenes[idx] = { audioUrl, duration: 0 };
+    if (typeof vqSaveSceneAudio === 'function') {
+      await vqSaveSceneAudio(idx, audioUrl);
+    } else {
+      if (!_v2Voice.scenes) _v2Voice.scenes = [];
+      _v2Voice.scenes[idx] = { audioUrl, duration: 0 };
+    }
     proj.voice = _v2Voice;
     _v2Save();
 
