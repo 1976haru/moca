@@ -110,96 +110,128 @@ function _s4eT3Thumb(proj) {
 }
 
 /* ════════════════════════════════════════════════
-   TAB 4 — 영상 구성
+   TAB 4 — 영상 구성 (이슈 3·4·5 — 카드 그리드 통일 + STUDIO.project.s4 동기화)
    ════════════════════════════════════════════════ */
 function _s4eT4Compose() {
   const c = _s4Edit.compose;
+  /* 자동 처리 기본값 */
+  if (!c.auto) c.auto = { autoSplit: true, highlight: true, safeArea: true };
 
   return `
   <div class="s4e-section">
 
-    <!-- 템플릿 -->
+    <!-- 1. 영상 템플릿 -->
     <div class="s4e-block">
       <div class="s4e-label">🎬 영상 템플릿</div>
-      <div class="s4e-template-grid">
+      <div class="studio-option-grid">
         ${S4_TEMPLATES.map(t=>`
-          <button class="s4e-template-btn ${c.template===t.id?'on':''}"
-            onclick="_s4Edit.compose.template='${t.id}';_studioS4Edit('studioS4EditWrap')">
-            <div class="s4e-tpl-label">${t.label}</div>
-            <div class="s4e-tpl-desc">${t.desc}</div>
-          </button>
+          <div class="studio-option-card ${c.template===t.id?'on':''}"
+            onclick="_s4eSetCompose('template','${t.id}')">
+            <div class="studio-option-title">${t.label}</div>
+            <div class="studio-option-desc">${t.desc||''}</div>
+          </div>
         `).join('')}
       </div>
     </div>
 
-    <!-- 전환 효과 -->
+    <!-- 2. 씬 전환 효과 -->
     <div class="s4e-block">
       <div class="s4e-label">✨ 씬 전환 효과</div>
-      <div class="s4e-chip-row">
+      <div class="studio-option-grid studio-compact-grid">
         ${S4_TRANSITIONS.map(t=>`
-          <button class="s4e-chip ${c.transition===t.id?'on':''}"
-            onclick="_s4Edit.compose.transition='${t.id}';">${t.label}</button>
+          <div class="studio-option-card ${c.transition===t.id?'on':''}"
+            onclick="_s4eSetCompose('transition','${t.id}')">
+            <div class="studio-option-title">${t.label}</div>
+          </div>
         `).join('')}
       </div>
     </div>
 
-    <!-- 이미지 모션 -->
+    <!-- 3. 이미지 모션 -->
     <div class="s4e-block">
       <div class="s4e-label">🎥 이미지 모션</div>
-      <div class="s4e-chip-row">
+      <div class="studio-option-grid studio-compact-grid">
         ${S4_MOTIONS.map(m=>`
-          <button class="s4e-chip ${c.motion===m.id?'on':''}"
-            onclick="_s4Edit.compose.motion='${m.id}';">${m.label}</button>
+          <div class="studio-option-card ${c.motion===m.id?'on':''}"
+            onclick="_s4eSetCompose('motion','${m.id}')">
+            <div class="studio-option-title">${m.label}</div>
+          </div>
         `).join('')}
       </div>
     </div>
 
-    <!-- 필터 -->
+    <!-- 4. 필터 / 색보정 -->
     <div class="s4e-block">
       <div class="s4e-label">🎨 필터 / 색보정</div>
-      <div class="s4e-chip-row">
+      <div class="studio-option-grid studio-compact-grid">
         ${S4_FILTERS.map(f=>`
-          <button class="s4e-chip ${c.filter===f.id?'on':''}"
-            onclick="_s4Edit.compose.filter='${f.id}';">${f.label}</button>
+          <div class="studio-option-card ${c.filter===f.id?'on':''}"
+            onclick="_s4eSetCompose('filter','${f.id}')">
+            <div class="studio-option-title">${f.label}</div>
+          </div>
         `).join('')}
       </div>
     </div>
 
-    <!-- 브랜딩 -->
+    <!-- 5. 오프닝·클로징·브랜딩 -->
     <div class="s4e-block">
       <div class="s4e-label">🏷 오프닝·클로징·브랜딩</div>
-      <div class="s4e-brand-rows">
-        <label class="s4e-auto-row">
-          <input type="checkbox" ${c.openingAnim?'checked':''}
-            onchange="_s4Edit.compose.openingAnim=this.checked">
-          오프닝 애니메이션
-        </label>
-        <label class="s4e-auto-row">
-          <input type="checkbox" ${c.closingAnim?'checked':''}
-            onchange="_s4Edit.compose.closingAnim=this.checked">
-          클로징 애니메이션 + CTA (구독·좋아요)
-        </label>
-        <label class="s4e-auto-row">
-          <input type="checkbox" ${c.endCard?'checked':''}
-            onchange="_s4Edit.compose.endCard=this.checked">
-          엔딩 카드 (다음 영상 예고)
-        </label>
+      <div class="studio-option-grid studio-compact-grid">
+        <div class="studio-option-card ${c.openingAnim?'on':''}"
+          onclick="_s4eToggleCompose('openingAnim')">
+          <span class="studio-option-check">${c.openingAnim?'✓':''}</span>
+          <div class="studio-option-title">오프닝 애니메이션</div>
+        </div>
+        <div class="studio-option-card ${c.closingAnim?'on':''}"
+          onclick="_s4eToggleCompose('closingAnim')">
+          <span class="studio-option-check">${c.closingAnim?'✓':''}</span>
+          <div class="studio-option-title">클로징 + CTA</div>
+          <div class="studio-option-desc">구독·좋아요</div>
+        </div>
+        <div class="studio-option-card ${c.endCard?'on':''}"
+          onclick="_s4eToggleCompose('endCard')">
+          <span class="studio-option-check">${c.endCard?'✓':''}</span>
+          <div class="studio-option-title">엔딩 카드</div>
+          <div class="studio-option-desc">다음 영상 예고</div>
+        </div>
       </div>
       <div class="s4e-brand-inputs">
         <div class="s4e-inp-row">
           <label>로고 URL</label>
           <input class="s4e-inp" value="${c.logoUrl||''}" placeholder="https://..."
-            oninput="_s4Edit.compose.logoUrl=this.value">
+            oninput="_s4eSetCompose('logoUrl',this.value,true)">
         </div>
         <div class="s4e-inp-row">
           <label>워터마크</label>
           <input class="s4e-inp" value="${c.watermark||''}" placeholder="채널명 또는 @handle"
-            oninput="_s4Edit.compose.watermark=this.value">
+            oninput="_s4eSetCompose('watermark',this.value,true)">
         </div>
         <div class="s4e-inp-row">
           <label>채널 컬러</label>
           <input type="color" value="${c.channelColor||'#ef6fab'}"
-            oninput="_s4Edit.compose.channelColor=this.value">
+            oninput="_s4eSetCompose('channelColor',this.value,true)">
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 자동 처리 -->
+    <div class="s4e-block">
+      <div class="s4e-label">⚙️ 자동 처리</div>
+      <div class="studio-option-grid studio-compact-grid">
+        <div class="studio-option-card ${c.auto.autoSplit?'on':''}"
+          onclick="_s4eToggleAuto('autoSplit')">
+          <span class="studio-option-check">${c.auto.autoSplit?'✓':''}</span>
+          <div class="studio-option-title">20자 초과 자동 2줄</div>
+        </div>
+        <div class="studio-option-card ${c.auto.highlight?'on':''}"
+          onclick="_s4eToggleAuto('highlight')">
+          <span class="studio-option-check">${c.auto.highlight?'✓':''}</span>
+          <div class="studio-option-title">강조 키워드 색상</div>
+        </div>
+        <div class="studio-option-card ${c.auto.safeArea?'on':''}"
+          onclick="_s4eToggleAuto('safeArea')">
+          <span class="studio-option-check">${c.auto.safeArea?'✓':''}</span>
+          <div class="studio-option-title">안전구역 체크</div>
         </div>
       </div>
     </div>
@@ -211,6 +243,101 @@ function _s4eT4Compose() {
         첫 씬 텍스트 크고 굵게 자동 적용 (3초 훅 최적화)
       </button>
     </div>
+
+    <!-- 현재 편집 설정 요약 (이슈 5) -->
+    <div class="s4e-block">
+      <div class="s4e-label">📋 현재 편집 설정 요약</div>
+      ${_s4eRenderEditPlanSummary(c)}
+    </div>
+  </div>`;
+}
+
+/* ── 영상 구성 옵션 변경 (UI 갱신 + STUDIO.project.s4 + editPlan 동기화) ── */
+window._s4eSetCompose = function(field, value, skipReRender) {
+  if (!_s4Edit.compose) _s4Edit.compose = {};
+  _s4Edit.compose[field] = value;
+  _s4eSyncEditPlan();
+  if (!skipReRender) _studioS4Edit('studioS4EditWrap');
+};
+
+window._s4eToggleCompose = function(field) {
+  if (!_s4Edit.compose) _s4Edit.compose = {};
+  _s4Edit.compose[field] = !_s4Edit.compose[field];
+  _s4eSyncEditPlan();
+  _studioS4Edit('studioS4EditWrap');
+};
+
+window._s4eToggleAuto = function(field) {
+  if (!_s4Edit.compose) _s4Edit.compose = {};
+  if (!_s4Edit.compose.auto) _s4Edit.compose.auto = {};
+  _s4Edit.compose.auto[field] = !_s4Edit.compose.auto[field];
+  _s4eSyncEditPlan();
+  _studioS4Edit('studioS4EditWrap');
+};
+
+/* ── STUDIO.project.s4 + editPlan 동기화 (이슈 4·5) ── */
+function _s4eSyncEditPlan() {
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  if (!proj) return;
+  const c = _s4Edit.compose || {};
+  const auto = c.auto || {};
+
+  /* 평면 STUDIO.project.s4 */
+  if (!proj.s4) proj.s4 = {};
+  proj.s4.template     = c.template     || proj.s4.template     || '';
+  proj.s4.transition   = c.transition   || proj.s4.transition   || '';
+  proj.s4.imageMotion  = c.motion       || proj.s4.imageMotion  || '';
+  proj.s4.filter       = c.filter       || proj.s4.filter       || '';
+  proj.s4.opening      = !!c.openingAnim;
+  proj.s4.closingCta   = !!c.closingAnim;
+  proj.s4.endingCard   = !!c.endCard;
+  proj.s4.logoUrl      = c.logoUrl      || '';
+  proj.s4.watermark    = c.watermark    || '';
+  proj.s4.brandColor   = c.channelColor || '';
+  proj.s4.autoSplitSubtitle  = auto.autoSplit !== false;
+  proj.s4.highlightKeywords  = auto.highlight !== false;
+  proj.s4.safeAreaCheck      = auto.safeArea  !== false;
+
+  /* 통합 editPlan (최종검수에서 project.json 에 들어감) */
+  proj.editPlan = {
+    template:    proj.s4.template,
+    transition:  proj.s4.transition,
+    imageMotion: proj.s4.imageMotion,
+    filter:      proj.s4.filter,
+    branding: {
+      opening:    proj.s4.opening,
+      closingCta: proj.s4.closingCta,
+      endingCard: proj.s4.endingCard,
+      logoUrl:    proj.s4.logoUrl,
+      watermark:  proj.s4.watermark,
+      brandColor: proj.s4.brandColor,
+    },
+    subtitleRules: {
+      autoSplit:        proj.s4.autoSplitSubtitle,
+      highlightKeywords:proj.s4.highlightKeywords,
+      safeAreaCheck:    proj.s4.safeAreaCheck,
+    },
+  };
+
+  if (typeof studioSave === 'function') studioSave();
+}
+
+/* ── 편집 설정 요약 (미리보기 — 이슈 5) ── */
+function _s4eRenderEditPlanSummary(c) {
+  const tpl  = (S4_TEMPLATES.find(t=>t.id===c.template)  ||{}).label || '미선택';
+  const tr   = (S4_TRANSITIONS.find(t=>t.id===c.transition)||{}).label || '미선택';
+  const mo   = (S4_MOTIONS.find(m=>m.id===c.motion)      ||{}).label || '미선택';
+  const fl   = (S4_FILTERS.find(f=>f.id===c.filter)      ||{}).label || '미선택';
+  const br   = [c.openingAnim?'오프닝':null, c.closingAnim?'클로징+CTA':null,
+                c.endCard?'엔딩 카드':null].filter(Boolean).join(' · ') || '없음';
+  return `
+  <div class="s4e-summary">
+    <div><b>템플릿:</b> ${tpl}</div>
+    <div><b>전환:</b> ${tr}</div>
+    <div><b>모션:</b> ${mo}</div>
+    <div><b>필터:</b> ${fl}</div>
+    <div><b>브랜딩:</b> ${br}</div>
+    <div class="s4e-summary-hint">💡 이 설정은 <code>STUDIO.project.s4</code> + <code>editPlan</code>에 자동 저장됩니다.</div>
   </div>`;
 }
 
@@ -223,18 +350,14 @@ function _s4eT5Audio() {
   return `
   <div class="s4e-section">
     <div class="s4e-block">
-      <div class="s4e-label">🎵 BGM 선택</div>
-      <div class="s4e-bgm-list">
+      <div class="s4e-label">🎵 BGM 선택 (이슈 6 — 카드 그리드)</div>
+      <div class="studio-option-grid">
         ${S4_BGM_LIST.map(b=>`
-          <label class="s4e-bgm-row ${a.bgm===b.id?'on':''}">
-            <input type="radio" name="s4bgm" value="${b.id}"
-              ${a.bgm===b.id?'checked':''}
-              onchange="_s4Edit.audio.bgm='${b.id}'">
-            <div>
-              <div class="s4e-bgm-label">${b.label}</div>
-              <div class="s4e-bgm-desc">${b.desc}</div>
-            </div>
-          </label>
+          <div class="studio-option-card ${a.bgm===b.id?'on':''}"
+            onclick="_s4eSetBgm('${b.id}')">
+            <div class="studio-option-title">${b.label}</div>
+            <div class="studio-option-desc">${b.desc||''}</div>
+          </div>
         `).join('')}
       </div>
     </div>
@@ -348,6 +471,17 @@ function _s4eAutoThumbText(proj) {
   _s4Edit.thumb.C.text = `${words.slice(0, 15)} 완벽 정리`;
   _studioS4Edit('studioS4EditWrap');
 }
+
+/* BGM 선택 — STUDIO.project.s4.bgm 동기화 (이슈 6) */
+window._s4eSetBgm = function(id) {
+  if (!_s4Edit.audio) _s4Edit.audio = {};
+  _s4Edit.audio.bgm = id;
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  if (!proj.s4) proj.s4 = {};
+  proj.s4.bgm = id;
+  if (typeof studioSave === 'function') studioSave();
+  _studioS4Edit('studioS4EditWrap');
+};
 
 function _s4eHookBoost() {
   _s4Edit.caption.size = 'xl';

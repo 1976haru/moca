@@ -502,7 +502,7 @@ function _s4eInjectCSS() {
 .s4e-thumb-input:focus{border-color:#ef6fab}
 .s4e-thumb-controls{display:flex;flex-direction:column;gap:8px}
 
-/* 영상 구성 */
+/* 영상 구성 (구버전 호환) */
 .s4e-template-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
 @media(max-width:500px){.s4e-template-grid{grid-template-columns:repeat(2,1fr)}}
 .s4e-template-btn{padding:10px 8px;border:1.5px solid #f1dce7;border-radius:12px;
@@ -514,6 +514,37 @@ function _s4eInjectCSS() {
 .s4e-chip{padding:5px 12px;border:1.5px solid #f1dce7;border-radius:20px;
   background:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:.12s}
 .s4e-chip.on{background:#9181ff;color:#fff;border-color:#9181ff}
+
+/* 통합 옵션 카드 — 이슈 3 (UI 깨짐 수정) */
+.studio-option-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+@media(max-width:600px){.studio-option-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.studio-option-grid{grid-template-columns:1fr}}
+.studio-compact-grid{grid-template-columns:repeat(4,1fr)}
+@media(max-width:600px){.studio-compact-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:420px){.studio-compact-grid{grid-template-columns:repeat(2,1fr)}}
+.studio-option-card{position:relative;display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:flex-start;gap:3px;
+  padding:11px 12px 10px;border:1.5px solid #f1dce7;border-radius:11px;
+  background:#fff;cursor:pointer;transition:.14s;min-height:48px;
+  text-align:left;user-select:none}
+.studio-option-card:hover{border-color:#9181ff;background:#fbf7ff;transform:translateY(-1px)}
+.studio-option-card.on{border-color:#ef6fab;background:linear-gradient(135deg,#fff1f8,#f5f0ff);
+  box-shadow:0 2px 10px rgba(239,111,171,.18)}
+.studio-option-title{font-size:12.5px;font-weight:800;color:#2b2430;line-height:1.3;
+  padding-right:18px}
+.studio-option-desc{font-size:10.5px;color:#9b8a93;line-height:1.4}
+.studio-option-check{position:absolute;top:6px;right:8px;
+  width:16px;height:16px;border-radius:4px;display:flex;
+  align-items:center;justify-content:center;font-size:11px;font-weight:900;
+  background:transparent;color:#ef6fab}
+.studio-option-card.on .studio-option-check{background:#ef6fab;color:#fff}
+
+/* 편집 설정 요약 */
+.s4e-summary{background:#fbf7f9;border-radius:10px;padding:10px 12px;
+  display:flex;flex-direction:column;gap:4px;font-size:12px;color:#3a3038}
+.s4e-summary b{color:#5b4ecf;font-weight:800}
+.s4e-summary-hint{margin-top:4px;font-size:10.5px;color:#9b8a93}
+.s4e-summary code{background:#fff;padding:1px 5px;border-radius:4px;font-size:10px}
 .s4e-brand-rows{margin-bottom:10px}
 .s4e-brand-inputs{display:flex;flex-direction:column;gap:8px}
 .s4e-inp-row{display:flex;align-items:center;gap:8px}

@@ -10,33 +10,76 @@
    - STUDIO.project.voice 저장
    ================================================ */
 
-/* ── 음성 추천 매핑 ── */
+/* ── 음성 추천 매핑 (이슈 1: 각 스타일·언어별 2~3개 후보) ── */
 const V2_VOICE_RECOMMEND = {
   emotional: {
-    ko: { id:'rachel', label:'Rachel',  provider:'EL', desc:'따뜻함·감성 최적' },
-    ja: { id:'haruka', label:'Haruka',  provider:'NJ', desc:'시니어 감성 일본어' },
+    ko: [
+      { id:'rachel',     label:'Rachel',            provider:'EL', desc:'따뜻함·감성 최적' },
+      { id:'calm_senior',label:'Calm Senior Female',provider:'OA', desc:'차분한 시니어 톤' },
+      { id:'warm_narr',  label:'Warm Narrator',     provider:'EL', desc:'감동 내레이션' },
+    ],
+    ja: [
+      { id:'haruka',     label:'Haruka',            provider:'NJ', desc:'시니어 감성 일본어' },
+      { id:'calm_jp',    label:'Calm JP Narrator',  provider:'OA', desc:'차분한 일본어 내레이션' },
+    ],
   },
   info: {
-    ko: { id:'adam',   label:'Adam',    provider:'EL', desc:'차분·신뢰감' },
-    ja: { id:'kenji',  label:'Kenji',   provider:'NJ', desc:'정보형 일본어' },
+    ko: [
+      { id:'adam',       label:'Adam',              provider:'EL', desc:'차분·신뢰감' },
+      { id:'nova',       label:'Nova',              provider:'OA', desc:'명료·정보형' },
+      { id:'mid_male',   label:'중년 남성',          provider:'CV', desc:'전문성 강조' },
+    ],
+    ja: [
+      { id:'kenji',      label:'Kenji',             provider:'NJ', desc:'정보형 일본어' },
+      { id:'jp_male_mid',label:'中年男性',           provider:'OA', desc:'안정적 일본어' },
+    ],
   },
   humor: {
-    ko: { id:'grace',  label:'Grace',   provider:'EL', desc:'밝고 경쾌' },
-    ja: { id:'yuki',   label:'Yuki',    provider:'NJ', desc:'활기찬 일본어' },
+    ko: [
+      { id:'grace',      label:'Grace',             provider:'EL', desc:'밝고 경쾌' },
+      { id:'young_male', label:'청년 남성',          provider:'CV', desc:'활기찬 톤' },
+    ],
+    ja: [
+      { id:'yuki',       label:'Yuki',              provider:'NJ', desc:'활기찬 일본어' },
+      { id:'jp_young_f', label:'若い女性',           provider:'OA', desc:'밝은 일본어' },
+    ],
   },
   drama: {
-    ko: { id:'josh',   label:'Josh',    provider:'EL', desc:'깊고 묵직한' },
-    ja: { id:'takeshi',label:'Takeshi', provider:'NJ', desc:'드라마틱 일본어' },
+    ko: [
+      { id:'josh',       label:'Josh',              provider:'EL', desc:'깊고 묵직한' },
+      { id:'serious_m',  label:'Serious Male',      provider:'OA', desc:'드라마틱' },
+    ],
+    ja: [
+      { id:'takeshi',    label:'Takeshi',           provider:'NJ', desc:'드라마틱 일본어' },
+    ],
   },
   senior: {
-    ko: { id:'rachel', label:'Rachel',  provider:'EL', desc:'시니어 채널 최적' },
-    ja: { id:'sachiko',label:'Sachiko', provider:'NJ', desc:'시니어 일본어 최적' },
+    ko: [
+      { id:'rachel',     label:'Rachel',            provider:'EL', desc:'시니어 채널 최적' },
+      { id:'senior_f',   label:'시니어 여성',        provider:'CV', desc:'친숙한 시니어 톤' },
+      { id:'senior_m',   label:'시니어 남성',        provider:'CV', desc:'관록 있는 톤' },
+    ],
+    ja: [
+      { id:'sachiko',    label:'Sachiko',           provider:'NJ', desc:'시니어 일본어 최적' },
+      { id:'jp_senior_f',label:'シニア女性',         provider:'OA', desc:'따뜻한 시니어 일본어' },
+    ],
   },
   knowledge: {
-    ko: { id:'adam',   label:'Adam',    provider:'EL', desc:'전문적·차분' },
-    ja: { id:'kenji',  label:'Kenji',   provider:'NJ', desc:'교양 일본어' },
+    ko: [
+      { id:'adam',       label:'Adam',              provider:'EL', desc:'전문적·차분' },
+      { id:'narrator',   label:'Narrator',          provider:'OA', desc:'다큐형' },
+    ],
+    ja: [
+      { id:'kenji',      label:'Kenji',             provider:'NJ', desc:'교양 일본어' },
+    ],
   },
 };
+
+/* 호환 — 기존 단일 추천을 사용하던 코드는 [0] 가 KO 첫 후보 */
+function _v2RecOne(style, langKey) {
+  const arr = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
+  return arr[0] || null;
+}
 
 /* ── BGM 추천 매핑 ── */
 const V2_BGM_RECOMMEND = {
@@ -108,45 +151,14 @@ function _studioS2Step(wrapId) {
   wrap.innerHTML = `
   <div class="v2-wrap">
 
-    <!-- AI 자동 추천 배너 (이슈 2 — 추천 근거 + 한·일 동일 구조 명확화) -->
+    <!-- AI 자동 추천 (이슈 1 — 후보 2~3개 카드 + 미리듣기 + 단일 적용 표시) -->
     <div class="v2-recommend-banner">
       <div class="v2-rec-hd">
-        🤖 AI 음성 자동 추천
+        🤖 AI 음성 자동 추천 — 후보 비교 후 1개 선택
         <span class="v2-rec-badge">장르: ${_v2StyleLabel(style)}</span>
-        <span class="v2-rec-why" title="장르·길이·언어 기반 자동 매칭">왜 이 음성?</span>
       </div>
-      <div class="v2-rec-voices">
-        ${lang !== 'ja' ? `
-        <div class="v2-rec-voice">
-          <span class="v2-rec-flag">🇰🇷</span>
-          <div class="v2-rec-info">
-            <div class="v2-rec-name">${rec.ko.label}
-              <span class="v2-rec-provider">${rec.ko.provider}</span>
-            </div>
-            <div class="v2-rec-desc">${rec.ko.desc}</div>
-            <div class="v2-rec-reason">💡 ${_v2StyleLabel(style)} 장르 · ${proj.lengthSec||60}초 분량에 적합</div>
-          </div>
-          <button class="v2-rec-apply ${_v2Voice.voiceKo===rec.ko.id?'applied':''}"
-            onclick="_v2ApplyRecommend('ko','${wrapId||'studioS2Wrap'}')">
-            ${_v2Voice.voiceKo===rec.ko.id?'✅ 적용됨':'적용'}
-          </button>
-        </div>` : ''}
-        ${lang !== 'ko' ? `
-        <div class="v2-rec-voice">
-          <span class="v2-rec-flag">🇯🇵</span>
-          <div class="v2-rec-info">
-            <div class="v2-rec-name">${rec.ja.label}
-              <span class="v2-rec-provider">${rec.ja.provider}</span>
-            </div>
-            <div class="v2-rec-desc">${rec.ja.desc}</div>
-            <div class="v2-rec-reason">💡 ${_v2StyleLabel(style)} 장르 · ${proj.lengthSec||60}초 분량에 적합</div>
-          </div>
-          <button class="v2-rec-apply ${_v2Voice.voiceJa===rec.ja.id?'applied':''}"
-            onclick="_v2ApplyRecommend('ja','${wrapId||'studioS2Wrap'}')">
-            ${_v2Voice.voiceJa===rec.ja.id?'✅ 적용됨':'적용'}
-          </button>
-        </div>` : ''}
-      </div>
+      ${lang !== 'ja' ? _v2RenderRecGroup('ko', style, _v2Voice.voiceKo, wrapId) : ''}
+      ${lang !== 'ko' ? _v2RenderRecGroup('ja', style, _v2Voice.voiceJa, wrapId) : ''}
     </div>
 
     <!-- API + 속도 설정 -->
@@ -475,17 +487,89 @@ function _v2SpeedHint(lenSec, channel) {
 function _v2Save() {
   const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   proj.voice = _v2Voice;
+  /* 이슈 2 — STUDIO.project.s2 에 핵심 선택값 동기화 (씬별 음성 생성 시 읽힘) */
+  if (!proj.s2) proj.s2 = {};
+  proj.s2.provider   = _v2Voice.provider || proj.s2.provider || 'elevenlabs';
+  proj.s2.voiceSpeed = _v2Voice.speed    || 1.0;
+  proj.s2.voiceVol   = _v2Voice.voiceVol || proj.s2.voiceVol || 100;
+  proj.s2.bgmVol     = _v2Voice.bgmVol   || proj.s2.bgmVol   || 30;
+  proj.s2.bgm        = _v2Voice.bgm      || proj.s2.bgm      || '';
+  /* voice 필드는 _v2ApplyRecommend 에서 langKey 기준으로 설정 */
   if (typeof studioSave === 'function') studioSave();
 }
 
-window._v2ApplyRecommend = function(langKey, wid) {
+/* ── 추천 그룹 렌더 (한 언어당 후보 2~3개 카드) ── */
+function _v2RenderRecGroup(langKey, style, currentVoiceId, wrapId) {
+  const flag = langKey === 'ja' ? '🇯🇵' : '🇰🇷';
+  const langLabel = langKey === 'ja' ? '일본어' : '한국어';
+  const candidates = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
+  if (!candidates.length) return '';
+  return `
+  <div class="v2-rec-group">
+    <div class="v2-rec-group-hd">${flag} ${langLabel} 후보 (${candidates.length}개) — 1개 선택</div>
+    <div class="v2-rec-cards">
+      ${candidates.map(function(c){
+        const isApplied = currentVoiceId === c.id;
+        const cdata = encodeURIComponent(JSON.stringify(c));
+        return `
+        <div class="v2-rec-card ${isApplied?'applied':''}"
+          onclick="_v2ApplyRecommend('${langKey}','${c.id}','${wrapId||'studioS2Wrap'}')">
+          <div class="v2-rec-card-hd">
+            <span class="v2-rec-name">${c.label}</span>
+            <span class="v2-rec-provider v2-prov-${c.provider}">${c.provider}</span>
+          </div>
+          <div class="v2-rec-desc">${c.desc}</div>
+          <div class="v2-rec-actions">
+            <button type="button" class="v2-rec-preview"
+              onclick="event.stopPropagation();_v2PreviewById('${langKey}','${c.id}')">
+              ▶ 미리듣기
+            </button>
+            <button type="button" class="v2-rec-apply ${isApplied?'on':''}"
+              onclick="event.stopPropagation();_v2ApplyRecommend('${langKey}','${c.id}','${wrapId||'studioS2Wrap'}')">
+              ${isApplied?'✅ 적용됨':'적용'}
+            </button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+/* ── 적용 (이슈 2: 단일 적용 + STUDIO.project.s2 통합 저장) ── */
+window._v2ApplyRecommend = function(langKey, voiceId, wid) {
   const proj  = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   const style = proj.style || 'emotional';
-  const rec   = V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional;
-  if (langKey === 'ko') _v2Voice.voiceKo = rec.ko.id;
-  if (langKey === 'ja') _v2Voice.voiceJa = rec.ja.id;
+  const candidates = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
+  const found = candidates.find(function(c){ return c.id === voiceId; }) || candidates[0];
+  if (!found) return;
+  if (langKey === 'ko') _v2Voice.voiceKo = found.id;
+  if (langKey === 'ja') _v2Voice.voiceJa = found.id;
+  _v2Voice.provider = found.provider;
+  /* 후보 전체와 선택 상세를 STUDIO.project.s2 에 누적 저장 */
+  if (!proj.s2) proj.s2 = {};
+  proj.s2.voice         = found.id;
+  proj.s2.voiceLabel    = found.label;
+  proj.s2.voiceLang     = langKey === 'ja' ? 'JP' : 'KR';
+  proj.s2.provider      = found.provider;
+  proj.s2.voiceSpeed    = _v2Voice.speed || 1.0;
+  if (!proj.s2.voiceCandidates) proj.s2.voiceCandidates = {};
+  proj.s2.voiceCandidates[langKey] = candidates;
   _v2Save();
   _studioS2Step(wid);
+};
+
+/* ── 미리듣기 (s2-voice-preview.js 의 _v2Preview 호출) ── */
+window._v2PreviewById = function(langKey, voiceId) {
+  const proj  = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  const style = proj.style || 'emotional';
+  const candidates = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
+  const found = candidates.find(function(c){ return c.id === voiceId; });
+  if (!found) return;
+  if (typeof window._v2Preview === 'function') {
+    window._v2Preview(found, langKey);
+  } else {
+    alert('🔊 미리듣기 모듈(s2-voice-preview.js)이 로드되지 않았습니다.');
+  }
 };
 
 window._v2ClearScene = function(idx, wid) {
@@ -539,6 +623,36 @@ function _v2InjectCSS() {
   background:#fff;color:#9181ff;font-size:11px;font-weight:800;cursor:pointer;transition:.12s}
 .v2-rec-apply.applied{background:#9181ff;color:#fff}
 .v2-rec-apply:hover:not(.applied){background:#9181ff;color:#fff}
+
+/* 추천 후보 카드 그리드 (이슈 1) */
+.v2-rec-group{margin-bottom:12px}
+.v2-rec-group:last-child{margin-bottom:0}
+.v2-rec-group-hd{font-size:12px;font-weight:700;color:#5a4a56;margin-bottom:8px;
+  padding:4px 0;border-bottom:1px dashed #f1dce7}
+.v2-rec-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:600px){.v2-rec-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.v2-rec-cards{grid-template-columns:1fr}}
+.v2-rec-card{position:relative;display:flex;flex-direction:column;gap:6px;
+  padding:12px 10px;background:#fff;border:1.5px solid #f1dce7;border-radius:12px;
+  cursor:pointer;transition:.14s}
+.v2-rec-card:hover{border-color:#9181ff;background:#fbf7ff;transform:translateY(-1px)}
+.v2-rec-card.applied{border-color:#ef6fab;background:linear-gradient(135deg,#fff1f8,#f5f0ff);
+  box-shadow:0 2px 10px rgba(239,111,171,.18)}
+.v2-rec-card-hd{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.v2-rec-card .v2-rec-name{font-size:13px;font-weight:800;color:#2b2430}
+.v2-rec-card .v2-rec-provider{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
+.v2-prov-EL{background:#ede9ff;color:#5b4ecf}
+.v2-prov-OA{background:#e0f2fe;color:#0369a1}
+.v2-prov-NJ{background:#fff1f8;color:#c0357a}
+.v2-prov-CV{background:#f0fdf4;color:#16a34a}
+.v2-rec-card .v2-rec-desc{font-size:11px;color:#7b7077;line-height:1.4;min-height:32px}
+.v2-rec-actions{display:flex;gap:4px;margin-top:auto}
+.v2-rec-preview{flex:1;padding:5px 8px;border:1.5px solid #f1dce7;border-radius:8px;
+  background:#fff;font-size:10.5px;font-weight:700;color:#5a4a56;cursor:pointer;
+  transition:.12s;font-family:inherit}
+.v2-rec-preview:hover{border-color:#9181ff;color:#9181ff}
+.v2-rec-card .v2-rec-apply{flex:1;padding:5px 8px;font-size:10.5px;text-align:center}
+.v2-rec-card .v2-rec-apply.on{background:#ef6fab;color:#fff;border-color:#ef6fab}
 
 /* 세그 */
 .v2-seg{display:flex;gap:4px;flex-wrap:wrap}
