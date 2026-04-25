@@ -226,8 +226,8 @@ function _studioStepBody(){
   if(n === 1) return '<div id="studioS1Wrap"></div>';
   /* STEP 2(이미지·영상 소스): s3-source-tabs.js 의 _studioS3Source(wrapId) 로 3탭 라우팅 */
   if(n === 2) return '<div id="studioS3SourceWrap"></div>';
-  /* STEP 3(음성·BGM): s2-voice.js 의 _studioS4(wrapId) 로 패널 주입 */
-  if(n === 3) return '<div id="studioS4Wrap"></div>';
+  /* STEP 3(음성·BGM): s2-voice-step.js 의 _studioS2Step(wrapId) 로 패널 주입 */
+  if(n === 3) return '<div id="studioS2Wrap"></div>';
   /* STEP 4(편집): s4-edit.js 의 _studioS4Edit(wrapId) 로 패널 주입 */
   if(n === 4) return '<div id="studioS4EditWrap"></div>';
   /* STEP 5(최종검수·출력): wrap div 만 반환, 콘텐츠는 _studioBindStep 의 _studioS6(wrapId) 로 주입 */
@@ -250,10 +250,9 @@ function _studioBindStep(){
     if(typeof _studioS3Source === 'function') _studioS3Source('studioS3SourceWrap');
     return;
   }
-  /* STEP 3(음성·BGM): s2-voice.js 의 _studioS4(wrapId) 로 패널 주입 */
+  /* STEP 3(음성·BGM): s2-voice-step.js 의 _studioS2Step(wrapId) 로 패널 주입 */
   if(STUDIO.project.step === 3){
-    if(typeof _studioS4 === 'function') _studioS4('studioS4Wrap');
-    if(typeof _studioBindS4 === 'function') _studioBindS4();
+    if(typeof _studioS2Step === 'function') _studioS2Step('studioS2Wrap');
     return;
   }
   /* STEP 4(편집): s4-edit.js 의 _studioS4Edit(wrapId) 로 패널 주입 */
