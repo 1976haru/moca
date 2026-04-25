@@ -250,6 +250,11 @@
         </div>
 
         <!-- ══════ 📱 숏츠 스튜디오 ══════ -->
+        <!-- DEPRECATED: 임베디드 studioDetail 은 더 이상 사용하지 않습니다.
+             실제 숏츠 스튜디오는 engines/shorts/index.html 에 있고,
+             아래 페이지 끝의 <script> 블록에서 window.openStudio 를
+             redirect 함수로 오버라이드해 카드 클릭 시 그곳으로 이동합니다.
+             구조 보존을 위해 DOM 은 남겨둠 (.hide 클래스로 숨김 유지). -->
         <div id="studioDetail" class="mz-detail hide">
           <button class="mz-back" onclick="studioClose()">← 카드 목록으로</button>
           <div class="mz-head">
@@ -792,5 +797,41 @@
   <script src="modules/psy/index.js"></script>
   <script src="modules/psy/core.js"></script>
 <script src="shared/ui.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════
+     숏츠 스튜디오 redirect 가드 (반드시 모든 스크립트 로드 후)
+     ─ 임베디드 studioDetail 패널 사용 중단
+     ─ 카드 클릭 → engines/shorts/index.html 로 이동
+     ─ "대본 만들기" 추천 주제 → engines/shorts/index.html?step=1&topic=...
+     ─────────────────────────────────────────────────────── */ -->
+<script>
+(function(){
+  /* 1) openStudio override — core/hub.js 의 카드 클릭에서 호출됨 */
+  var origOpenStudio = window.openStudio;
+  window.openStudio = function(step){
+    var url = 'engines/shorts/index.html';
+    var qs = [];
+    if (typeof step === 'number' && step >= 0 && step <= 5) {
+      qs.push('step=' + step);
+    }
+    if (qs.length) url += '?' + qs.join('&');
+    location.href = url;
+  };
+
+  /* 2) tpFloatMake override — 추천 주제 "대본 만들기" 버튼 */
+  window.tpFloatMake = function(lang){
+    var srcId = (lang === 'kr') ? 'tp-float-kr' : 'tp-float-jp';
+    var el    = document.getElementById(srcId);
+    var topic = (el && el.textContent || '').trim();
+    var url   = 'engines/shorts/index.html?step=1';
+    if (topic) url += '&topic=' + encodeURIComponent(topic);
+    location.href = url;
+  };
+
+  /* 3) 임베디드 패널이 다른 경로로 열리는 것 방지 — studioDetail 강제 숨김 */
+  var sd = document.getElementById('studioDetail');
+  if (sd) { sd.classList.add('hide'); }
+})();
+</script>
 </body>
 </html>
