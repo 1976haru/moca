@@ -56,10 +56,9 @@ function studioSave(){
   }catch(e){ console.warn('[studio save]', e); }
 }
 function openStudio(step){
-  /* 스튜디오 진입점 — 항상 대시보드(step=0)로 시작 (카드의 shStep 무시) */
+  /* 스튜디오 진입점 — in-progress 프로젝트는 마지막 step 유지 (5 초과만 클램프) */
   if(!STUDIO.project) STUDIO.project = studioNewProjectObj();
   if(STUDIO.project.step > 5) STUDIO.project.step = 5;
-  STUDIO.project.step = 0;
   state.studioOpen = true;
   state.category = 'shorts';
   const sd = document.getElementById('studioDetail');
@@ -196,18 +195,19 @@ function studioDelete(id){
 
 /* ─── 스테퍼 쉘 ─── */
 const STUDIO_STEPS = [
-  { n:0, label:'🏠 대시보드' },
-  { n:1, label:'① 대본 생성' },
-  { n:2, label:'② 이미지·영상 소스' },
-  { n:3, label:'③ 음성·BGM' },
-  { n:4, label:'④ 편집' },
-  { n:5, ico:'📤', title:'최종검수·출력', key:'upload' }
+  { n:0, ico:'🏠', title:'대시보드',         key:'dash'   },
+  { n:1, ico:'📝', title:'대본 생성',         key:'script' },
+  { n:2, ico:'🖼', title:'이미지·영상 소스',   key:'source' },
+  { n:3, ico:'🔊', title:'음성·BGM',          key:'voice'  },
+  { n:4, ico:'✂️', title:'편집',              key:'edit'   },
+  { n:5, ico:'📤', title:'최종검수·출력',      key:'upload' }
 ];
+const _STUDIO_STEP_NUM = ['','①','②','③','④','⑤'];
 function _studioStepperShell(){
   const cur = STUDIO.project.step;
   return '<div class="studio-progress"><div class="studio-steps">' +
     STUDIO_STEPS.map(s => {
-      const lbl = s.label || ('⑤ ' + s.ico + ' ' + s.title);
+      const lbl = (s.n === 0 ? '' : _STUDIO_STEP_NUM[s.n] + ' ') + s.ico + ' ' + s.title;
       return '<button class="studio-step-pill ' + (s.n<cur?'done':s.n===cur?'current':'') + '" onclick="studioGoto(' + s.n + ')">' + lbl + '</button>';
     }).join('') +
   '</div></div>';
