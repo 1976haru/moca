@@ -361,14 +361,19 @@ if(ld && !ld.contains(e.target)) ld.classList.remove('open');
 
 });
 
-  // 초기 동기화
-  uchSyncDate();
-  uchFetchWeather();
-  uchSyncStatus();
-  uchSyncBreadcrumb();
-  setInterval(uchSyncStatus, 3000);
-  setInterval(uchSyncBreadcrumb, 800);
-  setInterval(uchFetchWeather, 10*60*1000);
+  // 초기 동기화 — uch.js (line 739) 가 init.js (line 729) 보다 늦게 로드되므로
+  // 로드 시점이 아닌 DOMContentLoaded(=모든 스크립트 로드 후) 에 호출
+  const __kickUchSync = () => {
+    if(typeof uchSyncDate       === 'function') uchSyncDate();
+    if(typeof uchFetchWeather   === 'function') uchFetchWeather();
+    if(typeof uchSyncStatus     === 'function') uchSyncStatus();
+    if(typeof uchSyncBreadcrumb === 'function') uchSyncBreadcrumb();
+    if(typeof uchSyncStatus     === 'function') setInterval(uchSyncStatus, 3000);
+    if(typeof uchSyncBreadcrumb === 'function') setInterval(uchSyncBreadcrumb, 800);
+    if(typeof uchFetchWeather   === 'function') setInterval(uchFetchWeather, 10*60*1000);
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __kickUchSync);
+  else __kickUchSync();
 })();
 
 /* 탭 클릭 → 기존 toptab 연동 */

@@ -56,12 +56,9 @@ function studioSave(){
   }catch(e){ console.warn('[studio save]', e); }
 }
 function openStudio(step){
-  /* 5단계 스튜디오 진입점 — shorts 카드 클릭 시 호출 (카드 shStep = STUDIO_STEPS n = 매핑 n 전부 일치) */
+  /* 스튜디오 진입점 — 항상 대시보드(step=0)로 시작 (카드의 shStep 무시) */
   if(!STUDIO.project) STUDIO.project = studioNewProjectObj();
-  let s = parseInt(step, 10);
-  if(isNaN(s) || s < 0) s = 0;
-  if(s > 5) s = 5;
-  STUDIO.project.step = s;
+  STUDIO.project.step = 0;
   state.studioOpen = true;
   state.category = 'shorts';
   const sd = document.getElementById('studioDetail');
