@@ -260,9 +260,10 @@ function _studioBindStep(){
     if(typeof _studioS4Edit === 'function') _studioS4Edit('studioS4EditWrap');
     return;
   }
-  /* STEP 5(최종검수·출력): s5-upload.js 의 _studioS6(wrapId) 로 패널 주입 (타 step 들과 다른 패턴) */
+  /* STEP 5(최종검수·출력): s5-upload-v2.js 의 _studioS5Upload(wrapId) 우선, 없으면 s5-upload.js 의 _studioS6(wrapId) fallback */
   if(STUDIO.project.step === 5){
-    if(typeof _studioS6 === 'function') _studioS6('studioS5Wrap');
+    if(typeof _studioS5Upload === 'function') _studioS5Upload('studioS5Wrap');
+    else if(typeof _studioS6 === 'function') _studioS6('studioS5Wrap');
     return;
   }
 }
