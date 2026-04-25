@@ -220,6 +220,8 @@ function studioGoto(n){
 }
 function _studioStepBody(){
   const n = STUDIO.project.step;
+  /* STEP 3(음성·BGM): s2-voice.js 의 _studioS4(wrapId) 로 패널 주입 */
+  if(n === 3) return '<div id="studioS4Wrap"></div>';
   /* STEP 4(편집): s4-edit.js 의 _studioS4Edit(wrapId) 로 패널 주입 */
   if(n === 4) return '<div id="studioS4EditWrap"></div>';
   /* STEP 5(업로드 legacy)/STEP 6(출력) 은 wrap div 만 반환, 콘텐츠는 _studioBindStep 의 _studioS6(wrapId) 로 주입 */
@@ -227,11 +229,16 @@ function _studioStepBody(){
   return ({
     0: _studioS0,   // 🏠 대시보드
     1: _studioS2,   // ① 대본 생성 (iframe 기반 script engine)
-    2: _studioS3,   // ② 이미지 생성
-    3: _studioS4    // ③ 음성·BGM
+    2: _studioS3    // ② 이미지·영상 소스
   }[n] || (()=>''))();
 }
 function _studioBindStep(){
+  /* STEP 3(음성·BGM): s2-voice.js 의 _studioS4(wrapId) 로 패널 주입 */
+  if(STUDIO.project.step === 3){
+    if(typeof _studioS4 === 'function') _studioS4('studioS4Wrap');
+    if(typeof _studioBindS4 === 'function') _studioBindS4();
+    return;
+  }
   /* STEP 4(편집): s4-edit.js 의 _studioS4Edit(wrapId) 로 패널 주입 */
   if(STUDIO.project.step === 4){
     if(typeof _studioS4Edit === 'function') _studioS4Edit('studioS4EditWrap');
@@ -245,8 +252,7 @@ function _studioBindStep(){
   const fn = {
     0: (typeof _studioBindS0 !== 'undefined' ? _studioBindS0 : null),
     1: _studioBindS2,
-    2: _studioBindS3,
-    3: _studioBindS4
+    2: _studioBindS3
   }[STUDIO.project.step];
   if(typeof fn === 'function') fn();
 }
