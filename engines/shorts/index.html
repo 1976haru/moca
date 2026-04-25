@@ -7,40 +7,120 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../../assets/common.css">
 <link rel="stylesheet" href="../../shared/style.css">
+<style>
+  /* 모듈 로드 실패 안내 박스 */
+  .studio-load-error{
+    margin:30px auto; max-width:560px; padding:20px;
+    background:#fff5f5; border:2px solid #fca5a5; border-radius:14px;
+    color:#991b1b; font-family:inherit; line-height:1.6;
+  }
+  .studio-load-error h3{margin:0 0 8px;font-size:16px}
+  .studio-load-error code{background:#fff;padding:2px 6px;border-radius:4px;font-size:12px}
+  .studio-load-error ul{margin:8px 0 0;padding-left:20px;font-size:13px}
+  .studio-load-error .hint{margin-top:10px;font-size:12px;color:#7c2d2d}
+  /* 자동저장 표시 (선택) */
+  #studio-savestate{position:fixed;top:8px;right:12px;font-size:11px;color:#9b8a93;
+    background:#fff;border:1px solid #f1dce7;border-radius:20px;padding:3px 10px;
+    pointer-events:none;opacity:0;transition:opacity .2s}
+  #studio-savestate.show{opacity:1}
+</style>
 </head>
 <body>
 <main class="vs-wrap">
+  <!-- s1-script.js 의 openStudio/studioClose 가 토글하는 컨테이너 (옵션) -->
+  <div id="studioDetail"></div>
+  <!-- studioSave() 가 자동저장 알림을 쓰는 위치 (옵션) -->
+  <div id="studio-savestate"></div>
+  <!-- 실제 단계별 UI 가 주입되는 메인 컨테이너 (필수) -->
   <div id="studio-body"></div>
 </main>
+
+<!-- ───── 코어 ───── -->
 <script src="../../config/providers.js"></script>
 <script src="../../core/api-adapter.js"></script>
 <script src="../../core/cost-tracker.js"></script>
 <script src="../../core/intent-system.js"></script>
 <script src="../../core/library-adapter.js"></script>
+
+<!-- ───── 스튜디오 진입 / 대시보드 / 품질 ───── -->
 <script src="../../modules/studio/index.js"></script>
 <script src="../../modules/studio/dashboard.js"></script>
 <script src="../../modules/studio/studio-quality.js"></script>
+
+<!-- ───── 단계 모듈 (s1-script.js 라우터가 이들을 호출하므로 라우터보다 먼저 로드) ───── -->
 <script src="../../modules/studio/s1-script-step.js"></script>
 <script src="../../modules/studio/s3-source-tabs.js"></script>
 <script src="../../modules/studio/s1-script.js"></script>
+
 <script src="../../modules/studio/s2-voice.js"></script>
 <script src="../../modules/studio/s2-voice-quality.js"></script>
 <script src="../../modules/studio/s2-voice-step.js"></script>
+
 <script src="../../modules/studio/s3-image.js"></script>
 <script src="../../modules/studio/s3-reuse.js"></script>
 <script src="../../modules/studio/s3-stock.js"></script>
 <script src="../../modules/studio/s3-video.js"></script>
 <script src="../../modules/studio/s3-video-tools.js"></script>
+
 <script src="../../modules/studio/s4-edit.js"></script>
 <script src="../../modules/studio/s4-strategy.js"></script>
 <script src="../../modules/studio/s4-caption.js"></script>
 <script src="../../modules/studio/s4-compose.js"></script>
+
 <script src="../../modules/studio/s5-upload.js"></script>
 <script src="../../modules/studio/s5-upload-v2.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  /* 1) 필수 함수 존재 점검 (디버그) */
+  var required = {
+    _studioDashboard:   typeof _studioDashboard,
+    _studioS1Step:      typeof _studioS1Step,
+    _studioS3Source:    typeof _studioS3Source,
+    _studioS2Step:      typeof _studioS2Step,
+    _studioS4Edit:      typeof _studioS4Edit,
+    _studioS5Upload:    typeof _studioS5Upload,
+    renderStudio:       typeof renderStudio,
+    studioGoto:         typeof studioGoto,
+    studioNewProjectObj:typeof studioNewProjectObj,
+  };
+  if (typeof console !== 'undefined' && console.table) {
+    console.table(required);
+  }
+
+  /* 2) 누락된 필수 함수가 있으면 화면에 안내 후 중단 */
+  var missing = Object.keys(required).filter(function(k){
+    return required[k] !== 'function';
+  });
+  if (missing.length) {
+    var body = document.getElementById('studio-body');
+    if (body) {
+      body.innerHTML =
+        '<div class="studio-load-error">' +
+          '<h3>⚠️ 모듈 로드 실패</h3>' +
+          '<p>다음 함수를 찾을 수 없어 화면을 그릴 수 없습니다:</p>' +
+          '<ul>' +
+            missing.map(function(m){ return '<li><code>'+m+'</code></li>'; }).join('') +
+          '</ul>' +
+          '<p class="hint">F12 → Network/Console 탭에서 <code>modules/studio/*.js</code> 로드 오류를 확인하세요.</p>' +
+        '</div>';
+    }
+    return;
+  }
+
+  /* 3) STUDIO 컨테이너 + project 초기화 (renderStudio 내부에서도 가드하지만 안전망) */
+  if (!window.STUDIO) window.STUDIO = {};
+  if (!window.STUDIO.project) {
+    window.STUDIO.project = studioNewProjectObj();
+  }
+
+  /* 4) 진입 — renderStudio() 우선, 없으면 openStudio(0) fallback */
   var genre = new URLSearchParams(location.search).get('genre');
-  if (typeof renderStudio === 'function') renderStudio();
+  if (typeof renderStudio === 'function') {
+    renderStudio();
+  } else if (typeof openStudio === 'function') {
+    openStudio(0);
+  }
   if (genre && typeof wzOpen === 'function') wzOpen(genre);
 });
 </script>

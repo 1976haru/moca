@@ -82,6 +82,27 @@ function _studioS6(wrapId) {
   </div>`;
 
   _s5InjectCSS();
+  _s5RenderQualityDashboard(proj, script, scenes);
+}
+
+/* studio-quality.js 통합 — placeholder가 있을 때만, 함수가 있을 때만 동작 */
+function _s5RenderQualityDashboard(proj, script, scenes) {
+  if (_s5Tab !== 't1') return;
+  const el = document.getElementById('s5-quality-dashboard');
+  if (!el) return;
+  if (typeof sqRenderDashboard !== 'function') return;
+  try {
+    const voice    = proj.voice || proj.s4 || {};
+    const edit     = proj.edit || {};
+    const strategy = proj.editStrategy || {};
+    const videoPrompts = proj.videoPrompts || [];
+    if (typeof sqCalcScript      === 'function') sqCalcScript(script, scenes);
+    if (typeof sqCalcImage       === 'function') sqCalcImage(scenes);
+    if (typeof sqCalcVideoPrompt === 'function') sqCalcVideoPrompt(videoPrompts);
+    if (typeof sqCalcVoice       === 'function') sqCalcVoice(voice, scenes);
+    if (typeof sqCalcEdit        === 'function') sqCalcEdit(edit, strategy);
+    sqRenderDashboard('s5-quality-dashboard');
+  } catch (_) { /* 조용히 skip */ }
 }
 
 /* ════════════════════════════════════════════════
@@ -120,6 +141,10 @@ function _s5RenderT1(script, scenes) {
 
   return `
   <div class="s5-section">
+
+    <!-- 통합 품질 대시보드 (studio-quality.js 가 있을 때만 채워짐) -->
+    <div id="s5-quality-dashboard" style="margin-bottom:14px"></div>
+
     <div class="s5-check-grid">
 
       <!-- 콘텐츠 리스크 -->

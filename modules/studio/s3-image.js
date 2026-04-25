@@ -322,6 +322,20 @@ async function studioS3AutoPrompt(idx){
   var script = STUDIO.project.s2?.scriptKo || STUDIO.project.s2?.scriptJa || '';
   var sys = 'Stable Diffusion image prompt expert. Answer in English only.';
   var user = 'Scene: '+sc.label+' ('+sc.time+')\nScript: '+script.slice(0,200)+'\nArt style: '+(s3.artStyle||'ghibli')+'\nWrite image prompt in 50 words or less.';
+
+  /* IntentSystem 의도 반영 (있을 때만, 실패해도 기존 동작 유지) */
+  if (typeof IntentSystem !== 'undefined' && IntentSystem.buildSystemPrompt) {
+    try {
+      var intentCtx = IntentSystem.buildSystemPrompt(
+        (sc.label||'') + ' ' + script.slice(0,100),
+        { lengthHint: '50 words or less in English' }
+      );
+      if (intentCtx && typeof intentCtx === 'string') {
+        sys = intentCtx + '\n\n' + sys;
+      }
+    } catch(_) { /* fallback: sys 변경 없음 */ }
+  }
+
   try {
     var res = await APIAdapter.callWithFallback(sys, user, {maxTokens:150});
     s3.prompts = s3.prompts || [];

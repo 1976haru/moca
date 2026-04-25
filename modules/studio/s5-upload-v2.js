@@ -92,6 +92,30 @@ function _studioS5Upload(wrapId) {
   </div>`;
 
   _s5vInjectCSS();
+  _s5vRenderQualityDashboard();
+}
+
+/* studio-quality.js 통합 — placeholder가 있을 때만, 함수가 있을 때만 동작 */
+function _s5vRenderQualityDashboard() {
+  if (_s5vTab !== 't1') return;
+  const el = document.getElementById('s5v-quality-dashboard');
+  if (!el) return;
+  if (typeof sqRenderDashboard !== 'function') return;
+  try {
+    const proj     = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+    const script   = studioGet('script');
+    const scenes   = studioGet('scenes');
+    const voice    = studioGet('voice');
+    const edit     = studioGet('edit');
+    const strategy = studioGet('strategy');
+    const videoPrompts = proj.videoPrompts || [];
+    if (typeof sqCalcScript      === 'function') sqCalcScript(script, scenes);
+    if (typeof sqCalcImage       === 'function') sqCalcImage(scenes);
+    if (typeof sqCalcVideoPrompt === 'function') sqCalcVideoPrompt(videoPrompts);
+    if (typeof sqCalcVoice       === 'function') sqCalcVoice(voice, scenes);
+    if (typeof sqCalcEdit        === 'function') sqCalcEdit(edit, strategy);
+    sqRenderDashboard('s5v-quality-dashboard');
+  } catch (_) { /* 조용히 skip */ }
 }
 
 /* ════════════════════════════════════════════════
@@ -141,6 +165,10 @@ function _s5vT1() {
 
   return `
   <div class="s5v-section">
+
+    <!-- 통합 품질 대시보드 (studio-quality.js 가 있을 때만 채워짐) -->
+    <div id="s5v-quality-dashboard" style="margin-bottom:14px"></div>
+
     <div class="s5v-completeness">
       <div class="s5v-comp-hd">
         <span>완성도</span>

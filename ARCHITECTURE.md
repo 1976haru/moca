@@ -112,12 +112,15 @@ studioGet('edit')     // proj.edit || localStorage moca_s4_edit
 | modules/studio/s2-voice-step.js | TTS·BGM 매칭 | ✅ 완료 |
 | modules/studio/s3-source-tabs.js | 이미지·소스 탭 | ✅ 완료 |
 | modules/studio/s4-edit.js | 편집·리훅·사운드FX | ✅ 완료 |
-| modules/studio/s5-upload-v2.js | 최종검수·출력 | ✅ 완료 |
-| studio-quality.js | 품질관리 시스템 | ✅ 완료 |
-| s2-voice-quality.js | 음성 품질 강화 | ✅ 완료 |
-| s3-video-tools.js | 영상 프롬프트 | ✅ 완료 |
-| engines/script/js/script-music.js | 노래강화 5탭 | ✅ 완료 |
-| core/intent-system.js | 이미지 의도 고정 | 🚧 진행중 |
-| s5 품질 대시보드 연결 | 통합 품질 대시보드 | 🚧 진행중 |
+| modules/studio/s5-upload.js | STEP5 v1 (legacy fallback) | ✅ 완료 · studio-quality 연결 |
+| modules/studio/s5-upload-v2.js | STEP5 v2 (router 우선) | ✅ 완료 · studio-quality 연결 |
+| modules/studio/studio-quality.js | 품질관리 시스템 | ✅ 완료 · s5 v1+v2 T1 연결 |
+| modules/studio/s2-voice-quality.js | 음성 품질 강화 | ✅ 완료 |
+| modules/studio/s3-video-tools.js | 영상 프롬프트 | ✅ 완료 |
+| modules/studio/s3-image.js | 이미지 생성 + IntentSystem 의도 반영 | ✅ 완료 · IntentSystem fallback 통합 |
+| core/intent-system.js | 의도 시스템 (프로필·문맥·스타일) | ✅ 완료 · s3-image 적용 |
+| engines/script/js/script-hub.js | 변환허브 + 감동스토리 + 음악 5탭 | ✅ 완료 |
+
+> 노래강화 5탭은 `script-hub.js` 656~771줄(`genMusicTab/sendMusicToShorts`)에서 운영. 별도 `script-music.js`는 미사용으로 확인되어 제거됨.
 
 > 새 파일 추가 시 이 표에 행 추가. 줄 수는 기록하지 않습니다.
