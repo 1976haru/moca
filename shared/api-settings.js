@@ -184,6 +184,27 @@ function renderApiSettings(){
       '<div style="background:linear-gradient(135deg,var(--pink),var(--purple));height:100%;border-radius:999px;width:'+Math.round(doneApis/totalApis*100)+'%;transition:.5s"></div>' +
     '</div>';
 
+  /* 콘텐츠 종류별 API 추천 엔진 (대본·이미지·음성) */
+  if (typeof window.renderRecommendationCards === 'function') {
+    html += '<details open style="margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px">' +
+      '<summary style="cursor:pointer;list-style:none;font-weight:900;font-size:14px;display:flex;align-items:center;gap:8px">' +
+        '<span>⭐ 콘텐츠 종류별 API 추천</span>' +
+        '<span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:auto">가격·품질·속도 기준 1~3순위</span>' +
+        '<span style="font-size:12px;color:var(--sub)">▾</span>' +
+      '</summary>' +
+      '<div style="margin-top:10px">' +
+        '<div class="apirec-section-title">📝 대본 — 숏츠 기준</div>' +
+        window.renderRecommendationCards('script', 'shorts') +
+        '<div class="apirec-section-title">🖼 이미지 — 씬별 (가격 우선)</div>' +
+        window.renderRecommendationCards('image',  'scenes') +
+        '<div class="apirec-section-title">🖼 이미지 — 썸네일</div>' +
+        window.renderRecommendationCards('image',  'thumbnail') +
+        '<div class="apirec-section-title">🎙 음성 — 시니어 감동 내레이션</div>' +
+        window.renderRecommendationCards('voice',  'seniorEmotion') +
+      '</div>' +
+    '</details>';
+  }
+
   /* 카테고리별 렌더링 */
   Object.keys(MOCA_APIS_V2).forEach(function(cat){
     var apis = MOCA_APIS_V2[cat];

@@ -711,6 +711,12 @@ function _s1SaveToProject(topic) {
   s1.hookStr     = _s1HookStr;    /* 호환 */
   s1.trustStr    = _s1TrustStr;   /* 호환 */
   s1.adv         = Object.assign({}, _s1Adv);
+  /* ⭐ 콘텐츠 종류별 API 추천 (대본) — 저장 구조만 미리 적재 */
+  if (typeof window.getRecommendedProviders === 'function') {
+    const _recTask = (_s1Style === 'emotional' || _s1Style === 'senior') ? 'emotionalShorts' : 'shorts';
+    s1.recommendedScriptProviders = window.getRecommendedProviders('script', _recTask);
+    if (!s1.scriptProvider) s1.scriptProvider = s1.recommendedScriptProviders[0] || '';
+  }
   /* 장르별 설정은 _spSet/_lpSet 에서 자체 저장 */
 
   /* 호환 — 기존 STUDIO.project 평면 키 */

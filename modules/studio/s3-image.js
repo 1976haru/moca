@@ -131,6 +131,12 @@ function _studioS3(){
     '</div>' +
 
     '<div class="studio-section"><div class="studio-label">🤖 A. 이미지 API 선택</div>' +
+    /* ⭐ 콘텐츠 종류별 API 추천 — 이미지 (가격 우선) */
+    (typeof window.renderRecommendationCards === 'function' ?
+       window.renderRecommendationCards('image', 'scenes', {
+         mode: 'budget',
+         onPick: '_s3PickRecommendedApi(\'PROVIDER\')'
+       }) : '') +
     apiHtml +
     (function(){
       /* 신규 모달 (s3-image-keys.js) 가 로드됐으면 그것을 우선 사용 */
@@ -284,6 +290,27 @@ function studioS3SetApi(api){
   STUDIO.project.s3.api = api;
   studioSave(); renderStudio();
 }
+
+/* 추천 카드 클릭 → registry id (geminiImg/stable) → s3 api id (gemini/sd) 매핑 */
+window._s3PickRecommendedApi = function(providerId){
+  var idMap = { dalle3:'dalle3', dalle2:'dalle2', flux:'flux', stable:'sd', geminiImg:'gemini', minimax:'minimax', ideogram:'ideogram' };
+  var apiId = idMap[providerId] || providerId;
+  /* 키 없으면 키 모달 자동 오픈 */
+  var hasKeyFn = (typeof window.s3HasImageApiKey === 'function');
+  if (hasKeyFn && !window.s3HasImageApiKey(apiId)) {
+    if (confirm('이 API 의 키가 아직 없습니다. 키 입력 모달을 열까요?') &&
+        typeof window.s3OpenImageApiKeyModal === 'function') {
+      window.s3OpenImageApiKeyModal();
+    }
+    return;
+  }
+  STUDIO.project.s3 = STUDIO.project.s3 || {};
+  STUDIO.project.s3.api = apiId;
+  STUDIO.project.s3.recommendedImageProviders =
+    (typeof window.getRecommendedProviders === 'function')
+      ? window.getRecommendedProviders('image', 'scenes') : [];
+  studioSave(); renderStudio();
+};
 
 function studioS3Art(id, btn){
   STUDIO.project.s3 = STUDIO.project.s3 || {};

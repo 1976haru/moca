@@ -148,8 +148,22 @@ function _studioS2Step(wrapId) {
 
   const rec = V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional;
 
+  /* ⭐ 콘텐츠 종류별 API 추천 (provider 단위) */
+  const _recTaskKey = (lang === 'ja')                                ? 'japanese'
+                    : (style === 'info' || style === 'knowledge')    ? 'information'
+                    : (lang === 'ko')                                 ? 'korean'
+                    : 'seniorEmotion';
+  const _recCardsHtml = (typeof window.renderRecommendationCards === 'function')
+    ? window.renderRecommendationCards('voice', _recTaskKey, {
+        onPick: "_v2PickRecommendedProvider('PROVIDER')"
+      })
+    : '';
+
   wrap.innerHTML = `
   <div class="v2-wrap">
+
+    <!-- ⭐ 콘텐츠 종류별 API 추천 (provider) -->
+    ${_recCardsHtml}
 
     <!-- AI 자동 추천 (이슈 1 — 후보 2~3개 카드 + 미리듣기 + 단일 적용 표시) -->
     <div class="v2-recommend-banner">
@@ -571,6 +585,39 @@ window._v2PreviewById = function(langKey, voiceId) {
     alert('🔊 미리듣기 모듈(s2-voice-preview.js)이 로드되지 않았습니다.');
   }
 };
+
+/* 추천 카드 클릭 → V2 음성 API 매핑 */
+window._v2PickRecommendedProvider = function(providerId) {
+  const apiMap = { elevenlabs:'elevenlabs', openaiTts:'openai', nijivoice:'nijivoice', googleTts:'openai', clova:'openai' };
+  const apiId = apiMap[providerId] || 'elevenlabs';
+  /* 키 확인 — 통합 설정 모달로 안내 */
+  if (typeof window.hasProviderKey === 'function' && !window.hasProviderKey('voice', providerId)) {
+    if (confirm('이 음성 provider 의 API 키가 없습니다. 통합 API 설정을 열까요?') &&
+        typeof window.renderApiSettings === 'function') {
+      window.renderApiSettings();
+    }
+    return;
+  }
+  _v2Voice = _v2Voice || {};
+  _v2Voice.api = apiId;
+  /* STUDIO.project 에 추천 목록 저장 */
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  proj.s2 = proj.s2 || {};
+  proj.s2.voiceProvider = providerId;
+  proj.s2.recommendedVoiceProviders =
+    (typeof window.getRecommendedProviders === 'function')
+      ? window.getRecommendedProviders('voice', _v2RecTaskKeyForProj(proj)) : [];
+  _v2Save();
+  _studioS2Step();
+};
+function _v2RecTaskKeyForProj(proj) {
+  const style = proj.style || 'emotional';
+  const lang  = proj.lang  || 'both';
+  if (lang === 'ja') return 'japanese';
+  if (style === 'info' || style === 'knowledge') return 'information';
+  if (lang === 'ko') return 'korean';
+  return 'seniorEmotion';
+}
 
 window._v2ClearScene = function(idx, wid) {
   if (!confirm(`씬${idx+1} 음성을 다시 생성할까요?`)) return;
