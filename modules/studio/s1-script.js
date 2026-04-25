@@ -58,6 +58,7 @@ function studioSave(){
 function openStudio(step){
   /* 스튜디오 진입점 — 항상 대시보드(step=0)로 시작 (카드의 shStep 무시) */
   if(!STUDIO.project) STUDIO.project = studioNewProjectObj();
+  if(STUDIO.project.step > 5) STUDIO.project.step = 5;
   STUDIO.project.step = 0;
   state.studioOpen = true;
   state.category = 'shorts';
@@ -103,9 +104,9 @@ function renderStudio(){
     STUDIO.project.v5StepMigrated = true;
     studioSave();
   }
-  /* step 범위 보정 — 0(대시보드) 혹은 1~6 */
+  /* step 범위 보정 — 0(대시보드) 혹은 1~5 */
   if(!STUDIO.project.step || STUDIO.project.step < 0) STUDIO.project.step = 0;
-  if(STUDIO.project.step > 6) STUDIO.project.step = 6;
+  if(STUDIO.project.step > 5) STUDIO.project.step = 5;
   const body = document.getElementById('studio-body');
   if(!body) return;
   /* step 0 = 대시보드(stepper 없음), 1~5 = stepper + 단계 본문 */
@@ -179,7 +180,7 @@ function studioResume(id){
   if(!STUDIO.project.migratedTo6){
     if(STUDIO.project.step >= 2) STUDIO.project.step = STUDIO.project.step - 1;
     if(STUDIO.project.step < 1) STUDIO.project.step = 1;
-    if(STUDIO.project.step > 6) STUDIO.project.step = 6;
+    if(STUDIO.project.step > 5) STUDIO.project.step = 5;
     STUDIO.project.migratedTo6 = true;
     studioSave();
   }
@@ -200,17 +201,19 @@ const STUDIO_STEPS = [
   { n:2, label:'② 이미지·영상 소스' },
   { n:3, label:'③ 음성·BGM' },
   { n:4, label:'④ 편집' },
-  { n:5, label:'⑤ 최종검수·업로드' },
-  { n:6, label:'⑥ 📤 최종검수·출력' }
+  { n:5, ico:'📤', title:'최종검수·출력', key:'upload' }
 ];
 function _studioStepperShell(){
   const cur = STUDIO.project.step;
   return '<div class="studio-progress"><div class="studio-steps">' +
-    STUDIO_STEPS.map(s => '<button class="studio-step-pill ' + (s.n<cur?'done':s.n===cur?'current':'') + '" onclick="studioGoto(' + s.n + ')">' + s.label + '</button>').join('') +
+    STUDIO_STEPS.map(s => {
+      const lbl = s.label || ('⑤ ' + s.ico + ' ' + s.title);
+      return '<button class="studio-step-pill ' + (s.n<cur?'done':s.n===cur?'current':'') + '" onclick="studioGoto(' + s.n + ')">' + lbl + '</button>';
+    }).join('') +
   '</div></div>';
 }
 function studioGoto(n){
-  if(n < 0 || n > 6) return;
+  if(n < 0 || n > 5) return;
   STUDIO.project.step = n;
   studioSave();
   renderStudio();
@@ -221,8 +224,8 @@ function _studioStepBody(){
   if(n === 3) return '<div id="studioS4Wrap"></div>';
   /* STEP 4(편집): s4-edit.js 의 _studioS4Edit(wrapId) 로 패널 주입 */
   if(n === 4) return '<div id="studioS4EditWrap"></div>';
-  /* STEP 5(업로드 legacy)/STEP 6(출력) 은 wrap div 만 반환, 콘텐츠는 _studioBindStep 의 _studioS6(wrapId) 로 주입 */
-  if(n === 5 || n === 6) return '<div id="studioS5Wrap"></div>';
+  /* STEP 5(최종검수·출력): wrap div 만 반환, 콘텐츠는 _studioBindStep 의 _studioS6(wrapId) 로 주입 */
+  if(n === 5) return '<div id="studioS5Wrap"></div>';
   return ({
     0: _studioS0,   // 🏠 대시보드
     1: _studioS2,   // ① 대본 생성 (iframe 기반 script engine)
@@ -241,8 +244,8 @@ function _studioBindStep(){
     if(typeof _studioS4Edit === 'function') _studioS4Edit('studioS4EditWrap');
     return;
   }
-  /* STEP 5/6: s5-upload.js 의 _studioS6(wrapId) 로 패널 주입 (타 step 들과 다른 패턴) */
-  if(STUDIO.project.step === 5 || STUDIO.project.step === 6){
+  /* STEP 5(최종검수·출력): s5-upload.js 의 _studioS6(wrapId) 로 패널 주입 (타 step 들과 다른 패턴) */
+  if(STUDIO.project.step === 5){
     if(typeof _studioS6 === 'function') _studioS6('studioS5Wrap');
     return;
   }
