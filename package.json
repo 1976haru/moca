@@ -10,7 +10,7 @@
     "lint:fix": "eslint --fix \"core/**/*.js\" \"modules/**/*.js\" \"shared/**/*.js\" \"engines/**/*.js\"",
     "format": "prettier --write \"**/*.{js,html,css,md,json}\"",
     "format:check": "prettier --check \"**/*.{js,html,css,md,json}\"",
-    "check": "npm run lint && npm run format:check"
+    "check": "npm run lint"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

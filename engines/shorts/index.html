@@ -194,23 +194,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  /* 4) STUDIO 컨테이너 + project 초기화 (renderStudio 내부에서도 가드하지만 안전망) */
+  /* 4) STUDIO 컨테이너 + project 초기화 + URL 파라미터(step/topic/genre) 적용 */
   if (!window.STUDIO) window.STUDIO = {};
   if (!window.STUDIO.project) {
     window.STUDIO.project = studioNewProjectObj();
   }
-  /* 진입은 항상 대시보드(0단계)에서 시작 */
-  window.STUDIO.project.step = 0;
+  /* URL 파라미터: ?step=0~5  &topic=... */
+  var __params  = new URLSearchParams(location.search);
+  var __rawStep = parseInt(__params.get('step'), 10);
+  var __step    = (Number.isFinite(__rawStep) && __rawStep >= 0 && __rawStep <= 5) ? __rawStep : 0;
+  var __topic   = (__params.get('topic') || '').trim();
+  var __genre   = __params.get('genre');
+  window.STUDIO.project.step = __step;
+  if (__topic) {
+    window.STUDIO.project.topic = __topic;
+    if (!window.STUDIO.project.s1) window.STUDIO.project.s1 = {};
+    window.STUDIO.project.s1.topic = __topic;
+  }
 
-  /* 5) 진입 — renderStudio() 우선, 없으면 openStudio(0) fallback */
-  var genre = new URLSearchParams(location.search).get('genre');
-  console.log('[shorts] renderStudio() 호출');
+  /* 5) 진입 — renderStudio() 우선, 없으면 openStudio(step) fallback */
+  console.log('[shorts] renderStudio() 호출 — step=' + __step + ', topic=' + (__topic || '(없음)'));
   if (typeof renderStudio === 'function') {
     renderStudio();
   } else if (typeof openStudio === 'function') {
-    openStudio(0);
+    openStudio(__step);
   }
-  if (genre && typeof wzOpen === 'function') wzOpen(genre);
+  if (__genre && typeof wzOpen === 'function') wzOpen(__genre);
+
+  /* 5-1) topic 자동 주입 — renderStudio 후 입력창이 생성된 뒤 한 번 더 시도 */
+  if (__topic) {
+    setTimeout(function(){
+      var inp = document.getElementById('s1-topic')
+             || document.getElementById('sc-topic')
+             || document.getElementById('studio-topic')
+             || document.querySelector('input[name="topic"]')
+             || document.querySelector('textarea[name="topic"]')
+             || document.querySelector('input[placeholder*="주제"]')
+             || document.querySelector('textarea[placeholder*="주제"]');
+      if (inp) {
+        inp.value = __topic;
+        inp.dispatchEvent(new Event('input',  { bubbles:true }));
+        inp.dispatchEvent(new Event('change', { bubbles:true }));
+        console.log('[shorts] topic 자동 입력 →', inp.id || inp.name || '(matched by selector)');
+      } else {
+        console.warn('[shorts] topic 입력창을 찾지 못했습니다 (현재 step=' + __step + ')');
+      }
+    }, 200);
+  }
 
   /* 6) 렌더 진단 + 폴백 — studio-body 가 비어 있으면 직접 _studioDashboard 호출 */
   setTimeout(function(){
