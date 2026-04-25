@@ -8,6 +8,11 @@
 <link rel="stylesheet" href="../../assets/common.css">
 <link rel="stylesheet" href="../../shared/style.css">
 <style>
+  /* standalone 페이지: 허브 CSS 의 .hide 등 영향 차단, 강제 표시 */
+  #studioDetail,
+  #studio-body { display:block !important; visibility:visible !important; }
+  #studioDetail.hide,
+  #studio-body.hide { display:block !important; }
   /* 모듈 로드 실패 안내 박스 */
   .studio-load-error{
     margin:30px auto; max-width:560px; padding:20px;
@@ -128,24 +133,61 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  /* 3) STUDIO 컨테이너 + project 초기화 (renderStudio 내부에서도 가드하지만 안전망) */
+  /* 3) DOM 컨테이너 강제 표시 (.hide 클래스 잔존 대비) */
+  ['studioDetail', 'studio-body'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('hide');
+      el.style.display = 'block';
+      el.style.visibility = 'visible';
+    }
+  });
+
+  /* 4) STUDIO 컨테이너 + project 초기화 (renderStudio 내부에서도 가드하지만 안전망) */
   if (!window.STUDIO) window.STUDIO = {};
   if (!window.STUDIO.project) {
     window.STUDIO.project = studioNewProjectObj();
   }
   /* 진입은 항상 대시보드(0단계)에서 시작 */
-  if (typeof window.STUDIO.project.step !== 'number') {
-    window.STUDIO.project.step = 0;
-  }
+  window.STUDIO.project.step = 0;
 
-  /* 4) 진입 — renderStudio() 우선, 없으면 openStudio(0) fallback */
+  /* 5) 진입 — renderStudio() 우선, 없으면 openStudio(0) fallback */
   var genre = new URLSearchParams(location.search).get('genre');
+  console.log('[shorts] renderStudio() 호출');
   if (typeof renderStudio === 'function') {
     renderStudio();
   } else if (typeof openStudio === 'function') {
     openStudio(0);
   }
   if (genre && typeof wzOpen === 'function') wzOpen(genre);
+
+  /* 6) 렌더 진단 + 폴백 — studio-body 가 비어 있으면 직접 _studioDashboard 호출 */
+  setTimeout(function(){
+    var bodyEl    = document.getElementById('studio-body');
+    var dashWrap  = document.getElementById('studioDashWrap');
+    var dashInner = document.querySelector('.dash-wrap');
+
+    console.group('[shorts] 렌더 진단');
+    console.log('studioDetail   존재:', !!document.getElementById('studioDetail'));
+    console.log('studio-body    존재:', !!bodyEl);
+    console.log('studio-savestate 존재:', !!document.getElementById('studio-savestate'));
+    console.log('studio-body innerHTML 길이:', bodyEl ? bodyEl.innerHTML.length : '(none)');
+    console.log('studioDashWrap (renderStudio 결과):', !!dashWrap);
+    console.log('.dash-wrap (_studioDashboard 결과):', !!dashInner);
+    console.log('STUDIO.project.step:', window.STUDIO && window.STUDIO.project && window.STUDIO.project.step);
+    console.groupEnd();
+
+    /* 폴백: studio-body 자체가 비었으면 직접 대시보드 그리기 */
+    if (bodyEl && !bodyEl.innerHTML.trim() && typeof _studioDashboard === 'function') {
+      console.warn('[shorts] studio-body 비어있음 → _studioDashboard("studio-body") 직접 호출');
+      _studioDashboard('studio-body');
+    }
+    /* 폴백: wrapper만 있고 dashboard 내용이 없으면 다시 호출 */
+    else if (dashWrap && !dashInner && typeof _studioDashboard === 'function') {
+      console.warn('[shorts] studioDashWrap 있으나 .dash-wrap 없음 → _studioDashboard("studioDashWrap") 재호출');
+      _studioDashboard('studioDashWrap');
+    }
+  }, 50);
 });
 </script>
 </body>
