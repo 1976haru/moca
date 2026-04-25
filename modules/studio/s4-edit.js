@@ -84,7 +84,11 @@ function _studioS4Edit(wrapId) {
   if (!wrap) return;
 
   const proj   = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
-  const scenes = proj.scenes || [];
+  /* 씬경로 fallback 통일 — s4-strategy.js 의 _s4sGetScenes 와 동일 패턴 */
+  const scenes = proj.scenes
+              || (proj.s3 && proj.s3.scenes)
+              || (proj.sources && proj.sources.images)
+              || [];
 
   // 편집 설정 초기화
   if (!_s4Edit) {
@@ -101,6 +105,7 @@ function _studioS4Edit(wrapId) {
         ['t3','🖼 썸네일'],
         ['t4','🎬 영상 구성'],
         ['t5','🎵 BGM·음향'],
+        ['t6','🎯 편집 전략'],
       ].map(([id,label]) => `
         <button class="s4e-tab ${_s4Tab===id?'on':''}"
           onclick="_s4eSetTab('${id}','${wrapId||'studioS4EditWrap'}')">${label}</button>
@@ -108,11 +113,12 @@ function _studioS4Edit(wrapId) {
     </nav>
 
     <div class="s4e-body">
-      ${_s4Tab==='t1' ? _s4eT1Preview(scenes, proj)   : ''}
-      ${_s4Tab==='t2' ? _s4eT2Caption(scenes, proj)   : ''}
-      ${_s4Tab==='t3' ? _s4eT3Thumb(proj)             : ''}
-      ${_s4Tab==='t4' ? _s4eT4Compose()               : ''}
-      ${_s4Tab==='t5' ? _s4eT5Audio()                 : ''}
+      ${_s4Tab==='t1' ? _s4eT1Preview(scenes, proj)            : ''}
+      ${_s4Tab==='t2' ? _s4eT2Caption(scenes, proj)            : ''}
+      ${_s4Tab==='t3' ? _s4eT3Thumb(proj)                      : ''}
+      ${_s4Tab==='t4' ? _s4eT4Compose()                        : ''}
+      ${_s4Tab==='t5' ? _s4eT5Audio()                          : ''}
+      ${_s4Tab==='t6' ? '<div id="studioS4StrategyWrap"></div>' : ''}
     </div>
 
     <div class="s4e-footer">
@@ -126,6 +132,11 @@ function _studioS4Edit(wrapId) {
 
   _s4eInjectCSS();
   _s4eLoadFonts();
+
+  /* TAB 6: s4-strategy.js 의 _studioS4Strategy(wrapId) 로 패널 주입 */
+  if (_s4Tab === 't6' && typeof _studioS4Strategy === 'function') {
+    _studioS4Strategy('studioS4StrategyWrap');
+  }
 }
 
 /* ════════════════════════════════════════════════
