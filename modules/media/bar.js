@@ -26,12 +26,15 @@ function showMediaBar(anchorEl, getText, category){
       '<span style="font-size:13px;font-weight:900;color:#b14d82">📦 이 글에 추가할까요?</span>' +
       '<span style="font-size:11px;color:var(--sub);margin-left:8px">완성도를 높여요!</span>' +
     '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">' +
       '<button onclick="_mediaBarAddImages(this,\'' + (category||'general') + '\')" style="padding:10px 6px;border:2px solid #f0c8de;border-radius:12px;background:#fff;font-weight:800;font-size:12px;cursor:pointer;color:#b14d82;line-height:1.4">' +
         '🖼 이미지 추가<br><span style="font-size:10px;font-weight:400;color:var(--sub)">AI 자동 생성</span>' +
       '</button>' +
       '<button onclick="_mediaBarToShorts(this,\'' + (category||'general') + '\')" style="padding:10px 6px;border:2px solid #d4b5f5;border-radius:12px;background:#fff;font-weight:800;font-size:12px;cursor:pointer;color:#6030C0;line-height:1.4">' +
         '🎬 영상으로<br><span style="font-size:10px;font-weight:400;color:var(--sub)">자동숏츠 연결</span>' +
+      '</button>' +
+      '<button onclick="_mediaBarToContentBuilder(this,\'' + (category||'general') + '\')" style="padding:10px 6px;border:2px solid #ffd6a5;border-radius:12px;background:#fff;font-weight:800;font-size:12px;cursor:pointer;color:#b85c00;line-height:1.4">' +
+        '🎨 콘텐츠 빌더로<br><span style="font-size:10px;font-weight:400;color:var(--sub)">패키지 조립</span>' +
       '</button>' +
       '<button onclick="_mediaBarAddImages(this,\'' + (category||'general') + '\')" style="padding:10px 6px;border:2px solid transparent;border-radius:12px;background:linear-gradient(135deg,#ef6fab,#9181ff);font-weight:800;font-size:12px;cursor:pointer;color:#fff;line-height:1.4">' +
         '🖼🎬 전부<br><span style="font-size:10px;font-weight:400;opacity:.85">완전 패키지</span>' +
@@ -212,6 +215,53 @@ function _mbCopyAll(){
 function _mbCopyHtml(){
   const html = window._mbLastHtml || '';
   navigator.clipboard.writeText(html).then(() => alert('📋 HTML 복사 완료!\n\n에디터의 HTML 모드에 붙여넣으세요.'));
+}
+
+/* ═══════════════════════════════════════════════════════
+   🎨 콘텐츠 빌더로 이동 (sendToContentBuilder 호출)
+   ═══════════════════════════════════════════════════════ */
+function _mediaBarToContentBuilder(btn, category){
+  const bar = _mediaBarFindBar(btn);
+  if(!bar) return;
+  const text = typeof bar._getText === 'function' ? bar._getText() : '';
+  if(!text){ alert('본문이 비어있어요'); return; }
+
+  /* 기본 분해 */
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  const title = (lines[0] || '').slice(0, 60);
+  const paragraphs = text.split(/\n\n+/).map(s => s.trim()).filter(p => p.length > 10);
+  const summary = (paragraphs[0] || '').slice(0, 200);
+  const sections = paragraphs.slice(1);
+
+  const payload = {
+    sourceCategory: category || 'general',
+    title:      title,
+    sourceText: text,
+    summary:    summary,
+    sections:   sections,
+    cta:        '',
+    hashtags:   [],
+    imagePrompts: (window._mbLastImgs || []).map(i => i.prompt || '').filter(Boolean),
+    videoPrompts: [],
+    recommendedTemplates: ['blog-image', 'card-news', 'sns-set'],
+  };
+
+  if (typeof window.sendToContentBuilder === 'function') {
+    window.sendToContentBuilder(payload);
+  } else {
+    /* fallback — 직접 localStorage 저장 + 페이지 이동 */
+    try {
+      localStorage.setItem('moca_content_builder_draft_v1', JSON.stringify(payload));
+    } catch(e) {}
+    /* 경로 보정 — bar.js 는 어떤 페이지에서도 호출될 수 있음 */
+    const path = location.pathname || '';
+    const url = /\/engines\//.test(path)
+      ? (/\/engines\/media\//.test(path) ? 'index.html?mode=builder' : '../media/index.html?mode=builder')
+      : 'engines/media/index.html?mode=builder';
+    if (confirm('🎨 콘텐츠 빌더로 이동해서 이 소재로 패키지를 만들까요?')) {
+      location.href = url;
+    }
+  }
 }
 
 

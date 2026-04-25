@@ -12,7 +12,7 @@ const categories = [
 
 {id:'shorts',   icon:'📱', title:'숏츠 스튜디오',     desc:'🏆 대본·이미지·영상 올인원 (6단계)'},
 
-{id:'media',    icon:'🎬', title:'미디어 엔진',       desc:'음성·이미지·영상·음악'},
+{id:'media',    icon:'🎨', title:'콘텐츠 빌더',       desc:'글·이미지·영상 조합 완성'},
 
 // 대본 생성기 제거 — 숏츠 스튜디오 Step2에 흡수됨
   // 콘텐츠 빌더 제거 - 기능이 모든 카테고리 미디어 바로 통합됨

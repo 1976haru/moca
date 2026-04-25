@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>미디어 엔진 — 대본만 있으면 영상까지 자동!</title>
+<title>콘텐츠 빌더 — 글·이미지·영상 조합 완성</title>
 <link rel="stylesheet" href="../../assets/common.css">
+<link rel="stylesheet" href="../../modules/content-builder/cb-ui.css">
 <style>
 :root{
   --bg:#fff9fc;--line:#f1dce7;--line-strong:#e8a6c6;
@@ -150,8 +151,8 @@ label{display:block;font-size:13px;font-weight:800;color:#6b5d65;margin-bottom:6
 
   <header class="topbar">
     <div class="brand">
-      <div class="brand-logo">🎬</div>
-      <div><h1>미디어 엔진</h1><p id="topbar-sub">대본만 있으면 영상까지 자동으로 만들어드려요!</p></div>
+      <div class="brand-logo">🎨</div>
+      <div><h1>콘텐츠 빌더</h1><p id="topbar-sub">각 카테고리에서 만든 글·소재를 패키지로 완성합니다</p></div>
     </div>
     <div>
       <button class="tb-btn" onclick="goHub()">🏠 처음 화면</button>
@@ -159,7 +160,20 @@ label{display:block;font-size:13px;font-weight:800;color:#6b5d65;margin-bottom:6
     </div>
   </header>
 
-  <!-- ════ 메인 허브 ════ -->
+  <!-- ════ 모드 전환 (콘텐츠 빌더 ↔ 미디어 위자드) ════ -->
+  <div class="mode-switch">
+    <button class="mode-btn active" id="btnModeBuilder" onclick="cbSwitchMode('builder')">
+      🎨 콘텐츠 빌더
+    </button>
+    <button class="mode-btn" id="btnModeWizard" onclick="cbSwitchMode('wizard')">
+      🎬 미디어 위자드
+    </button>
+  </div>
+
+  <!-- ════ 콘텐츠 빌더 view ════ -->
+  <section id="view-cb" class="view hide"></section>
+
+  <!-- ════ 메인 허브 (기존 미디어 위자드) ════ -->
   <section id="view-hub" class="view">
     <div class="hub-hero">
       <h2>🎬 미디어 엔진</h2>
@@ -1195,5 +1209,13 @@ renderChannelRow();
 
 console.log('✅ 미디어 엔진 v5 로드 완료 (마법사 방식)');
 </script>
+
+<!-- ════ 콘텐츠 빌더 모듈 (반드시 이 순서) ════ -->
+<script src="../../modules/content-builder/cb-core.js"></script>
+<script src="../../modules/content-builder/cb-ui.js"></script>
+<script src="../../modules/content-builder/cb-recipes.js"></script>
+<script src="../../modules/content-builder/cb-templates.js"></script>
+<script src="../../modules/content-builder/cb-slots.js"></script>
+<script src="../../modules/content-builder/cb-output.js"></script>
 </body>
 </html>

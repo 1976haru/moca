@@ -1,0 +1,177 @@
+/* ================================================
+   modules/content-builder/cb-ui.js
+   콘텐츠 빌더 — 8탭 shell + 라우터
+   ================================================ */
+(function(){
+  'use strict';
+
+  const CB_TABS = [
+    { id:'t1', icon:'📥', label:'소스 가져오기' },
+    { id:'t2', icon:'🍳', label:'AI 레시피' },
+    { id:'t3', icon:'📄', label:'템플릿' },
+    { id:'t4', icon:'🧱', label:'블록 구성' },
+    { id:'t5', icon:'🖼', label:'미디어 슬롯' },
+    { id:'t6', icon:'🎨', label:'스타일' },
+    { id:'t7', icon:'👁', label:'미리보기·검수' },
+    { id:'t8', icon:'📦', label:'출력' },
+  ];
+
+  /* ── 메인 shell 렌더 ── */
+  function cbRenderShell(wrapId) {
+    const wrap = document.getElementById(wrapId || 'view-cb');
+    if (!wrap) return;
+    const p = window.contentBuilderProject || (window.cbNewProject && window.cbNewProject());
+    const q = (window.cbCalcQuality && window.cbCalcQuality(p)) || { score:0 };
+    const cur = (p && p.currentTab) || 't1';
+
+    wrap.innerHTML = ''
+      + '<div class="cb-shell">'
+      +   '<header class="cb-header">'
+      +     '<div>'
+      +       '<div class="cb-title">🎨 콘텐츠 빌더</div>'
+      +       '<div class="cb-sub">각 카테고리에서 만든 글·소재를 받아 상세페이지·블로그·뉴스레터·카드뉴스·포스터·SNS로 조립합니다.</div>'
+      +     '</div>'
+      +     '<div class="cb-quality-badge cb-q-' + _qualityClass(q.score) + '" id="cbQualityBadge">'
+      +       '품질 <b>' + q.score + '</b> / 100'
+      +     '</div>'
+      +   '</header>'
+
+      +   '<nav class="cb-tabs" id="cbTabs">'
+      +     CB_TABS.map(function(t){
+            return '<button type="button" class="cb-tab ' + (cur===t.id?'on':'') + '"' +
+                   ' data-tab="' + t.id + '"' +
+                   ' onclick="cbGotoTab(\'' + t.id + '\')">' +
+                   t.icon + ' ' + t.label + '</button>';
+          }).join('')
+      +   '</nav>'
+
+      +   '<div class="cb-body" id="cbBody"></div>'
+      + '</div>';
+
+    cbGotoTab(cur);
+  }
+
+  /* ── 탭 라우팅 ── */
+  function cbGotoTab(tabId) {
+    const p = window.contentBuilderProject;
+    if (p) p.currentTab = tabId;
+
+    /* 탭 활성화 (data-tab 기반, textContent.includes 사용 금지) */
+    document.querySelectorAll('.cb-tab').forEach(function(btn){
+      btn.classList.toggle('on', btn.dataset.tab === tabId);
+    });
+
+    const body = document.getElementById('cbBody');
+    if (!body) return;
+
+    const renderMap = {
+      t1: window.cbRenderTab1,   /* recipes 의 source 입력 */
+      t2: window.cbRenderTab2,   /* recipes 의 AI 레시피 */
+      t3: window.cbRenderTab3,   /* templates */
+      t4: window.cbRenderTab4,   /* blocks */
+      t5: window.cbRenderTab5,   /* slots */
+      t6: window.cbRenderTab6,   /* style */
+      t7: window.cbRenderTab7,   /* preview·quality */
+      t8: window.cbRenderTab8,   /* output */
+    };
+    const fn = renderMap[tabId];
+    if (typeof fn === 'function') {
+      try {
+        body.innerHTML = fn(p) || '';
+      } catch(err) {
+        console.error('[cb] tab render error:', tabId, err);
+        body.innerHTML = _renderError(tabId, err);
+      }
+    } else {
+      body.innerHTML = _renderMissing(tabId);
+    }
+
+    /* 자동 저장 */
+    if (typeof window.cbSave === 'function') window.cbSave();
+
+    /* 품질 배지 갱신 */
+    _refreshQualityBadge();
+  }
+  window.cbGotoTab = cbGotoTab;
+  window.cbRenderShell = cbRenderShell;
+
+  /* ── 헬퍼 ── */
+  function _qualityClass(score) {
+    if (score >= 80) return 'good';
+    if (score >= 70) return 'mid';
+    return 'low';
+  }
+  function _refreshQualityBadge() {
+    const el = document.getElementById('cbQualityBadge');
+    if (!el || typeof window.cbCalcQuality !== 'function') return;
+    const q = window.cbCalcQuality(window.contentBuilderProject);
+    el.className = 'cb-quality-badge cb-q-' + _qualityClass(q.score);
+    el.innerHTML = '품질 <b>' + q.score + '</b> / 100';
+  }
+  function _renderMissing(tabId) {
+    return '<div class="cb-section">'
+      +   '<div class="cb-section-title">⚠️ 탭 ' + tabId + ' 모듈을 찾을 수 없습니다</div>'
+      +   '<p>해당 탭 렌더 함수(window.cbRenderTab' + tabId.slice(1) + ')가 로드되지 않았습니다. ' +
+            '<code>cb-recipes.js</code>·<code>cb-templates.js</code>·<code>cb-slots.js</code>·<code>cb-output.js</code> 로드 여부를 확인하세요.</p>'
+      + '</div>';
+  }
+  function _renderError(tabId, err) {
+    return '<div class="cb-section">'
+      +   '<div class="cb-section-title">⚠️ 탭 ' + tabId + ' 렌더 오류</div>'
+      +   '<pre style="white-space:pre-wrap;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:8px;font-size:11px">'
+      +   String(err && err.message || err)
+      +   '</pre>'
+      + '</div>';
+  }
+
+  /* ── 모드 전환: builder ↔ wizard (engines/media/index.html 에서 호출) ── */
+  function cbSwitchMode(mode) {
+    if (mode === 'builder') {
+      document.querySelectorAll('.view').forEach(function(v){ v.classList.add('hide'); });
+      const cbView = document.getElementById('view-cb');
+      if (cbView) cbView.classList.remove('hide');
+      cbRenderShell('view-cb');
+      const bb = document.getElementById('btnModeBuilder');
+      const bw = document.getElementById('btnModeWizard');
+      if (bb) bb.classList.add('active');
+      if (bw) bw.classList.remove('active');
+    } else {
+      document.querySelectorAll('.view').forEach(function(v){ v.classList.add('hide'); });
+      /* 기존 미디어 위자드는 view-hub 또는 view-one 등으로 시작 — view-hub 우선 */
+      const hub = document.getElementById('view-hub');
+      if (hub) hub.classList.remove('hide');
+      const bb = document.getElementById('btnModeBuilder');
+      const bw = document.getElementById('btnModeWizard');
+      if (bb) bb.classList.remove('active');
+      if (bw) bw.classList.add('active');
+    }
+  }
+  window.cbSwitchMode = cbSwitchMode;
+
+  /* ── 자동 진입 처리 (URL ?mode=builder 또는 draft 존재) ── */
+  function _autoEnter() {
+    const params = new URLSearchParams(window.location.search || '');
+    const mode   = params.get('mode');
+    const draft  = (window.cbCore && window.cbCore.cbLoadDraft && window.cbCore.cbLoadDraft());
+
+    if (draft) {
+      const ok = window.cbCore.cbApplyDraft(draft);
+      if (ok) {
+        window.cbCore.cbClearDraft();
+      }
+    }
+
+    if (mode === 'builder' || draft) {
+      /* view-cb 가 페이지에 있으면 builder 모드로 시작 */
+      if (document.getElementById('view-cb')) {
+        cbSwitchMode('builder');
+      }
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _autoEnter);
+  } else {
+    /* 다른 모듈이 먼저 로드되도록 다음 tick */
+    setTimeout(_autoEnter, 0);
+  }
+})();
