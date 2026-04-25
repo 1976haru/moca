@@ -8,11 +8,62 @@
 <link rel="stylesheet" href="../../assets/common.css">
 <link rel="stylesheet" href="../../shared/style.css">
 <style>
-  /* standalone 페이지: 허브 CSS 의 .hide 등 영향 차단, 강제 표시 */
+  /* ───────────────────────────────────────────────
+     standalone 페이지: 허브 CSS 의 .hide / opacity:0 / height:0 등
+     영향을 모두 차단하고 콘텐츠가 항상 보이도록 강제
+     ─────────────────────────────────────────────── */
+  html, body { background:#fafafa; }
+  body { margin:0; min-height:100vh; }
+  main.vs-wrap {
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    min-height:100vh;
+    overflow:visible !important;
+    padding:0;
+  }
+  /* 컨테이너 3종 — 어떤 클래스가 붙어도 무조건 표시 */
   #studioDetail,
-  #studio-body { display:block !important; visibility:visible !important; }
   #studioDetail.hide,
-  #studio-body.hide { display:block !important; }
+  #studio-body,
+  #studio-body.hide,
+  #studioDashWrap,
+  #studioS1Wrap,
+  #studioS2Wrap,
+  #studioS3SourceWrap,
+  #studioS4EditWrap,
+  #studioS5Wrap {
+    display:block       !important;
+    visibility:visible  !important;
+    opacity:1           !important;
+    overflow:visible    !important;
+    height:auto         !important;
+  }
+  #studio-body {
+    min-height:60vh;
+    padding:18px 14px 60px;
+    background:#fafafa;
+  }
+  /* 단계 모듈이 그려주는 루트 wrapper 들 — 가시성/배경/패딩 보강 */
+  .dash-wrap,
+  .s1-wrap,
+  .s2-wrap,
+  .s3src-wrap,
+  .s4-wrap,
+  .s5-wrap,
+  .s5v-wrap {
+    display:block      !important;
+    visibility:visible !important;
+    opacity:1          !important;
+    overflow:visible   !important;
+  }
+  .dash-wrap {
+    min-height:400px;
+    padding:14px;
+    background:#fff;
+    border-radius:14px;
+    box-shadow:0 1px 6px rgba(0,0,0,.04);
+  }
   /* 모듈 로드 실패 안내 박스 */
   .studio-load-error{
     margin:30px auto; max-width:560px; padding:20px;
