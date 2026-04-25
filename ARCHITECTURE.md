@@ -20,6 +20,11 @@
 
 > ⚠️ **index.html은 직접 수정하지 마세요** — div 컨테이너만 있습니다.
 
+> ℹ️ engines/profit, public, edu, trans, smb, psy 는 이미 독립 디렉토리로 분리됨.
+> index.html 내 `*Detail.hide` div들(`monetizeDetail` → profit, `publicDetail`, `eduDetail`, `transDetail`, `smbDetail`, `psyDetail`)은
+> 카드 클릭 시 해당 `engines/<name>/index.html`로 이동하는 **리다이렉트 스텁**일 뿐,
+> 실제 UI는 각 `engines/<name>/index.html`에 있음.
+
 ---
 
 ## 숏츠 스튜디오 파이프라인
