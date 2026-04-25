@@ -38,3 +38,7 @@ scan_*.txt
 
 # 작업 임시 폴더 (draft 파일들 — modules/ 로 복사 후 사용)
 test/
+
+# Prevent root duplicate scratch files
+/step*.js
+/voice_*.js
