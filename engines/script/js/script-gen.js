@@ -153,6 +153,29 @@ function gen(){
             mode:  (typeof MODE !== 'undefined' ? MODE : 'h')
           }
         }, '*');
+        /* s1-script-step.js 가 수신 — scriptKo/scriptJa 로 분리 송신 */
+        var _stText = outEl ? outEl.value : scriptOnly;
+        var _stLang = (typeof LANG !== 'undefined') ? LANG : '';
+        var _stIsJa = (_stLang === 'j' || _stLang === 'ja');
+        var _stTopic = '';
+        try {
+          if(typeof MODE !== 'undefined'){
+            if(MODE === 'h') _stTopic = (document.getElementById('h-title')||{}).value || '';
+            else if(MODE === 'l') _stTopic = (document.getElementById('l-title')||{}).value || '';
+            else if(MODE === 't'){
+              var _a = (document.getElementById('t-a')||{}).value || '';
+              var _b = (document.getElementById('t-b')||{}).value || '';
+              _stTopic = (_a && _b) ? (_a + ' vs ' + _b) : (_a || _b);
+            }
+          }
+        } catch(_){}
+        window.parent.postMessage({
+          type:    'studio_script_done',
+          scriptKo: _stIsJa ? '' : _stText,
+          scriptJa: _stIsJa ? _stText : '',
+          scenes:  [],
+          topic:   _stTopic
+        }, '*');
       }
     } catch(_){}
   }).catch(function(e){document.getElementById('genbtn').disabled=false;document.getElementById('spinning').classList.remove('on');showErr('오류: '+e.message);});
