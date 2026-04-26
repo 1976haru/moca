@@ -31,6 +31,9 @@ let _s1LongStruct = 'list';
 function _s1RenderModeBlock(wid, mode) {
   if (mode === 'tikitaka') return _s1RenderTikitakaBlock(wid);
   if (mode === 'longform') return _s1RenderLongformBlock(wid);
+  if (mode === 'youtube_reference_adapt' && typeof window._s1RenderYoutubeRefBlock === 'function') {
+    return window._s1RenderYoutubeRefBlock(wid);
+  }
   return '';
 }
 
