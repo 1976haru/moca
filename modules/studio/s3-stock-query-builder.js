@@ -256,4 +256,43 @@
     if (typeof window.studioSave === 'function') window.studioSave();
     return query;
   };
+
+  /* ════════════════════════════════════════════════
+     spec helpers — getStockSearchDraft / cleanStockQueryText
+     ════════════════════════════════════════════════ */
+  window.getStockSearchDraft = function(sceneIndex, mediaType) {
+    var proj = (window.STUDIO && window.STUDIO.project) || {};
+    var drafts = proj.s3 && proj.s3.stockSearch && proj.s3.stockSearch.drafts;
+    if (!drafts || !drafts[sceneIndex]) return '';
+    return drafts[sceneIndex][mediaType || 'image'] || '';
+  };
+  window.cleanStockQueryText = function(text) {
+    var s = String(text || '');
+    var koCount = (s.match(/[가-힣]/g) || []).length;
+    var totalLen = s.replace(/\s/g, '').length;
+    var koRatio = totalLen > 0 ? koCount / totalLen : 0;
+    return koRatio > 0.3 ? _korToEnglishQuery(s) : _compressEnglish(s);
+  };
+
+  /* ════════════════════════════════════════════════
+     [stock-boot] 부팅 진단 — 한 번만 출력
+     ════════════════════════════════════════════════ */
+  function _stockBoot() {
+    try {
+      console.debug('[stock-boot] resolveStudioScenes:',   typeof window.resolveStudioScenes);
+      console.debug('[stock-boot] buildStockSearchQuery:', typeof window.buildStockSearchQuery);
+      console.debug('[stock-boot] cbRenderStockSearchPanel:', typeof window.cbRenderStockSearchPanel);
+      console.debug('[stock-boot] getScenePrompt:',         typeof window.getScenePrompt);
+      console.debug('[stock-boot] ensureStockSearchDraft:', typeof window.ensureStockSearchDraft);
+      console.debug('[stock-boot] getStockSearchDraft:',    typeof window.getStockSearchDraft);
+      console.debug('[stock-boot] cleanStockQueryText:',    typeof window.cleanStockQueryText);
+    } catch(_) {}
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _stockBoot);
+    } else {
+      setTimeout(_stockBoot, 0); /* panel 등 다른 모듈도 로드된 후 출력 */
+    }
+  }
 })();

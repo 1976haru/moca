@@ -107,7 +107,7 @@
     else if (STATE.status === 'no-results') statusHtml = '<div class="s3ss-status s3ss-empty">📭 검색 결과가 없습니다. 검색어를 수정하거나 다른 provider를 선택해주세요.</div>';
     else if (STATE.status === 'error') statusHtml = '<div class="s3ss-status s3ss-err">❌ 스톡 검색 중 오류가 발생했습니다. API 설정과 검색어를 확인해주세요. (' + _esc(STATE.errorMsg || '') + ')</div>';
     else if (STATE.status === 'ok') statusHtml = '<div class="s3ss-status s3ss-ok">✅ 씬 ' + sceneNoMsg + ' 검색 결과 ' + STATE.results.length + '건</div>';
-    else if (!scenes.length) statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 현재 저장된 s1/s3 데이터에서 씬을 찾지 못했습니다. 상단 소스 현황 데이터와 resolver 경로를 확인해주세요.</div>';
+    else if (!scenes.length) statusHtml = _renderEmptyDiagnostic();
     else if (STATE.sceneIdx === 'all') statusHtml = '<div class="s3ss-status s3ss-init">📋 전체 씬의 프롬프트를 미리보고, 원하는 씬만 스톡 검색할 수 있습니다.</div>';
     else if (STATE.query) statusHtml = '<div class="s3ss-status s3ss-init">✅ 씬 ' + sceneNoMsg + ' 검색어를 만들었습니다. "🔍 스톡 검색" 버튼을 누르세요.</div>';
     else statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 검색어가 없습니다. 씬 프롬프트를 확인하거나 직접 입력하세요.</div>';
@@ -390,6 +390,60 @@
   window.getCurrentStockMediaType  = function() { return STATE.type === 'video' ? 'video' : 'image'; };
 
   /* ════════════════════════════════════════════════
+     씬 0 일 때 어느 source 가 비어있는지 인라인 dump
+     ════════════════════════════════════════════════ */
+  function _renderEmptyDiagnostic() {
+    var proj = (window.STUDIO && window.STUDIO.project) || {};
+    var s1 = proj.s1 || {}, s3 = proj.s3 || {};
+    function _len(v) {
+      if (Array.isArray(v)) return v.length;
+      if (v && typeof v === 'object') return Object.keys(v).length;
+      return 0;
+    }
+    var rows = [
+      ['s1.scenes',           _len(s1.scenes)],
+      ['s1.sceneList',        _len(s1.sceneList)],
+      ['s1.imagePrompts',     _len(s1.imagePrompts)],
+      ['s3.scenes',           _len(s3.scenes)],
+      ['s3.scenePrompts',     _len(s3.scenePrompts)],
+      ['s3.imagePrompts',     _len(s3.imagePrompts)],
+      ['s3.prompts',          _len(s3.prompts)],
+      ['s3.imagesV3',         _len(s3.imagesV3)],
+      ['project.scenes',      _len(proj.scenes)],
+      ['project.imagePrompts',_len(proj.imagePrompts)],
+    ];
+    /* boot 함수 존재 여부 */
+    var fnState = [
+      ['resolveStudioScenes',   typeof window.resolveStudioScenes],
+      ['buildStockSearchQuery', typeof window.buildStockSearchQuery],
+      ['getScenePrompt',        typeof window.getScenePrompt],
+    ];
+    var html = '<div class="s3ss-status s3ss-empty s3ss-empty-diag">' +
+      '<div style="font-weight:800;margin-bottom:6px">⚠️ 현재 저장된 s1/s3 데이터에서 씬을 찾지 못했습니다.</div>' +
+      '<div style="font-size:11px;color:#7b6080;margin-bottom:8px">아래 모든 경로가 비어 있습니다. 1단계에서 대본을 생성하고 2단계 이미지 탭에서 프롬프트를 컴파일하면 자동으로 인식됩니다.</div>' +
+      '<table class="s3ss-diag-table">' +
+        '<thead><tr><th>경로</th><th>길이</th></tr></thead>' +
+        '<tbody>' +
+          rows.map(function(r){
+            return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table>' +
+      '<div style="margin-top:8px;font-size:10px;color:#9b8a93">resolver 함수: ' +
+        fnState.map(function(f){
+          var ok = f[1] === 'function';
+          return (ok?'✅':'❌') + ' ' + f[0] + ':' + f[1];
+        }).join(' · ') +
+      '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">' +
+        '<button class="s3ss-btn" onclick="window._s3SsRefresh && window._s3SsRefresh()">↻ 다시 확인</button>' +
+        '<button class="s3ss-btn" onclick="if(typeof studioGoto===\'function\')studioGoto(1)">① 대본 생성으로 이동</button>' +
+      '</div>' +
+    '</div>';
+    return html;
+  }
+
+  /* ════════════════════════════════════════════════
      ensureStockSceneState — 탭 진입 시 자동 초기화
      * 모든 씬의 query draft 를 미리 생성 → 드롭다운 변경 즉시 query 표시
      * legacy s3-stock.js studioS3StockSearch 도 활용 — s3._stockActiveScene 동기화
@@ -646,6 +700,11 @@
       '.s3ss-err{background:#fff1f1;color:#c0392b}'+
       '.s3ss-ok{background:#effbf7;color:#1a7a5a}'+
       '.s3ss-init{background:#fff5fa;color:#5b1a4a}'+
+      '.s3ss-empty-diag{flex-direction:column}'+
+      '.s3ss-diag-table{width:100%;border-collapse:collapse;font-size:11px;font-family:monospace;background:#fff;border:1px solid #f1dce7;border-radius:6px;overflow:hidden}'+
+      '.s3ss-diag-table th{background:#fafafe;color:#5a4a56;padding:4px 8px;text-align:left;font-weight:700}'+
+      '.s3ss-diag-table td{padding:3px 8px;border-top:1px solid #f1dce7;color:#7b6080}'+
+      '.s3ss-diag-table td:last-child{text-align:right;font-weight:700;color:#5b1a4a}'+
       /* 씬 미리보기 카드 */
       '.s3ss-preview-section{margin-top:6px}'+
       '.s3ss-preview-title{font-size:12px;font-weight:800;color:#5b1a4a;margin-bottom:8px}'+
