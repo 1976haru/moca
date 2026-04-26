@@ -73,9 +73,18 @@ function _studioS2Step(wrapId) {
 
   const proj   = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   const scenes = proj.scenes || [];
-  const style  = proj.style  || 'emotional';
-  const lang   = proj.lang   || 'both';
   const lenSec = proj.lengthSec || 60;
+
+  /* 🎯 contentProfile resolver — 대본 장르/톤/타깃/언어 통합 */
+  const profile = (typeof window.resolveContentProfile === 'function')
+    ? window.resolveContentProfile()
+    : { mainGenre: proj.style||'emotional', mainGenreLabel: proj.style||'감동',
+        tone:'emotional', toneLabel:'감동', target:'general',
+        lang: proj.lang||'ko', channelLabel: proj.channel||'' };
+  const recKey = (typeof window.profileToRecommendKey === 'function')
+    ? window.profileToRecommendKey(profile)
+    : (proj.style || 'emotional');
+  const lang = profile.lang || proj.lang || 'both';
 
   // 음성 설정 초기화
   if (!_v2Voice) {
@@ -83,13 +92,13 @@ function _studioS2Step(wrapId) {
     if (saved) {
       _v2Voice = saved;
     } else {
-      _v2Voice = _v2DefaultVoice(style, lang, lenSec);
+      _v2Voice = _v2DefaultVoice(recKey, lang, lenSec);
       proj.voice = _v2Voice;
     }
   }
 
   /* 💡 추천 음성 API (provider 단위) — 장르/언어 → task 자동 매핑 */
-  const _recTaskKey = _v2RecTaskKeyForProj({ style: style, lang: lang });
+  const _recTaskKey = _v2RecTaskKeyForProj({ style: recKey, lang: lang });
   const _recCardsHtml = (typeof window.renderRecommendationCards === 'function')
     ? '<div style="font-weight:800;font-size:12px;color:#5b1a4a;margin:6px 4px">💡 추천 음성 API</div>' +
       window.renderRecommendationCards('voice', _recTaskKey, {
@@ -101,15 +110,20 @@ function _studioS2Step(wrapId) {
   const _apiStatusHtml = (typeof window.vasRenderStatusPanel === 'function')
     ? window.vasRenderStatusPanel() : '';
 
+  /* 🎤 현재 적용된 음성 패널 */
+  const _currentVoiceHtml = _v2RenderCurrentVoice(profile);
+
   const _autoBodyHtml = `
-    <!-- AI 자동 추천 (이슈 1 — 후보 6+ 카드 + 미리듣기 + 단일 적용 표시) -->
+    <!-- AI 자동 추천 -->
     <div class="v2-recommend-banner">
       <div class="v2-rec-hd">
         🤖 AI 음성 자동 추천 — 후보 비교 후 1개 선택
-        <span class="v2-rec-badge">장르: ${_v2StyleLabel(style)}</span>
+        <span class="v2-rec-badge">장르: ${profile.mainGenreLabel}</span>
+        <span class="v2-rec-badge tone">톤: ${profile.toneLabel}</span>
+        ${profile.target === 'senior' ? '<span class="v2-rec-badge target">타깃: 시니어</span>' : ''}
       </div>
-      ${lang !== 'ja' ? _v2RenderRecGroup('ko', style, _v2Voice.voiceKo, wrapId) : ''}
-      ${lang !== 'ko' ? _v2RenderRecGroup('ja', style, _v2Voice.voiceJa, wrapId) : ''}
+      ${lang !== 'ja' ? _v2RenderRecGroup('ko', recKey, _v2Voice.voiceKo, wrapId) : ''}
+      ${lang !== 'ko' ? _v2RenderRecGroup('ja', recKey, _v2Voice.voiceJa, wrapId) : ''}
     </div>`;
 
   const _manualBodyHtml = (typeof window.vmpRenderPanel === 'function')
@@ -121,6 +135,9 @@ function _studioS2Step(wrapId) {
 
     <!-- 🔌 API 연결 상태 -->
     ${_apiStatusHtml}
+
+    <!-- 🎤 현재 적용된 음성 -->
+    ${_currentVoiceHtml}
 
     <!-- 💡 추천 음성 API (provider) -->
     ${_recCardsHtml}
@@ -199,7 +216,7 @@ function _studioS2Step(wrapId) {
     <div class="v2-block">
       <div class="v2-label">
         🎵 BGM
-        <span class="v2-bgm-rec">추천: ${_v2BgmLabel(V2_BGM_RECOMMEND[style])}</span>
+        <span class="v2-bgm-rec">추천: ${_v2BgmLabel(V2_BGM_RECOMMEND[recKey])}</span>
       </div>
       <div class="v2-bgm-list">
         ${V2_BGM_LIST.map(b=>`
@@ -395,17 +412,18 @@ function _v2DefaultVoice(style, lang, lenSec) {
   const recJa = _v2RecCandidates(style, 'ja');
   const speed = V2_SPEED_RECOMMEND[lenSec] || 1.0;
   const isSenior = style === 'senior';
-  const bgm   = V2_BGM_RECOMMEND[style] || 'emotional_piano';
+  const bgm   = V2_BGM_RECOMMEND[style] || V2_BGM_RECOMMEND.emotional || 'emotional_piano';
   const firstKo = recKo[0] || {};
   const firstJa = recJa[0] || {};
 
   return {
-    api:      'elevenlabs',
+    api:      firstKo.provider || 'elevenlabs',
     voiceKo:  firstKo.id || '',
     voiceJa:  firstJa.id || '',
-    voiceKoId: firstKo.voiceId || '',  /* 실제 provider voice_id (TTS 호출에 사용) */
+    voiceKoId: firstKo.voiceId || '',
     voiceJaId: firstJa.voiceId || '',
-    provider: firstKo.provider || 'EL',
+    provider: firstKo.provider || 'elevenlabs',
+    _source:  'auto',
     speed:    isSenior ? Math.max(0.85, speed - 0.1) : speed,
     bgm,
     bgmVol:   30,
@@ -466,30 +484,36 @@ function _v2RenderRecGroup(langKey, style, currentVoiceId, wrapId) {
   const candidates = _v2RecCandidates(style, langKey);
   if (!candidates.length) return '';
   const wid = wrapId || 'studioS2Wrap';
+  const provLabelMap = window.V2_PROVIDER_LABEL || { elevenlabs:'EL', openai:'OA', browser:'SS' };
+  const provBadgeMap = { elevenlabs:'EL', openai:'OA', browser:'SS' };
   return `
   <div class="v2-rec-group">
     <div class="v2-rec-group-hd">${flag} ${langLabel} 후보 (${candidates.length}개) — 1개 선택</div>
     <div class="v2-rec-cards">
       ${candidates.map(function(c){
         const isApplied = currentVoiceId === c.id;
-        const genderLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[c.gender]) || c.gender;
-        const ageLabel    = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[c.age])       || c.age;
+        const toneLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[c.voiceToneGender]) || '· 톤 미확인';
+        const ageLabel  = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[c.ageTone])           || '미확인';
         const fav = (typeof window.vfvIsFavorite === 'function') && window.vfvIsFavorite(c.id);
+        const provBadge = provBadgeMap[c.provider] || (c.provider||'').slice(0,2).toUpperCase();
+        const isBrowser = c.provider === 'browser';
+        const tagsShort = (c.styleTags || []).slice(0, 2).join(' · ');
         return `
         <div class="v2-rec-card ${isApplied?'applied':''}"
           onclick="_v2ApplyRecommend('${langKey}','${c.id}','${wid}')">
           <div class="v2-rec-card-hd">
-            <span class="v2-rec-name">${c.label}</span>
-            <span class="v2-rec-provider v2-prov-${c.provider}">${c.provider}</span>
+            <span class="v2-rec-name">${c.displayName||c.id}</span>
+            <span class="v2-rec-provider v2-prov-${provBadge}" title="${provLabelMap[c.provider]||c.provider}">${provBadge}</span>
             <button type="button" class="v2-rec-fav ${fav?'on':''}"
               onclick="event.stopPropagation();_v2ToggleFav('${langKey}','${c.id}','${wid}')"
               title="즐겨찾기">★</button>
           </div>
           <div class="v2-rec-meta">
-            <span class="v2-rec-tag">${genderLabel}</span>
+            <span class="v2-rec-tag">${toneLabel}</span>
             <span class="v2-rec-tag">${ageLabel}</span>
+            ${isBrowser ? '<span class="v2-rec-tag warn">브라우저 대체</span>' : ''}
           </div>
-          <div class="v2-rec-desc">${c.desc || ''}</div>
+          ${tagsShort ? `<div class="v2-rec-desc">${tagsShort}</div>` : '<div class="v2-rec-desc"></div>'}
           <div class="v2-rec-actions">
             <button type="button" class="v2-rec-preview"
               onclick="event.stopPropagation();_v2PreviewById('${langKey}','${c.id}')">
@@ -506,9 +530,39 @@ function _v2RenderRecGroup(langKey, style, currentVoiceId, wrapId) {
   </div>`;
 }
 
+/* ── 현재 적용된 음성 패널 ── */
+function _v2RenderCurrentVoice(profile) {
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  const v = proj.voice || {};
+  const lang = profile.lang === 'ja' ? 'ja' : 'ko';
+  const candId = lang === 'ja' ? (v.voiceJa || v.voiceKo) : (v.voiceKo || v.voiceJa);
+  const cand = (typeof window._v2GetCandidateById === 'function') ? window._v2GetCandidateById(candId) : null;
+  if (!cand) {
+    return '<div class="v2-current-voice empty">🎤 현재 적용된 음성: <i>아직 선택되지 않음</i></div>';
+  }
+  const provLabel = (window.V2_PROVIDER_LABEL && window.V2_PROVIDER_LABEL[cand.provider]) || cand.provider;
+  const toneLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[cand.voiceToneGender]) || '· 톤 미확인';
+  const ageLabel  = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[cand.ageTone])           || '미확인';
+  const sourceLabel = v._source === 'manual' ? '수동 선택' : '자동 추천';
+  const reasonText  = profile.mainGenreLabel + ' · ' + profile.toneLabel + (profile.target==='senior'?' · 시니어 타깃':'');
+  return `
+  <div class="v2-current-voice">
+    <div class="v2-cv-hd">🎤 현재 음성</div>
+    <div class="v2-cv-row">
+      <span class="v2-cv-prov">${provLabel}</span>
+      <span class="v2-cv-name">${cand.displayName || cand.id}</span>
+      <span class="v2-cv-tag">${toneLabel}</span>
+      <span class="v2-cv-tag">${ageLabel}</span>
+      <span class="v2-cv-source">${sourceLabel}</span>
+    </div>
+    <div class="v2-cv-reason">추천 기준: ${reasonText}</div>
+  </div>`;
+}
+
 /* ── 핵심 적용 — 자동·수동 picker 공통 ── */
-window._v2ApplyCandidate = function(cand, langKey) {
+window._v2ApplyCandidate = function(cand, langKey, opts) {
   if (!cand) return;
+  opts = opts || {};
   const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   const lk   = langKey === 'ja' ? 'ja' : 'ko';
   if (lk === 'ko') {
@@ -518,20 +572,20 @@ window._v2ApplyCandidate = function(cand, langKey) {
     _v2Voice.voiceJa   = cand.id;
     _v2Voice.voiceJaId = cand.voiceId || '';
   }
-  /* api 라벨 동기화 — 세그먼트 버튼 표시용 */
-  const provAbbr = (cand.provider || 'EL').toUpperCase();
-  _v2Voice.api = (provAbbr === 'OA') ? 'openai'
-                : (provAbbr === 'NJ') ? 'nijivoice'
-                : (provAbbr === 'SS') ? 'system'
-                : 'elevenlabs';
-  _v2Voice.provider = provAbbr;
-  /* STUDIO.project.s2 풍부한 메타 보존 */
+  const provNorm = String(cand.provider || 'elevenlabs').toLowerCase();
+  _v2Voice.api      = (provNorm === 'openai') ? 'openai'
+                    : (provNorm === 'browser') ? 'system'
+                    : 'elevenlabs';
+  _v2Voice.provider = provNorm;
+  _v2Voice._source  = opts.source || 'auto';
+  /* STUDIO.project.s2 통합 메타 (TTS 라우팅 가 사용) */
   if (!proj.s2) proj.s2 = {};
-  proj.s2.voice      = cand.id;
-  proj.s2.voiceLabel = cand.label;
-  proj.s2.voiceLang  = lk === 'ja' ? 'JP' : 'KR';
-  proj.s2.voiceGender= cand.gender;
-  proj.s2.voiceAge   = cand.age;
+  proj.s2.voice          = cand.id;
+  proj.s2.voiceLabel     = cand.displayName || cand.label || cand.id;
+  proj.s2.voiceLang      = lk === 'ja' ? 'JP' : 'KR';
+  proj.s2.voiceToneGender= cand.voiceToneGender;
+  proj.s2.voiceAgeTone   = cand.ageTone;
+  proj.s2.voiceSource    = _v2Voice._source;
   _v2Save();
 };
 
@@ -642,7 +696,25 @@ function _v2InjectCSS() {
 .v2-rec-hd{font-size:13px;font-weight:800;color:#2b2430;margin-bottom:10px;
   display:flex;align-items:center;gap:8px}
 .v2-rec-badge{padding:3px 10px;background:#9181ff;color:#fff;border-radius:20px;
-  font-size:11px;font-weight:700}
+  font-size:11px;font-weight:700;margin-left:4px}
+.v2-rec-badge.tone{background:#ef6fab}
+.v2-rec-badge.target{background:#16a34a}
+
+/* 현재 음성 패널 */
+.v2-current-voice{background:linear-gradient(135deg,#fff5fa,#f5f0ff);
+  border:1.5px solid #e8d9f5;border-radius:14px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.v2-current-voice.empty{color:#9b8a93;font-size:12px}
+.v2-cv-hd{font-size:12px;font-weight:800;color:#5b1a4a}
+.v2-cv-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.v2-cv-prov{font-size:10.5px;font-weight:800;padding:3px 9px;background:#ede9ff;color:#5b4ecf;border-radius:20px}
+.v2-cv-name{font-size:14px;font-weight:900;color:#2b2430}
+.v2-cv-tag{font-size:10.5px;padding:2px 8px;background:#fff;color:#5a4a56;border:1px solid #f1dce7;border-radius:20px;font-weight:700}
+.v2-cv-source{margin-left:auto;font-size:10.5px;font-weight:800;color:#16a34a;background:#dcfce7;padding:3px 9px;border-radius:20px}
+.v2-cv-reason{font-size:10.5px;color:#7b6080}
+
+/* warn 톤 (브라우저 대체) */
+.v2-rec-tag.warn{background:#fef3c7;color:#92400e}
 .v2-rec-voices{display:flex;flex-direction:column;gap:8px}
 .v2-rec-voice{display:flex;align-items:center;gap:10px;padding:10px;
   background:#fff;border-radius:12px;border:1.5px solid #f1dce7}

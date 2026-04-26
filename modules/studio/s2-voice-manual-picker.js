@@ -14,11 +14,11 @@
   'use strict';
 
   var VMP_STATE = {
-    provider: 'all',  /* all | EL | OA | NJ | SS */
+    provider: 'all',  /* all | elevenlabs | openai | browser */
     lang:     'any',  /* any | ko | ja */
-    gender:   'any',  /* any | female | male | neutral */
-    age:      'any',  /* any | young | middle | senior */
-    cost:     'any',  /* any | free | low | medium */
+    gender:   'any',  /* any | female_tone | male_tone | neutral_tone | unknown */
+    age:      'any',  /* any | young | adult | mature | senior | unknown */
+    cost:     'any',  /* any | has_key */
     query:    '',
   };
   window.VMP_STATE = VMP_STATE;
@@ -34,23 +34,29 @@
   function _vmpFilter(list) {
     var s = VMP_STATE;
     var q = (s.query || '').toLowerCase().trim();
+    /* state 정규화 — 이전 single-letter provider key 호환 */
+    var provMap = { EL:'elevenlabs', OA:'openai', SS:'browser', NJ:'nijivoice' };
+    var stateProv = provMap[s.provider] || s.provider;
     return list.filter(function(c){
-      if (s.provider !== 'all' && c.provider !== s.provider) return false;
-      if (s.gender !== 'any' && c.gender !== s.gender) return false;
-      if (s.age    !== 'any' && c.age    !== s.age) return false;
-      if (s.cost   !== 'any' && c.cost   !== s.cost) return false;
-      /* 언어 — SS 는 ko/ja 명시, 그 외(EL/OA)는 multilingual 이라 any 매칭 */
+      if (stateProv !== 'all' && c.provider !== stateProv) return false;
+      if (s.gender !== 'any' && c.voiceToneGender !== s.gender) return false;
+      if (s.age    !== 'any' && c.ageTone         !== s.age) return false;
+      /* 언어 — browser 는 voiceId 가 ko-KR / ja-JP, 그 외는 multi */
       if (s.lang !== 'any') {
-        if (c.provider === 'SS') {
+        if (c.provider === 'browser') {
           if (s.lang === 'ko' && !/ko/i.test(c.voiceId || '')) return false;
           if (s.lang === 'ja' && !/ja/i.test(c.voiceId || '')) return false;
-        } else if (c.provider === 'NJ' && s.lang === 'ko') {
-          /* Nijivoice 는 일본어 전용 */
-          return false;
         }
       }
+      /* keyOk 필터 (있으면) */
+      if (s.cost === 'has_key' && typeof window.hasApiKey === 'function') {
+        var grp = c.provider === 'elevenlabs' ? 'elevenlabs' : (c.provider === 'openai' ? 'openai_tts' : null);
+        if (grp && !window.hasApiKey('voice', grp)) return false;
+      }
       if (q) {
-        var hay = ((c.label||'')+' '+(c.desc||'')+' '+(c.voiceId||'')+' '+(c.style||'')).toLowerCase();
+        var hay = ((c.displayName||c.label||'')+' '+
+                   ((c.styleTags||[]).join(' '))+' '+
+                   (c.voiceId||'')).toLowerCase();
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
@@ -60,25 +66,28 @@
   /* ── 단일 카드 HTML ── */
   function _vmpCardHtml(c) {
     var fav = (typeof window.vfvIsFavorite === 'function') && window.vfvIsFavorite(c.id);
-    var genderLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[c.gender]) || c.gender;
-    var ageLabel    = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[c.age])       || c.age;
-    var costLabel   = (window.V2_COST_LABEL   && window.V2_COST_LABEL[c.cost])     || c.cost;
-    var provBadge   = '<span class="vmp-prov vmp-prov-'+c.provider+'">'+c.provider+'</span>';
-    var jsonId      = JSON.stringify(c.id);
+    var toneLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[c.voiceToneGender]) || '· 톤 미확인';
+    var ageLabel  = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[c.ageTone])           || '미확인';
+    var provLabelMap = window.V2_PROVIDER_LABEL || { elevenlabs:'ElevenLabs', openai:'OpenAI', browser:'브라우저 대체' };
+    var provBadgeMap = { elevenlabs:'EL', openai:'OA', browser:'SS' };
+    var provBadge = provBadgeMap[c.provider] || (c.provider||'').slice(0,2).toUpperCase();
+    var jsonId    = JSON.stringify(c.id);
+    var tagsShort = (c.styleTags || []).slice(0, 3).join(' · ');
+    var isBrowser = c.provider === 'browser';
     return ''+
     '<div class="vmp-card" data-id="'+c.id+'">'+
       '<div class="vmp-card-hd">'+
-        '<span class="vmp-name">'+(c.label||c.id)+'</span>'+
-        provBadge+
+        '<span class="vmp-name">'+(c.displayName||c.id)+'</span>'+
+        '<span class="vmp-prov vmp-prov-'+provBadge+'" title="'+(provLabelMap[c.provider]||c.provider)+'">'+provBadge+'</span>'+
         '<button type="button" class="vmp-fav '+(fav?'on':'')+'" '+
           'onclick="vmpToggleFav('+jsonId+')" title="즐겨찾기">★</button>'+
       '</div>'+
       '<div class="vmp-meta">'+
-        '<span class="vmp-tag">'+genderLabel+'</span>'+
+        '<span class="vmp-tag">'+toneLabel+'</span>'+
         '<span class="vmp-tag">'+ageLabel+'</span>'+
-        '<span class="vmp-tag">'+costLabel+'</span>'+
+        (isBrowser ? '<span class="vmp-tag warn">브라우저 대체</span>' : '')+
       '</div>'+
-      '<div class="vmp-desc">'+(c.desc || '')+'</div>'+
+      '<div class="vmp-desc">'+tagsShort+'</div>'+
       '<div class="vmp-actions">'+
         '<button type="button" class="vmp-prev" onclick="vmpPreview('+jsonId+')">▶ 미리듣기</button>'+
         '<button type="button" class="vmp-pick" onclick="vmpApply('+jsonId+')">선택</button>'+
@@ -120,11 +129,11 @@
     '<div class="vmp-wrap">'+
       pinTopHtml+
       '<div class="vmp-filters">'+
-        _vmpSeg('provider', '제공사', [['all','전체'],['EL','ElevenLabs'],['OA','OpenAI'],['NJ','Nijivoice'],['SS','브라우저']])+
+        _vmpSeg('provider', '제공사', [['all','전체'],['elevenlabs','ElevenLabs'],['openai','OpenAI'],['browser','브라우저 대체']])+
         _vmpSeg('lang',     '언어',   [['any','전체'],['ko','한국어'],['ja','일본어']])+
-        _vmpSeg('gender',   '성별',   [['any','전체'],['female','여성'],['male','남성'],['neutral','중성']])+
-        _vmpSeg('age',      '연령',   [['any','전체'],['young','청년'],['middle','중년'],['senior','시니어']])+
-        _vmpSeg('cost',     '비용',   [['any','전체'],['free','무료'],['low','저렴'],['medium','보통']])+
+        _vmpSeg('gender',   '톤',     [['any','전체'],['female_tone','여성톤'],['male_tone','남성톤'],['neutral_tone','중성톤'],['unknown','미확인']])+
+        _vmpSeg('age',      '연령톤', [['any','전체'],['young','청년'],['adult','성인'],['mature','중년'],['senior','시니어'],['unknown','미확인']])+
+        _vmpSeg('cost',     '키 보유', [['any','전체'],['has_key','키 있음']])+
       '</div>'+
       '<div class="vmp-search">'+
         '<input type="search" class="vmp-search-input" placeholder="🔎 음성 이름·설명·voice_id 검색" '+
@@ -182,18 +191,19 @@
     }
     if (!c) { alert('후보를 찾을 수 없습니다.'); return; }
     if (typeof window._v2ApplyCandidate === 'function') {
-      window._v2ApplyCandidate(c, _vmpLangForCand(c));
+      window._v2ApplyCandidate(c, _vmpLangForCand(c), { source:'manual' });
     }
     if (typeof window.vfvAddRecent === 'function') {
       window.vfvAddRecent(c, _vmpLangForCand(c));
     }
-    vmpRefresh();
+    /* 패널 전체 다시 렌더링해야 "현재 음성" 패널 갱신됨 */
+    if (typeof window._studioS2Step === 'function') window._studioS2Step();
+    else vmpRefresh();
   }
 
   function _vmpLangForCand(c) {
     if (!c) return 'ko';
-    if (c.provider === 'NJ') return 'ja';
-    if (c.provider === 'SS') return /ja/i.test(c.voiceId || '') ? 'ja' : 'ko';
+    if (c.provider === 'browser') return /ja/i.test(c.voiceId || '') ? 'ja' : 'ko';
     return VMP_STATE.lang === 'ja' ? 'ja' : 'ko';
   }
 
