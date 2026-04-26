@@ -203,21 +203,26 @@ function _s3SrcRenderUpload(subTab) {
   }
 
   if (subTab === 'stock') {
-    // 기존 s3-stock.js 호출
-    if (typeof renderS3Stock === 'function') {
+    /* 신규 — s3-stock-search-panel.js 의 cbRenderStockSearchPanel 사용 */
+    if (typeof window.cbRenderStockSearchPanel === 'function') {
+      try { console.debug('[stock] render target: #s3-stock-panel'); } catch(_) {}
+      inner.innerHTML = '<div id="s3-stock-panel">' + window.cbRenderStockSearchPanel() + '</div>';
+    } else if (typeof renderS3Stock === 'function') {
       inner.innerHTML = '<div id="s3StockInner"></div>';
       renderS3Stock('s3StockInner');
     } else if (typeof _studioS3Stock === 'function') {
       inner.innerHTML = '<div id="s3StockInner"></div>';
       _studioS3Stock('s3StockInner');
     } else {
-      inner.innerHTML = '<div class="s3src-loading">🔍 스톡 검색 로딩 중...</div>';
+      inner.innerHTML = '<div class="s3src-loading">🔍 스톡 검색 모듈 로드 실패 — 새로고침을 시도하세요.</div>';
     }
   }
 
   if (subTab === 'reuse') {
-    // 기존 s3-reuse.js 호출
-    if (typeof renderS3Reuse === 'function') {
+    /* 신규 — V3 후보 + 프로젝트 이미지 통합 재사용 UI */
+    if (typeof window._renderS3SrcReusePanel === 'function') {
+      inner.innerHTML = '<div id="s3-reuse-panel">' + window._renderS3SrcReusePanel() + '</div>';
+    } else if (typeof renderS3Reuse === 'function') {
       inner.innerHTML = '<div id="s3ReuseInner"></div>';
       renderS3Reuse('s3ReuseInner');
     } else if (typeof _studioS3Reuse === 'function') {
@@ -228,6 +233,28 @@ function _s3SrcRenderUpload(subTab) {
     }
   }
 }
+
+/* ── 신규 재사용 패널 — V3 candidate + project images 통합 ── */
+window._renderS3SrcReusePanel = function() {
+  var imgs = (typeof window.cbGatherProjectImages === 'function') ? window.cbGatherProjectImages() : [];
+  if (!imgs.length) {
+    return '<div class="s3src-loading">♻️ 재사용할 이미지가 없습니다. 먼저 AI 생성 / 스톡 검색 / 직접 업로드로 이미지를 추가하세요.</div>';
+  }
+  var cardsHtml = imgs.map(function(img, i){
+    return '<div class="s3src-reuse-card" onclick="s3UsReuseImage(' + i + ')">' +
+      '<img src="' + String(img.url).replace(/"/g,'&quot;').replace(/\'/g,'\\\'') + '" alt="" onerror="this.style.display=\'none\'">' +
+      '<div class="s3src-reuse-meta">' + String(img.label||'이미지').replace(/[<>&]/g,'') + '</div>' +
+    '</div>';
+  }).join('');
+  return '<div class="s3src-reuse-intro">♻️ 프로젝트 안의 이미지(숏츠/콘텐츠빌더/썸네일/업로드)를 비어있는 씬에 재사용합니다.</div>' +
+    '<div class="s3src-reuse-grid">' + cardsHtml + '</div>' +
+    '<style>.s3src-reuse-intro{font-size:12px;color:#7b6080;background:#fafafe;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5}'+
+    '.s3src-reuse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}'+
+    '.s3src-reuse-card{background:#fff;border:1.5px solid #ece6f5;border-radius:8px;overflow:hidden;cursor:pointer;transition:.12s}'+
+    '.s3src-reuse-card:hover{border-color:#9181ff;transform:translateY(-1px)}'+
+    '.s3src-reuse-card img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#fafafe}'+
+    '.s3src-reuse-meta{padding:5px 8px;font-size:10.5px;color:#5a4a56;font-weight:700;text-align:center}</style>';
+};
 
 /* ── 기본 업로드 UI (fallback) ── */
 function _s3SrcBasicUploadUI() {

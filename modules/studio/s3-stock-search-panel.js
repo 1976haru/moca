@@ -42,10 +42,17 @@
     var p = _proj();
     var scenes = (p.s3 && p.s3.scenes) || [];
 
-    /* 진입 시 자동 query 생성 (state.query 비어있으면) */
-    if (!STATE.query && typeof window.buildStockSearchQuery === 'function') {
+    /* 초기 status 보장 — render 가 도중 'loading' 으로 남는 일 없음 */
+    if (STATE.status === 'loading' && (!STATE.results || !STATE.results.length)) {
+      /* fetch 가 끝나지 않았는데 다시 render 되는 경우는 흔치 않음 — 안전망 */
+      STATE.status = '';
+    }
+
+    /* 진입 시 무조건 자동 query 재생성 (씬/타입 변경 반영) */
+    if (typeof window.buildStockSearchQuery === 'function') {
       var q = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type });
-      STATE.query = q.query || '';
+      if (q && q.query) STATE.query = q.query;
+      try { console.debug('[stock] sceneIndex:', STATE.sceneIdx, 'query:', STATE.query); } catch(_) {}
     }
 
     /* scene picker */
@@ -78,12 +85,13 @@
         (t === 'image' ? '🖼 이미지' : '🎬 영상') + '</button>';
     }).join('');
 
-    /* status banner */
+    /* status banner — 초기 진입 시 안내, 로딩은 fetch 중에만 */
     var statusHtml = '';
-    if (STATE.status === 'loading') statusHtml = '<div class="s3ss-status s3ss-loading">🔍 검색 중...</div>';
+    if (STATE.status === 'loading') statusHtml = '<div class="s3ss-status s3ss-loading">🔍 스톡 검색 중...</div>';
     else if (STATE.status === 'no-results') statusHtml = '<div class="s3ss-status s3ss-empty">📭 검색 결과가 없습니다. 검색어를 수정하거나 다른 provider를 선택해주세요.</div>';
     else if (STATE.status === 'error') statusHtml = '<div class="s3ss-status s3ss-err">❌ ' + _esc(STATE.errorMsg || '응답 처리 중 오류가 발생했습니다.') + '</div>';
-    else if (STATE.status === 'ok') statusHtml = '<div class="s3ss-status s3ss-ok">✅ 결과 ' + STATE.results.length + '건</div>';
+    else if (STATE.status === 'ok') statusHtml = '<div class="s3ss-status s3ss-ok">✅ 검색 결과 ' + STATE.results.length + '건</div>';
+    else statusHtml = '<div class="s3ss-status s3ss-init">💡 검색어를 확인하고 "🔍 스톡 검색" 버튼을 누르세요. 자동 검색어는 현재 씬의 이미지/영상 프롬프트에서 생성됩니다.</div>';
 
     /* results grid */
     var resultsHtml = '';
@@ -213,15 +221,20 @@
     _refresh();
 
     try {
-      try { console.log('[stock-search] provider:', STATE.provider, 'type:', STATE.type, 'query:', STATE.query); } catch(_) {}
+      try {
+        console.debug('[stock] provider:', STATE.provider);
+        console.debug('[stock] sceneIndex:', STATE.sceneIdx);
+        console.debug('[stock] query:', STATE.query);
+        console.debug('[stock] fetch start');
+      } catch(_) {}
       var results = await _doSearch(STATE.provider, STATE.type, STATE.query, key);
       STATE.results = results;
       STATE.status = results.length ? 'ok' : 'no-results';
-      try { console.log('[stock-search] response items:', results.length); } catch(_) {}
+      try { console.debug('[stock] result count:', results.length); } catch(_) {}
     } catch (e) {
       STATE.status = 'error';
       STATE.errorMsg = (e && e.message) || String(e);
-      try { console.log('[stock-search] error:', STATE.errorMsg); } catch(_) {}
+      try { console.debug('[stock] error:', STATE.errorMsg); } catch(_) {}
     }
     _refresh();
   };
@@ -335,8 +348,14 @@
   };
 
   function _refresh() {
-    var holder = document.getElementById('s3ss-holder');
-    if (!holder) return;
+    /* 가능한 모든 컨테이너 — s3-source-tabs 의 #s3-stock-panel 또는
+       s3-upload-stock-panel 의 #s3ss-holder */
+    var holder = document.getElementById('s3-stock-panel')
+              || document.getElementById('s3ss-holder');
+    if (!holder) {
+      try { console.debug('[stock] refresh skipped — no container'); } catch(_) {}
+      return;
+    }
     holder.innerHTML = window.cbRenderStockSearchPanel();
   }
   window._s3SsRefresh = _refresh;
@@ -377,6 +396,7 @@
       '.s3ss-empty{background:#fafafe;color:#7b6080}'+
       '.s3ss-err{background:#fff1f1;color:#c0392b}'+
       '.s3ss-ok{background:#effbf7;color:#1a7a5a}'+
+      '.s3ss-init{background:#fff5fa;color:#5b1a4a}'+
       '.s3ss-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:6px}'+
       '.s3ss-result-card{background:#fff;border:1px solid #ece6f5;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}'+
       '.s3ss-result-thumb{position:relative;aspect-ratio:16/9;background:#1a1a2e;display:flex;align-items:center;justify-content:center;overflow:hidden}'+
