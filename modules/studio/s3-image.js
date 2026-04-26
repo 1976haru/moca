@@ -107,14 +107,16 @@ function _studioS3(){
   var reuseBarHtml = studioS3ReuseBar();
   var stockBarHtml = studioS3StockBar();
 
-  const scenesHtml = scenes.map(function(sc, idx){
-    return _s3SceneCardHtml(sc, idx, s3);
-  }).join('');
+  /* 씬 이미지 보드 (s3-image-board.js) — 후보/마이그레이션 자동 */
+  if (typeof window.s3NormalizeImageState === 'function') window.s3NormalizeImageState();
+  const scenesHtml = (typeof window.s3RenderBoard === 'function')
+    ? window.s3RenderBoard(scenes)
+    : scenes.map(function(sc, idx){ return _s3SceneCardHtml(sc, idx, s3); }).join('');
 
-  return '<div class="studio-panel">' + tabsHtml +
+  return '<div class="studio-panel" style="padding-bottom:90px">' + tabsHtml +
 
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
-      '<div><h4 style="margin:0 0 2px">② 이미지·영상 소스</h4><div style="font-size:12px;color:var(--sub)">씬별 이미지 + 썸네일 · 내 사진 업로드 가능</div></div>' +
+      '<div><h4 style="margin:0 0 2px">② 씬 이미지 보드</h4><div style="font-size:12px;color:var(--sub)">대본의 각 장면에 들어갈 이미지를 만들고, 숏츠/롱폼 화면 비율에 맞춰 채택·조정합니다.</div></div>' +
       '<div style="text-align:right"><div style="font-size:11px;color:var(--sub)">예상비용</div><div style="font-size:20px;font-weight:900;color:var(--pink)">₩'+totalCost+'</div></div>' +
     '</div>' +
 
@@ -515,11 +517,20 @@ async function studioS3AutoPrompt(idx){
   try {
     var res = await APIAdapter.callWithFallback(sys, user, {maxTokens:150});
     var out = _s3EnsurePortraitKeywords(res.trim());
+    /* 비율 모드별 추가 키워드 자동 주입 (s3-image-ratio.js) */
+    if (typeof window.s3InjectAspectIntoPrompt === 'function') {
+      var mode = (typeof window.s3DetectAspectMode === 'function') ? window.s3DetectAspectMode() : 'shorts';
+      out = window.s3InjectAspectIntoPrompt(out, mode);
+    }
     s3.prompts = s3.prompts || [];
     s3.prompts[idx] = out;
+    s3.imagePrompts = s3.imagePrompts || [];
+    s3.imagePrompts[idx] = out;
     STUDIO.project.s3 = s3; studioSave();
     var el = document.getElementById('s3-prompt-'+idx);
     if(el) el.value = out;
+    var elD = document.getElementById('s3d-prompt-'+idx);
+    if(elD) elD.value = out;
     if(typeof ucShowToast==='function') ucShowToast('✅ 프롬프트 생성됨','success');
   } catch(e){ alert('오류: '+e.message); }
 }
@@ -548,9 +559,21 @@ async function studioS3AutoAllPrompts(){
 async function studioS3GenScene(idx){
   var s3 = STUDIO.project.s3 || {};
   var api = s3.api || 'dalle3';
-  var prompt = (document.getElementById('s3-prompt-'+idx)?.value || '').trim();
+  /* 보드 또는 상세 drawer 또는 legacy textarea에서 프롬프트 읽기 */
+  var prompt = (document.getElementById('s3d-prompt-'+idx)?.value
+             || document.getElementById('s3-prompt-'+idx)?.value
+             || (s3.imagePrompts||[])[idx]
+             || (s3.prompts||[])[idx] || '').trim();
   if(!prompt){ alert('프롬프트를 입력하거나 🤖 AI생성 버튼을 누르세요'); return; }
+  /* 비율 모드별 키워드 자동 주입 */
+  var mode = (typeof window.s3DetectAspectMode === 'function') ? window.s3DetectAspectMode() : 'shorts';
+  if (typeof window.s3InjectAspectIntoPrompt === 'function') {
+    prompt = window.s3InjectAspectIntoPrompt(prompt, mode);
+  }
   var fullPrompt = prompt + (s3.artStyle?', '+s3.artStyle+' style':'') + (s3.lighting?', '+s3.lighting+' lighting':'') + ', high quality';
+  /* 비율에 맞는 size */
+  var size = (typeof window.s3GetImageSize === 'function') ? window.s3GetImageSize(mode, api) : { w:1024, h:1024 };
+  var sizeStr = (api === 'dalle3' || api === 'dalle2') ? (size.w + 'x' + size.h) : null;
   try {
     if(api==='dalle3'||api==='dalle2'){
       var key = (typeof ucGetApiKey==='function') ? ucGetApiKey('openai') : localStorage.getItem('uc_openai_key')||'';
@@ -559,12 +582,17 @@ async function studioS3GenScene(idx){
       var r = await fetch('https://api.openai.com/v1/images/generations',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body:JSON.stringify({model:api==='dalle3'?'dall-e-3':'dall-e-2',prompt:fullPrompt,n:1,size:'1024x1024'})
+        body:JSON.stringify({model:api==='dalle3'?'dall-e-3':'dall-e-2',prompt:fullPrompt,n:1,size:sizeStr||'1024x1024'})
       });
       var d = await r.json();
       var url = d?.data?.[0]?.url;
       if(!url) throw new Error(JSON.stringify(d));
-      s3.images = s3.images||[]; s3.images[idx] = url;
+      /* 후보 배열에 등록 (legacy s3.images도 자동 미러) */
+      if (typeof window.s3AddCandidate === 'function') {
+        window.s3AddCandidate(idx, url, { provider: api, aspectRatio: s3.aspectRatio||'', width: size.w, height: size.h });
+      } else {
+        s3.images = s3.images||[]; s3.images[idx] = url;
+      }
       STUDIO.project.s3 = s3; studioSave(); renderStudio();
       if(typeof ucShowToast==='function') ucShowToast('✅ 이미지 생성 완료','success');
     } else {
