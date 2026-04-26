@@ -80,9 +80,10 @@
       window.cbRenderTab4Designboard = window.cbRenderTabDesignBoard || window.cbRenderTab3Templates;
     }
     const renderMap = {
-      /* 신규 alias (1/3 단계) */
-      'purpose':       window.cbRenderTabPurpose       || window.cbRenderTab1Purpose || window.cbRenderTab1,
-      'design-board':  window.cbRenderTabDesignBoard   || window.cbRenderTab4Designboard,
+      /* 신규 alias (1/3·2/3 단계) */
+      'purpose':         window.cbRenderTabPurpose        || window.cbRenderTab1Purpose || window.cbRenderTab1,
+      'example-gallery': window.cbRenderTabExampleGallery || window.cbRenderTab2Examples || window.cbRenderTab2,
+      'design-board':    window.cbRenderTabDesignBoard    || window.cbRenderTab4Designboard,
       /* 기존 t1~t8 — direct link 보존 */
       t1: window.cbRenderTabPurpose     || window.cbRenderTab1Purpose || window.cbRenderTab1,
       t2: window.cbRenderTab2Examples   || window.cbRenderTab2,
@@ -183,7 +184,7 @@
       if (document.getElementById('view-cb')) {
         cbSwitchMode('builder');
         /* tab 파라미터가 있으면 해당 탭으로 이동 */
-        if (tab && (/^t[1-8]$/.test(tab) || tab === 'purpose' || tab === 'design-board')) {
+        if (tab && (/^t[1-8]$/.test(tab) || tab === 'purpose' || tab === 'example-gallery' || tab === 'design-board')) {
           setTimeout(function(){ cbGotoTab(tab); }, 30);
         }
       }
