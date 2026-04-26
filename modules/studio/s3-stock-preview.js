@@ -128,7 +128,15 @@
     });
 
     if (typeof window.studioSave === 'function') window.studioSave();
-    if (typeof window.renderStudio === 'function') window.renderStudio();
+    /* renderStudio 는 호출하지 않음 — 패널/탭/검색 결과 상태 보존
+       대신 부분 갱신: 결과 grid + 씬별 소스 현황 + compact image board */
+    if (typeof window._s3SsRefresh === 'function') {
+      try { window._s3SsRefresh(); } catch(_) {}
+    }
+    if (typeof window._renderS3SrcReusePanel === 'function') {
+      var rp = document.getElementById('s3-reuse-panel');
+      if (rp) rp.innerHTML = window._renderS3SrcReusePanel();
+    }
     _toast('✅ 씬 '+sceneNo+'에 스톡 소스를 적용했습니다.', 'success');
   };
 

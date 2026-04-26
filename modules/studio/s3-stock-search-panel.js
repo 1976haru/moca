@@ -291,6 +291,10 @@
       /* DOM input 즉시 반영 — 사용자가 다른 씬으로 바꾸면 input.value 도 따라 변경 */
       var input = document.querySelector('#s3-stock-panel .s3ss-query, #s3ss-holder .s3ss-query');
       if (input) input.value = STATE.query;
+      /* legacy s3-stock.js 가 사용할 활성 씬 */
+      var proj = (window.STUDIO && window.STUDIO.project) || {};
+      proj.s3 = proj.s3 || {}; proj.s3._stockActiveScene = STATE.sceneIdx;
+      if (STATE.query) _toast('✅ 씬 ' + (STATE.sceneIdx+1) + ' 검색어를 만들었습니다.', 'info');
     }
     try { console.debug('[stock-ui] selectedSceneIndex:', STATE.sceneIdx); } catch(_) {}
     _refresh();
@@ -364,21 +368,35 @@
   }
 
   /* ════════════════════════════════════════════════
-     ensureStockSceneState — 탭 진입 시 1회 자동 초기화
+     ensureStockSceneState — 탭 진입 시 자동 초기화
+     * 모든 씬의 query draft 를 미리 생성 → 드롭다운 변경 즉시 query 표시
+     * legacy s3-stock.js studioS3StockSearch 도 활용 — s3._stockActiveScene 동기화
      ════════════════════════════════════════════════ */
   window.ensureStockSceneState = function() {
     var scenes = (typeof window.resolveStudioScenes === 'function') ? window.resolveStudioScenes() : [];
-    if (!scenes.length) {
-      try { console.debug('[scene-resolver] scenes count: 0'); } catch(_) {}
-      return { scenes: [], query: '' };
-    }
+    try { console.debug('[stock-scenes] count:', scenes.length); } catch(_) {}
+    if (!scenes.length) return { scenes: [], query: '' };
+
     /* selectedSceneIndex 기본값 — 0 (전체 미리보기는 사용자가 선택했을 때만) */
     if (STATE.sceneIdx == null) STATE.sceneIdx = scenes[0].sceneIndex;
-    /* draft 확인 — 없으면 자동 생성 */
-    if (STATE.sceneIdx !== 'all' && typeof window.ensureStockSearchDraft === 'function') {
-      var drafted = window.ensureStockSearchDraft(STATE.sceneIdx, STATE.type, { force: false });
-      if (drafted) STATE.query = drafted;
+    /* 모든 씬의 query draft 미리 생성 (image + video 둘 다) */
+    if (typeof window.ensureStockSearchDraft === 'function') {
+      scenes.forEach(function(sc){
+        try {
+          window.ensureStockSearchDraft(sc.sceneIndex, 'image', { force:false });
+          window.ensureStockSearchDraft(sc.sceneIndex, 'video', { force:false });
+        } catch(_) {}
+      });
     }
+    /* 현재 STATE.type 의 query 를 화면 변수에 동기화 */
+    if (STATE.sceneIdx !== 'all' && typeof window.buildStockSearchQuery === 'function') {
+      var built = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type, force:false });
+      if (built && built.query) STATE.query = built.query;
+    }
+    /* legacy s3-stock.js 와 활성 씬 공유 */
+    var proj = (window.STUDIO && window.STUDIO.project) || {};
+    proj.s3 = proj.s3 || {};
+    proj.s3._stockActiveScene = STATE.sceneIdx === 'all' ? 0 : STATE.sceneIdx;
     return { scenes: scenes, query: STATE.query };
   };
 
@@ -552,7 +570,8 @@
       creditUrl: item.creditUrl, width: item.width || 0, height: item.height || 0, aspectRatio: '',
     }, 'stock');
     if (ok) _toast('✅ 씬 ' + (STATE.sceneIdx+1) + ' 에 ' + item.provider + ' 채택', 'success');
-    if (typeof window.renderStudio === 'function') window.renderStudio();
+    /* 패널 상태 보존을 위해 renderStudio() 대신 로컬 refresh */
+    _refresh();
   };
 
   function _refresh() {

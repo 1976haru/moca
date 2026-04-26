@@ -100,10 +100,22 @@ function studioS3SaveStockKey(){
 
 /* 스톡 검색 실행 */
 async function studioS3StockSearch(){
-  var query  = document.getElementById('s3-stock-query')?.value || '';
+  var input  = document.getElementById('s3-stock-query');
+  var query  = (input && input.value || '').trim();
   var type   = document.getElementById('s3-stock-type')?.value || 'image';
   var s3     = STUDIO.project.s3 || {};
   var api    = s3.stockApi || 'pexels';
+
+  /* query 비면 현재 활성 씬의 prompt 로 자동 생성 */
+  if (!query && typeof window.buildStockSearchQuery === 'function') {
+    var idx = (s3._stockActiveScene != null) ? s3._stockActiveScene : 0;
+    var built = window.buildStockSearchQuery(idx, { prefer: type === 'video' ? 'video' : 'image', force:true });
+    if (built && built.query) {
+      query = built.query;
+      if (input) input.value = query;
+      try { console.debug('[stock-query] auto-filled for scene', idx, ':', query); } catch(_) {}
+    }
+  }
   /* 통합 store(stock 그룹) 우선, legacy uc_*_key fallback */
   var key = '';
   if (typeof window.getApiProvider === 'function') {
@@ -292,10 +304,15 @@ function studioS3StockApply(resultIdx, sceneIdx){
   if(typeof ucShowToast==='function') ucShowToast('✅ 씬'+(idx+1)+'에 '+item.type+' 적용됨 · 출처: '+item.credit,'success');
 }
 
-/* 스톡 결과 팝업에서 씬 선택 */
+/* 스톡 결과 팝업에서 씬 선택 — 단일 resolver(s3-scene-resolver.js) 사용 */
 function studioS3StockUse(resultIdx){
-  var s3 = STUDIO.project.s3 || {};
-  var scenes = s3.scenes || [];
+  var scenes = (typeof window.resolveStudioScenes === 'function')
+              ? window.resolveStudioScenes() : [];
+  if (!scenes.length) {
+    var s3 = STUDIO.project.s3 || {};
+    scenes = (s3.scenes && s3.scenes.length) ? s3.scenes : (STUDIO.project.scenes || []);
+  }
+  try { console.debug('[stock-scenes] count:', scenes.length); } catch(_) {}
   if(!scenes.length){ studioS3StockApply(resultIdx, null); return; }
 
   /* 씬 선택 팝업 */
@@ -311,14 +328,32 @@ function studioS3StockUse(resultIdx){
   picker.innerHTML = '<div style="font-size:14px;font-weight:900;margin-bottom:12px">어느 씬에 적용할까요?</div>'+
     '<div style="display:flex;flex-direction:column;gap:6px">' +
     scenes.map(function(sc,i){
-      return '<button onclick="studioS3StockApply('+resultIdx+','+i+');document.getElementById(\'stock-scene-picker\').remove()" '+
+      var idx = sc.sceneIndex != null ? sc.sceneIndex : i;
+      var no  = sc.sceneNumber != null ? sc.sceneNumber : (i+1);
+      var label = sc.label || sc.title || sc.role || '';
+      return '<button onclick="studioS3StockApply('+resultIdx+','+idx+');document.getElementById(\'stock-scene-picker\').remove()" '+
         'style="border:1.5px solid #dde8f0;background:#fff;border-radius:8px;padding:8px 12px;'+
         'cursor:pointer;text-align:left;font-size:12px;font-weight:700">' +
-        '씬'+(i+1)+' — '+sc.label+'</button>';
+        '씬'+no+(label?' — '+label:'')+'</button>';
     }).join('') +
     '<button onclick="document.getElementById(\'stock-scene-picker\').remove()" '+
       'style="border:none;background:#eee;border-radius:8px;padding:8px;cursor:pointer;font-size:12px;margin-top:4px">취소</button>' +
     '</div>';
 
   document.body.appendChild(picker);
+}
+
+/* ── window 별칭 — source-tabs 의 fallback 분기에서도 호출 가능하게 ── */
+if (typeof window !== 'undefined') {
+  window.studioS3StockBar    = studioS3StockBar;
+  window.studioS3StockSearch = studioS3StockSearch;
+  window.studioS3StockApply  = studioS3StockApply;
+  window.studioS3StockUse    = studioS3StockUse;
+  /* legacy 호출 호환 — 최종 fallback render 진입점 */
+  window.renderS3Stock = function(holderId) {
+    var el = holderId ? document.getElementById(holderId) : null;
+    if (el) el.innerHTML = studioS3StockBar();
+    return studioS3StockBar();
+  };
+  window._studioS3Stock = window.renderS3Stock;
 }

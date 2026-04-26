@@ -138,6 +138,7 @@
       { path:'project.scenes',               data: proj.scenes },
       { path:'project.scriptScenes',         data: proj.scriptScenes },
       { path:'project.imagePrompts',         data: proj.imagePrompts },
+      { path:'s1.imagePrompts',              data: s1.imagePrompts },
       /* localStorage 복구 */
       { path:'ls.s1.scenes',                 data: lsS1.scenes },
       { path:'ls.s3.imagePrompts',           data: lsS3.imagePrompts },
@@ -155,7 +156,7 @@
                         's1.output.scenes','s1.generated.scenes','s3.scenes','project.scenes',
                         'project.scriptScenes','ls.s1.scenes','ls.project.scenes'];
     var promptOrder  = ['s3.scenePrompts','s3.imagePrompts','s3.prompts','project.imagePrompts',
-                        's3.imagesV3','ls.s3.scenePrompts','ls.s3.imagePrompts','ls.s3.prompts'];
+                        's1.imagePrompts','s3.imagesV3','ls.s3.scenePrompts','ls.s3.imagePrompts','ls.s3.prompts'];
 
     function pick(orderList) {
       for (var i = 0; i < orderList.length; i++) {
@@ -213,11 +214,17 @@
     var rawScenes = normalizeSceneArray(chosen.data, chosen.path);
 
     /* 2) 다른 보조 소스로 prompt/narration 보강 (cross-fill) */
+    var s1            = proj.s1 || {};
     var s3ImgPrompts   = s3.imagePrompts || [];
     var s3Prompts      = s3.prompts || [];
     var s3ScenePrompts = s3.scenePrompts || [];
     var s3VideoPrompts = s3.videoPrompts || [];
     var s3ImagesV3     = s3.imagesV3 || {};
+    var s1ImgPrompts   = s1.imagePrompts || [];
+    var projImgPrompts = proj.imagePrompts || [];
+
+    var fillCounts = { scene_inline:0, scenePrompts:0, s3_imagePrompts:0, s3_prompts:0,
+                       s1_imagePrompts:0, proj_imagePrompts:0, imagesV3:0, none:0 };
 
     var total = rawScenes.length;
     var resolved = rawScenes.map(function(sc, i){
@@ -226,15 +233,23 @@
 
       var imgFromV3  = s3ImagesV3[i] || s3ImagesV3[String(i)] || {};
 
-      var imgPrompt = _firstNonEmpty([
-        sc.imagePrompt,
-        sc.promptCompiled,
-        s3ScenePrompts[i] && (s3ScenePrompts[i].promptCompiled || s3ScenePrompts[i].prompt || s3ScenePrompts[i].text),
-        s3ImgPrompts[i],
-        s3Prompts[i],
-        imgFromV3.promptCompiled,
-        imgFromV3.prompt,
-      ]);
+      /* 추적 가능한 cascade — fillCounts 에 어느 소스가 채웠는지 누적 */
+      var imgPrompt = '', imgFrom = 'none';
+      var pickList = [
+        ['scene_inline',     sc.imagePrompt || sc.promptCompiled],
+        ['scenePrompts',     s3ScenePrompts[i] && (s3ScenePrompts[i].promptCompiled || s3ScenePrompts[i].prompt || s3ScenePrompts[i].text)],
+        ['s3_imagePrompts',  s3ImgPrompts[i]],
+        ['s3_prompts',       s3Prompts[i]],
+        ['s1_imagePrompts',  s1ImgPrompts[i]],
+        ['proj_imagePrompts',projImgPrompts[i]],
+        ['imagesV3',         imgFromV3.promptCompiled || imgFromV3.prompt],
+      ];
+      for (var pi = 0; pi < pickList.length; pi++) {
+        var v = _coerceText(pickList[pi][1]);
+        if (v) { imgPrompt = v; imgFrom = pickList[pi][0]; break; }
+      }
+      fillCounts[imgFrom] = (fillCounts[imgFrom] || 0) + 1;
+
       var vidPrompt = _firstNonEmpty([
         sc.videoPrompt,
         s3VideoPrompts[i],
@@ -267,7 +282,10 @@
       };
     });
 
-    try { console.debug('[scene-resolver] resolved scenes:', resolved.length, 'from', chosen.path); } catch(_) {}
+    try {
+      console.debug('[scene-resolver] resolved scenes:', resolved.length, 'from', chosen.path);
+      console.debug('[scene-resolver] imgPrompt fill sources:', fillCounts);
+    } catch(_) {}
     return resolved;
   }
 
@@ -287,6 +305,7 @@
     }
     var imgFromV3 = (s3.imagesV3 && (s3.imagesV3[sceneIndex] || s3.imagesV3[String(sceneIndex)])) || {};
 
+    var s1 = proj.s1 || {};
     var cascade = (mediaType === 'video') ? [
       ['scene.videoPrompt',                                    scene.videoPrompt],
       ['s3.videoPrompts['+sceneIndex+']',                      s3.videoPrompts && s3.videoPrompts[sceneIndex]],
@@ -300,6 +319,8 @@
       ['s3.scenePrompts['+sceneIndex+'].promptCompiled',       s3.scenePrompts && s3.scenePrompts[sceneIndex] && (s3.scenePrompts[sceneIndex].promptCompiled || s3.scenePrompts[sceneIndex].prompt || s3.scenePrompts[sceneIndex].text)],
       ['s3.imagePrompts['+sceneIndex+']',                      s3.imagePrompts && s3.imagePrompts[sceneIndex]],
       ['s3.prompts['+sceneIndex+']',                           s3.prompts && s3.prompts[sceneIndex]],
+      ['s1.imagePrompts['+sceneIndex+']',                      s1.imagePrompts && s1.imagePrompts[sceneIndex]],
+      ['proj.imagePrompts['+sceneIndex+']',                    proj.imagePrompts && proj.imagePrompts[sceneIndex]],
       ['s3.imagesV3['+sceneIndex+'].promptCompiled',           imgFromV3.promptCompiled || imgFromV3.prompt],
       ['scene.visualDescription',                              scene.visualDescription],
       ['scene.narration',                                      scene.narration],
