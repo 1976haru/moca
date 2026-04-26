@@ -39,29 +39,42 @@
   window.cbRenderStockSearchPanel = function(opts) {
     opts = opts || {};
     _injectCSS();
-    var p = _proj();
-    var scenes = (p.s3 && p.s3.scenes) || [];
+    /* 새 helper — 6단계 fallback 으로 씬 목록 확보 */
+    var scenes = (typeof window.getStudioScenesForStock === 'function')
+      ? window.getStudioScenesForStock() : [];
 
     /* 초기 status 보장 — render 가 도중 'loading' 으로 남는 일 없음 */
     if (STATE.status === 'loading' && (!STATE.results || !STATE.results.length)) {
-      /* fetch 가 끝나지 않았는데 다시 render 되는 경우는 흔치 않음 — 안전망 */
       STATE.status = '';
     }
 
-    /* 진입 시 무조건 자동 query 재생성 (씬/타입 변경 반영) */
-    if (typeof window.buildStockSearchQuery === 'function') {
-      var q = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type });
-      if (q && q.query) STATE.query = q.query;
-      try { console.debug('[stock] sceneIndex:', STATE.sceneIdx, 'query:', STATE.query); } catch(_) {}
+    /* selectedSceneIndex 기본값 — 첫 씬 (0) */
+    if (STATE.sceneIdx === undefined || STATE.sceneIdx === null) STATE.sceneIdx = 0;
+
+    /* 진입 시 자동 query 재생성 — 씬/타입 변경 반영 */
+    if (typeof window.buildStockSearchQuery === 'function' && scenes.length) {
+      var qResult = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type });
+      if (qResult && qResult.query) {
+        STATE.query = qResult.query;
+        /* draft 저장 */
+        if (typeof window.ensureStockSearchDraft === 'function') {
+          window.ensureStockSearchDraft(STATE.sceneIdx, STATE.type, { force: true });
+        }
+      }
     }
 
-    /* scene picker */
-    var sceneOptions = '<option value="">(전체 씬)</option>' +
-      scenes.map(function(sc, i){
-        var label = '씬 ' + (i+1) + (sc.label ? ' — ' + sc.label : '');
-        var on = (i === STATE.sceneIdx);
-        return '<option value="'+i+'"' + (on?' selected':'') + '>' + _esc(label) + '</option>';
+    /* scene picker — getStudioScenesForStock 결과 사용 */
+    var sceneOptions = '<option value="all"' + (STATE.sceneIdx === 'all' ? ' selected' : '') + '>📋 전체 씬 (미리보기)</option>';
+    if (!scenes.length) {
+      sceneOptions += '<option value="" disabled>씬 정보가 없습니다 — 1단계 대본을 먼저 생성하세요</option>';
+    } else {
+      sceneOptions += scenes.map(function(sc){
+        var label = '씬 ' + sc.sceneNumber + (sc.roleLabel ? ' — ' + sc.roleLabel : '') +
+                    (sc.title && sc.title !== '씬 ' + sc.sceneNumber ? ' · ' + sc.title : '');
+        var on = (STATE.sceneIdx === sc.sceneIndex);
+        return '<option value="'+sc.sceneIndex+'"' + (on?' selected':'') + '>' + _esc(label) + '</option>';
       }).join('');
+    }
 
     /* provider buttons */
     var providersHtml = PROVIDERS.map(function(pv){
@@ -150,6 +163,9 @@
         '<button class="s3ss-btn" onclick="window.openApiSettingsModal && window.openApiSettingsModal(\'stock\')">🔑 통합 API 설정</button>' +
       '</div>' +
 
+      /* 씬 프롬프트 미리보기 — 전체 씬 선택 시 grid, 단일 씬 선택 시 단일 카드 */
+      _renderPreviewSection(scenes) +
+
       statusHtml +
 
       '<div class="s3ss-results">' + resultsHtml + '</div>' +
@@ -157,13 +173,101 @@
   };
 
   /* ════════════════════════════════════════════════
+     씬 미리보기 섹션 — 전체 씬 grid OR 단일 씬 카드
+     ════════════════════════════════════════════════ */
+  function _renderPreviewSection(scenes) {
+    if (!scenes.length) return '';
+    /* 단일 씬 선택 → 단일 카드 */
+    if (STATE.sceneIdx !== 'all' && Number.isFinite(+STATE.sceneIdx)) {
+      var sc = scenes[+STATE.sceneIdx];
+      if (sc) return '<div class="s3ss-preview-section"><div class="s3ss-preview-title">📋 현재 씬 미리보기</div>' + _renderPreviewCard(sc) + '</div>';
+    }
+    /* 전체 씬 → compact grid */
+    return '<div class="s3ss-preview-section">' +
+      '<div class="s3ss-preview-title">📋 씬별 프롬프트 미리보기 (' + scenes.length + ')</div>' +
+      '<div class="s3ss-preview-grid">' +
+        scenes.map(function(sc){ return _renderPreviewCard(sc, true); }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
+  function _renderPreviewCard(sc, compact) {
+    var stockQuery = '';
+    if (typeof window.buildStockSearchQuery === 'function') {
+      var qResult = window.buildStockSearchQuery(sc.sceneIndex, { prefer: STATE.type });
+      stockQuery = qResult && qResult.query || '';
+    }
+    var rawPrompt = STATE.type === 'video' ? sc.videoPrompt : sc.imagePrompt;
+    if (!rawPrompt) rawPrompt = sc.imagePrompt || sc.videoPrompt || sc.visualDescription || sc.narration || '';
+    var status = stockQuery
+      ? '<span class="s3ss-pp-q-ok">✅ query 준비됨</span>'
+      : '<span class="s3ss-pp-q-empty">⚠️ 프롬프트 없음 — 먼저 컴파일 필요</span>';
+    var narrShort = sc.narration ? (sc.narration.length > 80 ? sc.narration.slice(0,80) + '…' : sc.narration) : '';
+    var rawShort = rawPrompt ? (rawPrompt.length > 100 ? rawPrompt.slice(0,100) + '…' : rawPrompt) : '';
+
+    return '<div class="s3ss-pp-card' + (compact ? ' compact' : '') + '">' +
+      '<div class="s3ss-pp-hd">' +
+        '<span class="s3ss-pp-no">씬 ' + sc.sceneNumber + '</span>' +
+        (sc.roleLabel ? '<span class="s3ss-pp-role">' + _esc(sc.roleLabel) + '</span>' : '') +
+        status +
+      '</div>' +
+      (narrShort ? '<div class="s3ss-pp-narr">📜 ' + _esc(narrShort) + '</div>' : '') +
+      '<details class="s3ss-pp-orig"><summary>원본 ' + (STATE.type === 'video' ? 'video' : 'image') + ' prompt</summary>' +
+        '<div class="s3ss-pp-orig-text">' + (rawShort ? _esc(rawShort) : '<i>없음</i>') + '</div>' +
+      '</details>' +
+      '<div class="s3ss-pp-q-row">' +
+        '<span class="s3ss-pp-q-label">stock query:</span>' +
+        '<code class="s3ss-pp-q">' + (stockQuery ? _esc(stockQuery) : '<i>비어있음</i>') + '</code>' +
+      '</div>' +
+      '<div class="s3ss-pp-actions">' +
+        '<button class="s3ss-pp-btn" onclick="s3SsRegenScene(' + sc.sceneIndex + ')">↻ 다시 생성</button>' +
+        '<button class="s3ss-pp-btn pri" onclick="s3SsSearchScene(' + sc.sceneIndex + ')">🔍 이 씬 검색</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* 씬별 query 재생성 — STUDIO state 갱신 + UI 업데이트 */
+  window.s3SsRegenScene = function(sceneIdx) {
+    if (typeof window.ensureStockSearchDraft === 'function') {
+      window.ensureStockSearchDraft(sceneIdx, STATE.type, { force: true });
+    }
+    if (sceneIdx === STATE.sceneIdx && typeof window.buildStockSearchQuery === 'function') {
+      var q = window.buildStockSearchQuery(sceneIdx, { prefer: STATE.type });
+      STATE.query = q.query || '';
+    }
+    if (typeof ucShowToast === 'function') ucShowToast('↻ 씬 ' + (sceneIdx+1) + ' query 다시 생성', 'success');
+    _refresh();
+  };
+
+  /* 씬 단위 검색 — 해당 씬 선택 + 검색 실행 */
+  window.s3SsSearchScene = function(sceneIdx) {
+    STATE.sceneIdx = sceneIdx;
+    if (typeof window.buildStockSearchQuery === 'function') {
+      var q = window.buildStockSearchQuery(sceneIdx, { prefer: STATE.type });
+      STATE.query = q.query || '';
+    }
+    if (!STATE.query) {
+      alert('씬 ' + (sceneIdx+1) + ' 의 프롬프트가 없습니다. 1단계 대본 또는 이미지 컴파일을 먼저 실행하세요.');
+      _refresh();
+      return;
+    }
+    s3SsSearch();
+  };
+
+  /* ════════════════════════════════════════════════
      state setters
      ════════════════════════════════════════════════ */
   window.STATE_setQuery = function(v) { STATE.query = v; };
   window.s3SsSetScene = function(v) {
-    STATE.sceneIdx = parseInt(v, 10) || 0;
-    /* 씬 변경 시 query 자동 다시 생성 */
-    s3SsRebuildQuery();
+    if (v === 'all') {
+      STATE.sceneIdx = 'all';
+      STATE.query = ''; /* 전체 씬 모드는 query 안 보여줌 */
+    } else {
+      STATE.sceneIdx = parseInt(v, 10);
+      if (!Number.isFinite(STATE.sceneIdx)) STATE.sceneIdx = 0;
+      _autoFillQuery();
+    }
+    _refresh();
   };
   window.s3SsSetType = function(t) {
     STATE.type = t;
@@ -173,19 +277,36 @@
       var fallback = PROVIDERS.find(function(pv){ return pv.types.indexOf(t) >= 0; });
       if (fallback) STATE.provider = fallback.id;
     }
-    s3SsRebuildQuery();
+    _autoFillQuery();
+    _refresh();
   };
   window.s3SsSetProvider = function(p) {
     STATE.provider = p;
     _refresh();
   };
+  /* 다시 생성 — 직접 DOM 갱신 + STATE 동기화 (full re-render 도 함께) */
   window.s3SsRebuildQuery = function() {
-    if (typeof window.buildStockSearchQuery === 'function') {
-      var q = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type });
-      STATE.query = q.query || '';
+    _autoFillQuery();
+    /* DOM input 직접 업데이트 — 즉시 반영 보장 */
+    var input = document.querySelector('#s3-stock-panel .s3ss-query, #s3ss-holder .s3ss-query');
+    if (input) {
+      input.value = STATE.query;
+      try { console.debug('[stock] rebuild → input.value updated:', STATE.query); } catch(_) {}
     }
     _refresh();
   };
+
+  function _autoFillQuery() {
+    if (STATE.sceneIdx === 'all') { STATE.query = ''; return; }
+    if (typeof window.buildStockSearchQuery !== 'function') return;
+    var q = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type });
+    if (q && q.query) {
+      STATE.query = q.query;
+      if (typeof window.ensureStockSearchDraft === 'function') {
+        window.ensureStockSearchDraft(STATE.sceneIdx, STATE.type, { force: true });
+      }
+    }
+  }
 
   /* ════════════════════════════════════════════════
      검색 실행
@@ -397,6 +518,33 @@
       '.s3ss-err{background:#fff1f1;color:#c0392b}'+
       '.s3ss-ok{background:#effbf7;color:#1a7a5a}'+
       '.s3ss-init{background:#fff5fa;color:#5b1a4a}'+
+      /* 씬 미리보기 카드 */
+      '.s3ss-preview-section{margin-top:6px}'+
+      '.s3ss-preview-title{font-size:12px;font-weight:800;color:#5b1a4a;margin-bottom:8px}'+
+      '.s3ss-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}'+
+      '.s3ss-pp-card{background:#fff;border:1.5px solid #ece6f5;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:11.5px}'+
+      '.s3ss-pp-card.compact{padding:8px 10px;font-size:11px}'+
+      '.s3ss-pp-hd{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
+      '.s3ss-pp-no{font-weight:900;color:#2b2430;font-size:12px}'+
+      '.s3ss-pp-role{background:#f5f0ff;color:#5a4a8a;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700}'+
+      '.s3ss-pp-q-ok{margin-left:auto;background:#effbf7;color:#1a7a5a;padding:1px 7px;border-radius:999px;font-size:9.5px;font-weight:800}'+
+      '.s3ss-pp-q-empty{margin-left:auto;background:#fff7e6;color:#a05a00;padding:1px 7px;border-radius:999px;font-size:9.5px;font-weight:800}'+
+      '.s3ss-pp-narr{color:#5a4a56;line-height:1.5;font-size:11px}'+
+      '.s3ss-pp-orig{}'+
+      '.s3ss-pp-orig summary{cursor:pointer;list-style:none;font-size:10.5px;color:#9181ff;font-weight:700}'+
+      '.s3ss-pp-orig summary::after{content:" ▾";color:#bbb}'+
+      '.s3ss-pp-orig[open] summary::after{content:" ▴"}'+
+      '.s3ss-pp-orig-text{margin-top:4px;padding:5px 8px;background:#fafafe;border-radius:6px;font-size:10.5px;color:#5a4a56;line-height:1.5}'+
+      '.s3ss-pp-orig-text i{color:#bbb}'+
+      '.s3ss-pp-q-row{display:flex;align-items:flex-start;gap:6px}'+
+      '.s3ss-pp-q-label{font-weight:800;color:#9181ff;font-size:10px;flex-shrink:0;padding-top:2px}'+
+      '.s3ss-pp-q{flex:1;background:#f5f0ff;color:#3a3040;padding:4px 8px;border-radius:6px;font-size:11px;font-family:monospace;word-break:break-word;line-height:1.4}'+
+      '.s3ss-pp-q i{color:#bbb;font-style:normal}'+
+      '.s3ss-pp-actions{display:flex;gap:4px;margin-top:2px}'+
+      '.s3ss-pp-btn{flex:1;border:1px solid var(--line,#e9e4f3);background:#fff;color:#5a4a56;border-radius:6px;padding:5px 8px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit}'+
+      '.s3ss-pp-btn:hover{border-color:#9181ff;color:#9181ff}'+
+      '.s3ss-pp-btn.pri{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border:none}'+
+      '.s3ss-pp-btn.pri:hover{opacity:.92;color:#fff}'+
       '.s3ss-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:6px}'+
       '.s3ss-result-card{background:#fff;border:1px solid #ece6f5;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}'+
       '.s3ss-result-thumb{position:relative;aspect-ratio:16/9;background:#1a1a2e;display:flex;align-items:center;justify-content:center;overflow:hidden}'+
