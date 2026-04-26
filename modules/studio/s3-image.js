@@ -38,7 +38,7 @@ function _studioS3(){
     '<div class="s3-source-tabs">' +
       '<button class="s3-src-tab' + (_s3SourceTab==='image'?' on':'') + '" onclick="window._s3SetSourceTab(\'image\')">🖼 이미지 생성</button>' +
       '<button class="s3-src-tab' + (_s3SourceTab==='video'?' on':'') + '" onclick="window._s3SetSourceTab(\'video\')">🎬 영상 프롬프트</button>' +
-      '<button class="s3-src-tab' + (_s3SourceTab==='upload'?' on':'') + '" onclick="window._s3SetSourceTab(\'upload\')">📁 직접 업로드</button>' +
+      '<button class="s3-src-tab' + (_s3SourceTab==='upload'?' on':'') + '" onclick="window._s3SetSourceTab(\'upload\')">📁 업로드·스톡</button>' +
     '</div>';
 
   /* 비-image 모드: s3-video.js 가 _studioBindS3 에서 wrap 채움 */
@@ -104,8 +104,9 @@ function _studioS3(){
       '</button>';
     }).join('') + '</div>';
 
-  var reuseBarHtml = studioS3ReuseBar();
-  var stockBarHtml = studioS3StockBar();
+  /* 2/2 — 스톡/재사용은 업로드·스톡 탭으로 이동. 이미지 탭에서는 비활성. */
+  var reuseBarHtml = '';
+  var stockBarHtml = '';
 
   /* 씬 이미지 보드 (s3-image-board.js) — 후보/마이그레이션 자동 */
   if (typeof window.s3NormalizeImageState === 'function') window.s3NormalizeImageState();
@@ -274,11 +275,17 @@ function _studioS3ParseScenes(script){
 function _studioBindS3(){
   _s3InjectSourceTabCSS();
   if (typeof window._s3InjectPreviewCSS === 'function') window._s3InjectPreviewCSS();
-  if(_s3SourceTab !== 'image' && typeof _studioS3Video === 'function'){
-    _studioS3Video('studioS3VideoWrap');
-    if(_s3SourceTab === 'upload' && typeof _s3vSetTab === 'function'){
-      _s3vSetTab('c', 'studioS3VideoWrap');
+  if (_s3SourceTab === 'upload') {
+    /* 업로드·스톡 탭 — 신규 통합 패널 (직접 업로드 / 스톡 검색 / 기존 재사용) */
+    if (typeof window.s3RenderUploadStockPanel === 'function') {
+      window.s3RenderUploadStockPanel('studioS3VideoWrap');
+    } else if (typeof _studioS3Video === 'function') {
+      /* fallback — legacy s3-video 의 업로드 sub-tab */
+      _studioS3Video('studioS3VideoWrap');
+      if (typeof _s3vSetTab === 'function') _s3vSetTab('c', 'studioS3VideoWrap');
     }
+  } else if (_s3SourceTab === 'video' && typeof _studioS3Video === 'function') {
+    _studioS3Video('studioS3VideoWrap');
   }
 }
 
