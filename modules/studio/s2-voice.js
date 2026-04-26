@@ -4,6 +4,10 @@
    modules/studio/ -- split_studio2.py
    ================================================ */
 
+/* TTS provider 분기 헬퍼는 modules/studio/s2-voice-tts.js 로 분리 (1000줄 한도).
+   _s2NormalizeVoiceProvider / _s2GetCurrentVoiceProvider /
+   _s2GetVoiceKey / _s2DispatchTts 모두 그 파일에서 window.* 노출됨. */
+
 /* ════════════════════════════════════════════════════════
    _studioS4  v2.0 — 다자 화자 + 자동 배치 + 컴팩트 UI
    ════════════════════════════════════════════════════════ */
@@ -417,26 +421,23 @@ async function studioS4GenScene(idx){
   var sc=scenes[idx]; if(!sc) return;
   var text=sc.desc||sc.label||'';
   if(typeof ucShowToast==='function') ucShowToast('⏳ 씬'+(idx+1)+' 음성 생성 중...','info');
-  /* TTS API 호출 (OpenAI 기준) — 통합 store(voice/script) 자동 */
-  var api=s4.voiceApi||'openai';
-  var key=(typeof ucGetApiKey==='function')?ucGetApiKey('openai'):localStorage.getItem('uc_openai_key')||'';
-  if(!key){
-    if (confirm('OpenAI API 키가 없습니다. 통합 API 설정(음성 탭)을 열까요?')) {
-      if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('voice');
-    }
-    return;
-  }
+  /* 선택 provider 기준 dispatch — 통합 store에서 해당 provider 키만 읽음 */
+  var provider = _s2GetCurrentVoiceProvider();
+  var voice    = s4.voiceKo || s4.voiceJa || 'nova';
+  var speed    = parseFloat((s4.sceneEmotions && s4.sceneEmotions[idx] && s4.sceneEmotions[idx].speed) || 1.0);
   try {
-    var r=await fetch('https://api.openai.com/v1/audio/speech',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'tts-1',input:text,voice:s4.voiceKo||'nova',speed:parseFloat((s4.sceneEmotions&&s4.sceneEmotions[idx]&&s4.sceneEmotions[idx].speed)||1.0)})
-    });
-    var blob=await r.blob();
-    var url=URL.createObjectURL(blob);
-    s4.audios=s4.audios||[]; s4.audios[idx]=url;
-    STUDIO.project.s4=s4; studioSave(); renderStudio();
-    if(typeof ucShowToast==='function') ucShowToast('✅ 씬'+(idx+1)+' 음성 완료','success');
+    var res = await _s2DispatchTts({ provider: provider, text: text, voice: voice, speed: speed });
+    if (!res || !res.url) return; /* 키 없음 안내가 떠서 사용자가 취소한 경우 */
+    s4.audios = s4.audios || []; s4.audios[idx] = res.url;
+    /* provider 결과 메타 저장 */
+    STUDIO.project.s2 = STUDIO.project.s2 || {};
+    STUDIO.project.s2.voiceResults = STUDIO.project.s2.voiceResults || [];
+    STUDIO.project.s2.voiceResults[idx] = {
+      sceneNumber: idx + 1, provider: res.provider, voiceId: res.voiceId,
+      audioUrl: res.url, status: 'done',
+    };
+    STUDIO.project.s4 = s4; studioSave(); renderStudio();
+    if(typeof ucShowToast==='function') ucShowToast('✅ 씬'+(idx+1)+' 음성 완료 ('+res.provider+')','success');
   } catch(e){ alert('음성 생성 오류: '+e.message); }
 }
 
@@ -627,22 +628,17 @@ async function studioS4Preview(idx, withEmotion){
 
   var text=sc.desc||sc.label||'';
   var fixedText=studioS4FixPronunc(text);
-  var key=(typeof ucGetApiKey==='function')?ucGetApiKey('openai'):localStorage.getItem('uc_openai_key')||'';
-  if(!key){alert('OpenAI API 키를 설정해주세요');return;}
 
   var se=(s4.sceneEmotions&&s4.sceneEmotions[idx])||{speed:1.0};
   var speed=withEmotion?(se.speed||1.0):1.0;
+  var provider = _s2GetCurrentVoiceProvider();
 
-  if(typeof ucShowToast==='function') ucShowToast('⏳ '+(withEmotion?'감정적용':'원본')+' 미리듣기 생성 중...','info');
+  if(typeof ucShowToast==='function') ucShowToast('⏳ '+(withEmotion?'감정적용':'원본')+' 미리듣기 생성 중... ('+provider+')','info');
 
   try{
-    var r=await fetch('https://api.openai.com/v1/audio/speech',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'tts-1',input:fixedText,voice:'nova',speed:speed})
-    });
-    var blob=await r.blob();
-    var url=URL.createObjectURL(blob);
+    var res = await _s2DispatchTts({ provider: provider, text: fixedText, voice: 'nova', speed: speed });
+    if (!res || !res.url) return;
+    var url = res.url;
 
     /* Before/After 팝업 */
     var popId='voice-compare-'+idx;
