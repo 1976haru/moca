@@ -246,28 +246,49 @@ function studioS3StockApply(resultIdx, sceneIdx){
   var item = results[resultIdx];
   if(!item){ alert('검색 결과를 먼저 불러와주세요'); return; }
 
-  s3.images = s3.images || [];
-  s3.adopted = s3.adopted || [];
-
-  /* sceneIdx가 null이면 빈 씬에 자동 배정 */
+  /* sceneIdx가 null이면 비어있는 씬 자동 배정 (공통 helper 사용) */
   var idx = sceneIdx;
-  if(idx === null || idx === undefined){
-    idx = s3.images.findIndex(function(img){ return !img; });
-    if(idx === -1) idx = 0;
+  if (idx === null || idx === undefined) {
+    if (typeof window.getMissingImageSceneIndexes === 'function') {
+      var missing = window.getMissingImageSceneIndexes();
+      idx = missing.length ? missing[0] : 0;
+    } else {
+      s3.images = s3.images || [];
+      idx = s3.images.findIndex(function(img){ return !img; });
+      if (idx === -1) idx = 0;
+    }
   }
 
-  s3.images[idx] = item.type==='video' ? item.thumb : item.url;
-  s3.stockVideos = s3.stockVideos || [];
-  if(item.type === 'video') s3.stockVideos[idx] = item.url;
-  s3.adopted[idx] = true;
+  /* 2/2 — 공통 helper 로 V3 + legacy 동시 동기화 */
+  if (typeof window.adoptSceneImage === 'function') {
+    var stockUrl = item.type === 'video' ? (item.url || item.thumb) : (item.url || item.thumb);
+    window.adoptSceneImage(idx, {
+      url:       stockUrl,
+      thumbUrl:  item.thumb,
+      previewUrl:item.thumb,
+      fullUrl:   item.url,
+      provider:  s3.stockApi || 'pexels',
+      type:      item.type,
+      credit:    item.credit,
+      creditUrl: item.creditUrl,
+    }, 'stock');
+  } else {
+    /* legacy fallback */
+    s3.images = s3.images || [];
+    s3.adopted = s3.adopted || [];
+    s3.images[idx] = item.type==='video' ? item.thumb : item.url;
+    s3.stockVideos = s3.stockVideos || [];
+    if(item.type === 'video') s3.stockVideos[idx] = item.url;
+    s3.adopted[idx] = true;
+    STUDIO.project.s3 = s3;
+    studioSave();
+  }
 
   /* 출처 저장 (저작권 표시용) */
   s3.credits = s3.credits || [];
   s3.credits[idx] = { name: item.credit, url: item.creditUrl, type: item.type };
 
-  STUDIO.project.s3 = s3;
-  studioSave();
-  renderStudio();
+  if (typeof renderStudio === 'function') renderStudio();
   if(typeof ucShowToast==='function') ucShowToast('✅ 씬'+(idx+1)+'에 '+item.type+' 적용됨 · 출처: '+item.credit,'success');
 }
 

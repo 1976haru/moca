@@ -813,8 +813,25 @@ function studioS3Next(){
   } else if(mode === 'upload' && !(src.uploadedFiles||[]).length){
     if(!confirm('업로드된 파일이 없어요. 그냥 넘어갈까요?')) return;
   } else if(mode === 'image'){
-    var hasImg = (s3.images||[]).some(function(i){ return !!i; });
-    if(!hasImg && !confirm('이미지 없이 다음 단계로 진행할까요?')) return;
+    /* 2/2 단계 — 공통 helper 로 generated/stock/upload/reuse 모두 인식 */
+    if (typeof window.hasAnySelectedImages === 'function') {
+      var sceneCount = (s3.scenes && s3.scenes.length) || (s3.images || []).length || 0;
+      var selectedCount = window.countSelectedSceneImages();
+      var missing = window.getMissingImageSceneIndexes() || [];
+      if (selectedCount === 0) {
+        if (!confirm('선택된 이미지가 없습니다. 이미지 없이 다음 단계로 진행할까요?')) return;
+      } else if (missing.length > 0 && sceneCount > selectedCount) {
+        var missLabels = missing.map(function(i){ return (i+1); }).join(', ');
+        if (!confirm(sceneCount + '개 씬 중 ' + selectedCount + '개 씬에 이미지가 선택되었습니다.\n비어 있는 씬: ' + missLabels + '\n\n그대로 진행할까요?')) return;
+      }
+      /* 모두 선택됨 — 경고 없이 통과 */
+    } else {
+      /* legacy fallback */
+      var hasImg = (s3.images||[]).some(function(i){ return !!i; });
+      if(!hasImg && !confirm('이미지 없이 다음 단계로 진행할까요?')) return;
+    }
+    /* legacy 미러 보장 */
+    if (typeof window.syncLegacySceneImages === 'function') window.syncLegacySceneImages();
   }
   STUDIO.project.step = 3;
   studioSave(); renderStudio();
