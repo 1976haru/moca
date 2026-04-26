@@ -135,32 +135,69 @@
         }).join('');
       }
 
-      rightHtml = '<div class="cbdb2-card cbdb2-card-right">' +
+      /* 3/3 — 우측 sub-panel 탭 */
+      var subPanel = (p.designBoard && p.designBoard.subPanel) || 'detail';
+      var subTabs = [
+        ['detail',  '📌 시안',     ''],
+        ['edit',    '✏️ 편집',     'cbRenderEditorPanel'],
+        ['media',   '📷 미디어',   'cbRenderMediaSlotsPanel'],
+        ['autofix', '🪄 자동개선', 'cbRenderAutofixPanel'],
+        ['export',  '📦 출력',     'cbRenderExportPanel'],
+      ];
+      var subTabsHtml = subTabs.map(function(t){
+        var on = (subPanel === t[0]);
+        return '<button class="cbdb2-subtab' + (on?' on':'') + '" onclick="cbDb2SetSubPanel(\''+t[0]+'\')">' + t[1] + '</button>';
+      }).join('');
+      var subBodyHtml;
+      if (subPanel !== 'detail') {
+        var fnName = (subTabs.find(function(t){ return t[0] === subPanel; })||[])[2];
+        var fn = fnName && window[fnName];
+        subBodyHtml = (typeof fn === 'function') ? fn(p) : '<div class="cbdb2-no-preview">패널 모듈 미로드</div>';
+      } else {
+        subBodyHtml =
+          '<div class="cbdb2-vc-row">비율 전환 ' + variantChips + '</div>' +
+          '<div class="cbdb2-score-list">' + scoreItems + '</div>' +
+          '<div class="cbdb2-problems"><div class="cbdb2-problems-title">📋 문제점 / 개선 제안</div><ul>' + problemsHtml + '</ul></div>';
+      }
+
+      rightHtml = '<div class="cbdb2-card cbdb2-card-right" id="cbdb2-right-card">' +
         '<div class="cbdb2-card-title">📌 선택 시안 — ' + _esc(selected.typeLabel) +
           ' <span class="cbdb2-grade cbdb2-' + (sc2.percent>=80?'good':sc2.percent>=60?'mid':'low') + '">' + sc2.percent + '점 · ' + sc2.grade + '</span>' +
         '</div>' +
         '<div class="cbdb2-big-prev">' + bigPreview + '</div>' +
-        '<div class="cbdb2-vc-row">비율 전환 ' + variantChips + '</div>' +
-        '<div class="cbdb2-score-list">' + scoreItems + '</div>' +
-        '<div class="cbdb2-problems"><div class="cbdb2-problems-title">📋 문제점 / 개선 제안</div><ul>' + problemsHtml + '</ul></div>' +
+        '<div class="cbdb2-subtabs">' + subTabsHtml + '</div>' +
+        '<div class="cbdb2-subbody">' + subBodyHtml + '</div>' +
         '<div class="cbdb2-next-actions">' +
           '<button class="cbdb2-btn-primary" onclick="cbDb2AdoptDraft()">✅ 이 시안 채택</button>' +
-          '<button class="cbdb2-btn-secondary" onclick="alert(\'3/3 단계에서 미디어 슬롯 완전 연동·PNG 출력이 추가됩니다.\')">미디어 슬롯으로 보내기 (3/3)</button>' +
-          '<button class="cbdb2-btn-secondary" onclick="alert(\'3/3 단계에서 출력 패키지가 활성화됩니다.\')">출력 패키지에 추가 (3/3)</button>' +
         '</div>' +
       '</div>';
     }
 
-    /* 3/3 안내 */
-    var nextHtml = '<div class="cbdb2-next-card">' +
-      '<div class="cbdb2-next-title">🚧 3/3 단계 안내</div>' +
-      '<div>3/3 단계에서 이미지·로고·배경 미디어 슬롯 연결, 출력 패키지, PNG 다운로드, 자동 개선 고도화가 추가됩니다.</div>' +
-    '</div>';
+    /* 3/3 단계 — finalize bar (다른 탭으로 보내기) */
+    var finalizeHtml = (typeof window.cbRenderFinalizeBar === 'function')
+      ? window.cbRenderFinalizeBar(p)
+      : '';
 
     return '<div class="cbdb2-wrap">' + headHtml +
       '<div class="cbdb2-grid">' + leftHtml + middleHtml + '</div>' +
-      rightHtml + nextHtml +
+      rightHtml + finalizeHtml +
     '</div>';
+  };
+
+  /* sub-panel 전환 + 우측 카드만 부분 갱신 */
+  window.cbDb2SetSubPanel = function(panelId) {
+    var p = window.contentBuilderProject = window.contentBuilderProject || {};
+    p.designBoard = p.designBoard || {};
+    p.designBoard.subPanel = panelId;
+    if (typeof window.cbSave === 'function') window.cbSave();
+    if (typeof window.cbDb2RerenderRight === 'function') window.cbDb2RerenderRight();
+    else if (typeof window.cbGotoTab === 'function') window.cbGotoTab('design-board');
+  };
+
+  /* 우측 카드만 다시 그리기 (입력 textarea 포커스 유지) */
+  window.cbDb2RerenderRight = function() {
+    /* 가장 단순하게는 design-board 전체 재렌더 */
+    if (typeof window.cbGotoTab === 'function') window.cbGotoTab('design-board');
   };
 
   /* ── 액션들 ── */
@@ -327,7 +364,12 @@
       '.cbdb2-empty{padding:60px 20px;text-align:center;background:#fafafe;border-radius:14px;border:1px dashed #ece6f5}'+
       '.cbdb2-empty-ico{font-size:48px;margin-bottom:12px}'+
       '.cbdb2-empty-title{font-size:16px;font-weight:900;color:#2b2430;margin-bottom:14px}'+
-      '.cbdb2-no-preview{padding:20px;text-align:center;color:#999;background:#fafafe;border-radius:8px;font-size:11px}';
+      '.cbdb2-no-preview{padding:20px;text-align:center;color:#999;background:#fafafe;border-radius:8px;font-size:11px}'+
+      '.cbdb2-subtabs{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0;padding:5px;background:#fafafe;border-radius:10px}'+
+      '.cbdb2-subtab{padding:6px 12px;border:1.5px solid transparent;background:transparent;color:#7b6080;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s}'+
+      '.cbdb2-subtab:hover{background:#f5f0ff;color:#9181ff}'+
+      '.cbdb2-subtab.on{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff}'+
+      '.cbdb2-subbody{margin-bottom:10px}';
     document.head.appendChild(st);
   }
 })();
