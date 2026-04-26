@@ -63,10 +63,14 @@
     }
   }
 
-  /* 키 보유 여부 (legacy key 또는 신규 저장 둘 다 체크) */
+  /* 키 보유 여부 (통합 store + legacy + 자체 저장 모두 체크) */
   function _hasKey(providerId) {
+    /* 1) 통합 store */
+    if (typeof window.hasApiKey === 'function' && window.hasApiKey('image', providerId)) return true;
+    /* 2) 자체 저장 */
     const all = _readAll();
     if (all[providerId] && all[providerId].apiKey) return true;
+    /* 3) legacy uc_*_key */
     const provider = S3K_PROVIDERS.find(function(p){ return p.id === providerId; });
     if (provider) {
       try {
@@ -98,39 +102,32 @@
      모달 렌더 (7 provider)
      ════════════════════════════════════════════════ */
   function s3OpenImageApiKeyModal() {
-    /* 기존 모달 제거 */
+    /* 통합 API 설정 모달이 있으면 그쪽으로 redirect (image 탭 열기) */
+    if (typeof window.openApiSettingsModal === 'function') {
+      window.openApiSettingsModal('image');
+      return;
+    }
+    if (typeof window.renderApiSettings === 'function') {
+      window._mocaApiActiveTab = 'image';
+      window.renderApiSettings();
+      return;
+    }
+    /* fallback — 기존 자체 모달 (네트워크 오류 등으로 통합 모달 미로드 시) */
     const existing = document.getElementById('s3kModal');
     if (existing) existing.remove();
-
     const wrap = document.createElement('div');
     wrap.id = 's3kModal';
     wrap.className = 's3k-backdrop';
     wrap.innerHTML = ''
       + '<div class="s3k-dialog">'
-      +   '<div class="s3k-hd">'
-      +     '<h3>🔑 이미지 API 키 설정</h3>'
-      +     '<button class="s3k-close" onclick="s3CloseImageApiKeyModal()" title="닫기">✕</button>'
-      +   '</div>'
-      +   '<div class="s3k-body">'
-      +     S3K_PROVIDERS.map(_renderProviderRow).join('')
-      +   '</div>'
-      +   '<div class="s3k-foot">'
-      +     '<div class="s3k-warn">'
-      +       '🔒 현재 브라우저 localStorage에 저장됩니다. 실제 서비스 배포 시에는 서버 저장 방식으로 전환해야 합니다.'
-      +     '</div>'
-      +     '<div class="s3k-foot-btns">'
-      +       '<button class="s3k-btn-secondary" onclick="s3CloseImageApiKeyModal()">닫기</button>'
-      +     '</div>'
-      +   '</div>'
+      +   '<div class="s3k-hd"><h3>🔑 이미지 API 키 설정</h3>'
+      +     '<button class="s3k-close" onclick="s3CloseImageApiKeyModal()" title="닫기">✕</button></div>'
+      +   '<div class="s3k-body">' + S3K_PROVIDERS.map(_renderProviderRow).join('') + '</div>'
+      +   '<div class="s3k-foot"><div class="s3k-warn">🔒 localStorage 저장 — 배포 시 서버 저장 전환 필요</div>'
+      +     '<div class="s3k-foot-btns"><button class="s3k-btn-secondary" onclick="s3CloseImageApiKeyModal()">닫기</button></div></div>'
       + '</div>';
-
-    document.body.appendChild(wrap);
-    _injectCSS();
-
-    /* 배경 클릭 시 닫기 */
-    wrap.addEventListener('click', function(e){
-      if (e.target === wrap) s3CloseImageApiKeyModal();
-    });
+    document.body.appendChild(wrap); _injectCSS();
+    wrap.addEventListener('click', function(e){ if (e.target === wrap) s3CloseImageApiKeyModal(); });
   }
   window.s3OpenImageApiKeyModal = s3OpenImageApiKeyModal;
 

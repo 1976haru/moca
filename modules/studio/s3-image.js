@@ -485,12 +485,12 @@ function studioS3Mode(mode){
 }
 
 function studioS3SaveKey(){
-  var key = document.getElementById('s3-api-key')?.value || '';
-  var api = STUDIO.project.s3?.api || 'dalle3';
-  var keyMap = {dalle3:'uc_openai_key',dalle2:'uc_openai_key',flux:'uc_flux_key',sd:'uc_sd_key',gemini:'uc_gemini_key',minimax:'uc_minimax_key',ideogram:'uc_ideogram_key'};
-  localStorage.setItem(keyMap[api]||'uc_openai_key', key);
-  if(typeof ucShowToast==='function') ucShowToast('✅ API 키 저장됨','success');
-  else if(typeof window.mocaToast==='function') window.mocaToast('✅ API 키 저장됨','ok');
+  /* 단계에서 키 입력 금지 — 통합 설정 모달로 이동 */
+  if (typeof window.openApiSettingsModal === 'function') {
+    window.openApiSettingsModal('image');
+  } else if (typeof renderApiSettings === 'function') {
+    renderApiSettings();
+  }
 }
 
 async function studioS3AutoPrompt(idx){

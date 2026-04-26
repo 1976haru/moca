@@ -277,28 +277,46 @@ function renderApiSettings(){
     '영상 편집·렌더링':'🎬','음악·Suno':'🎵','업로드·배포':'📤','기타 (확장)':'🔧'
   };
 
+  /* group 코드(스토어용) ↔ 카테고리 라벨 매핑 */
+  var GROUP_BY_CAT = {
+    '대본 생성':'script', '이미지 생성':'image', '스톡 이미지·영상':'stock',
+    '음성 생성':'voice', '영상 편집·렌더링':'video', '음악·Suno':'music',
+    '업로드·배포':'upload', '기타 (확장)':'other',
+  };
+
+  /* 활성 탭 — group 코드 또는 '__pref' (기본 선호 설정 탭) */
+  var activeTab = window._mocaApiActiveTab || 'script';
+  var validTabs = Object.values(GROUP_BY_CAT).concat(['__pref']);
+  if (validTabs.indexOf(activeTab) < 0) activeTab = 'script';
+
   /* 전체 설정 완료 개수 */
   var totalApis = 0, doneApis = 0;
   Object.values(MOCA_APIS_V2).forEach(function(apis){
     apis.forEach(function(a){
       totalApis++;
-      if(!a.keyName || (localStorage.getItem(a.keyName)||'').length > 8) doneApis++;
+      if(!a.keyName || _hasUnifiedKey(a)) doneApis++;
     });
   });
 
-  var html = '<div style="max-width:760px;margin:0 auto;padding:24px">' +
+  var html = '<div style="max-width:820px;margin:0 auto;padding:24px">' +
 
     /* 헤더 */
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
       '<h3 style="margin:0;font-size:18px;font-weight:900">⚙️ API 통합 설정</h3>' +
       '<div style="font-size:12px;color:var(--sub)">'+doneApis+' / '+totalApis+' 설정 완료</div>' +
     '</div>' +
-    '<div style="font-size:12px;color:var(--sub);margin-bottom:16px">' +
-      '한 번만 입력하면 모든 카테고리에서 자동 사용 · 입력 후에는 표시되지 않아요' +
+    '<div style="font-size:12px;color:var(--sub);margin-bottom:10px">' +
+      '한 번만 입력하면 모든 단계에서 자동 사용 · 각 단계에는 키 입력칸이 없습니다.' +
+    '</div>' +
+
+    /* 보안 안내 */
+    '<div style="font-size:11.5px;color:#7b4040;background:#fff1f1;border:1px solid #f4cdcd;border-radius:8px;padding:8px 12px;margin-bottom:14px;line-height:1.5">' +
+      '🔒 현재 프로토타입에서는 API 키가 브라우저 localStorage에 저장됩니다. '+
+      '실제 서비스 배포 시에는 서버 암호화 저장 방식으로 전환해야 합니다.' +
     '</div>' +
 
     /* 진행 바 */
-    '<div style="background:#eee;border-radius:999px;height:6px;margin-bottom:20px">' +
+    '<div style="background:#eee;border-radius:999px;height:6px;margin-bottom:14px">' +
       '<div style="background:linear-gradient(135deg,var(--pink),var(--purple));height:100%;border-radius:999px;width:'+Math.round(doneApis/totalApis*100)+'%;transition:.5s"></div>' +
     '</div>';
 
@@ -328,106 +346,51 @@ function renderApiSettings(){
     '</details>';
   }
 
-  /* 기본 선호 기준 — 추천 엔진이 사용 (각 단계에서 자동 적용) */
-  if (typeof window.setUserPreferredMode === 'function') {
-    var curPref = (typeof window.getUserPreferredMode === 'function')
-      ? (window.getUserPreferredMode() || '') : '';
-    var prefOpts = [
-      { id:'budget',   ico:'💰', label:'가격 우선',  desc:'대량 생성·저비용 위주' },
-      { id:'balanced', ico:'⚖️', label:'가성비',     desc:'품질·속도·비용 균형' },
-      { id:'quality',  ico:'🎯', label:'품질 우선',  desc:'고품질·완성도 우선' },
-      { id:'speed',    ico:'⚡', label:'속도 우선',  desc:'빠른 생성 우선' },
-    ];
-    html += '<div style="margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px">' +
-      '<div style="font-weight:900;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px">' +
-        '<span>🎚 기본 선호 기준</span>' +
-        '<span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:auto">미선택 시 작업별 기본값 사용</span>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">' +
-      prefOpts.map(function(o){
-        var on = (curPref === o.id);
-        return '<button onclick="ucSetPrefMode(\''+o.id+'\')" '+
-          'style="border:1.5px solid '+(on?'var(--pink)':'var(--line)')+';'+
-          'background:'+(on?'var(--pink-soft)':'#fff')+';border-radius:10px;padding:10px 8px;'+
-          'cursor:pointer;font-family:inherit;text-align:center;transition:.12s">'+
-          '<div style="font-size:18px;line-height:1">'+o.ico+'</div>'+
-          '<div style="font-size:12px;font-weight:800;color:'+(on?'var(--pink)':'var(--text)')+';margin-top:4px">'+o.label+'</div>'+
-          '<div style="font-size:10px;color:var(--sub);margin-top:2px;line-height:1.3">'+o.desc+'</div>'+
-        '</button>';
-      }).join('') +
-      '</div>' +
-      '<div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.5;background:#f8f8f8;border-radius:8px;padding:8px 10px">'+
-        '💡 API 추천은 각 작업 단계에서 자동으로 표시됩니다. 예: 이미지 단계에서는 가격 우선 이미지 API를 추천하고, 음성 단계에서는 장르와 언어에 맞는 TTS를 추천합니다.'+
-      '</div>' +
-    '</div>';
-  }
-
-  /* 카테고리별 렌더링 */
+  /* 탭 네비게이션 — 8 탭 (카테고리 7 + 기본 선호) */
+  var tabNav = '<div class="moca-tab-nav">';
   Object.keys(MOCA_APIS_V2).forEach(function(cat){
-    var apis = MOCA_APIS_V2[cat];
-    var catDone = apis.filter(function(a){ return !a.keyName||(localStorage.getItem(a.keyName)||'').length>8; }).length;
+    var g = GROUP_BY_CAT[cat] || cat;
+    if (g === 'other') return; /* '기타 (확장)' 도 노출 */
     var icon = catIcons[cat] || '📌';
-
-    html += '<details style="margin-bottom:10px" '+(catDone<apis.length?'open':'')+'>' +
-      '<summary style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;font-weight:900;font-size:14px">'+
-        '<span>'+icon+' '+cat+'</span>'+
-        '<span style="margin-left:auto;font-size:11px;font-weight:700;color:'+(catDone===apis.length?'#27ae60':'var(--sub)')+'">'+
-          catDone+'/'+apis.length+' 설정'+
-        '</span>'+
-        '<span style="font-size:12px;color:var(--sub)">▾</span>'+
-      '</summary>' +
-      '<div style="background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;padding:12px">';
-
-    apis.forEach(function(api){
-      var hasKey = api.keyName && (localStorage.getItem(api.keyName)||'').length > 8;
-      var noKey  = !api.keyName;
-
-      html += '<div style="padding:12px 0;border-bottom:1px solid #f5f5f5">' +
-
-        /* API 이름 + 상태 */
-        '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">' +
-          '<div style="flex:1">' +
-            '<div style="font-size:13px;font-weight:800">'+api.name+'</div>' +
-            '<div style="font-size:11px;color:var(--sub);margin-top:2px">'+api.desc+'</div>' +
-            '<div style="font-size:11px;color:#27ae60;margin-top:2px">'+api.free+'</div>' +
-          '</div>' +
-          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
-            '<span style="font-size:11px;font-weight:700;color:'+(hasKey||noKey?'#27ae60':'#e74c3c')+'">'+
-              (noKey?'🆓 무료':hasKey?'✅ 설정됨':'❌ 미설정')+
-            '</span>' +
-            /* 발급 안내 버튼 */
-            (api.url?
-              '<button onclick="studioApiGuide(\''+api.id+'\')" '+
-                'style="border:1.5px solid #4a90c4;background:#fff;color:#4a90c4;'+
-                'border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">'+
-                '📋 발급 방법</button>'
-            :'')+
-          '</div>' +
-        '</div>' +
-
-        /* 키 입력 or 완료 표시 */
-        (noKey ?
-          '<div style="font-size:11px;color:var(--sub);background:#f8f8f8;border-radius:8px;padding:8px">'+api.placeholder+'</div>'
-        : hasKey ?
-          '<div style="display:flex;align-items:center;gap:8px;background:#effbf7;border-radius:8px;padding:8px 12px">' +
-            '<span style="font-size:12px;color:#27ae60;font-weight:700">✅ API 키 등록됨</span>' +
-            '<button onclick="ucClearApiKeyV2(\''+api.id+'\')" '+
-              'style="margin-left:auto;border:none;background:#fee;color:#e74c3c;'+
-              'border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer">삭제</button>' +
-          '</div>'
-        :
-          '<div style="display:flex;gap:6px">' +
-            '<input type="password" id="api-key-'+api.id+'" class="studio-in" '+
-              'style="flex:1;font-size:12px" placeholder="'+api.placeholder+'">' +
-            '<button onclick="ucSaveApiKeyV2(\''+api.id+'\')" '+
-              'class="studio-btn pri" style="font-size:12px;white-space:nowrap">저장</button>' +
-          '</div>'
-        ) +
-      '</div>';
-    });
-
-    html += '</div></details>';
+    var apis = MOCA_APIS_V2[cat];
+    var catDone = apis.filter(function(a){ return !a.keyName || _hasUnifiedKey(a); }).length;
+    var on = (activeTab === g);
+    tabNav += '<button class="moca-tab-btn'+(on?' on':'')+'" onclick="ucSwitchTab(\''+g+'\')">'+
+      '<span class="moca-tab-ico">'+icon+'</span>'+
+      '<span class="moca-tab-lbl">'+cat+'</span>'+
+      '<span class="moca-tab-cnt">'+catDone+'/'+apis.length+'</span>'+
+    '</button>';
   });
+  /* 기타 탭 */
+  if (MOCA_APIS_V2['기타 (확장)']) {
+    var otherApis = MOCA_APIS_V2['기타 (확장)'];
+    var otherDone = otherApis.filter(function(a){ return !a.keyName || _hasUnifiedKey(a); }).length;
+    var onOther = (activeTab === 'other');
+    tabNav += '<button class="moca-tab-btn'+(onOther?' on':'')+'" onclick="ucSwitchTab(\'other\')">'+
+      '<span class="moca-tab-ico">🔧</span>'+
+      '<span class="moca-tab-lbl">기타</span>'+
+      '<span class="moca-tab-cnt">'+otherDone+'/'+otherApis.length+'</span>'+
+    '</button>';
+  }
+  /* 기본 선호 탭 */
+  var onPref = (activeTab === '__pref');
+  tabNav += '<button class="moca-tab-btn'+(onPref?' on':'')+'" onclick="ucSwitchTab(\'__pref\')">'+
+    '<span class="moca-tab-ico">⚙️</span>'+
+    '<span class="moca-tab-lbl">기본 선호</span>'+
+  '</button>';
+  tabNav += '</div>';
+  html += tabNav;
+
+  /* 활성 탭 패널 */
+  if (activeTab === '__pref') {
+    html += _mocaRenderPrefTab();
+  } else {
+    /* group → 카테고리 라벨 역매핑 */
+    var activeCat = Object.keys(GROUP_BY_CAT).find(function(c){ return GROUP_BY_CAT[c] === activeTab; });
+    if (activeCat && MOCA_APIS_V2[activeCat]) {
+      html += _mocaRenderProviderTab(activeCat, MOCA_APIS_V2[activeCat], activeTab);
+    }
+  }
 
   html += '</div>';
 
@@ -446,18 +409,180 @@ function renderApiSettings(){
   document.body.appendChild(modal);
 }
 
+/* ── 통합 store 키 보유 여부 (legacy + 신규 모두 검사) ── */
+function _hasUnifiedKey(api){
+  if (!api || !api.keyName) return false;
+  /* 신규 store */
+  if (typeof window.hasApiKey === 'function') {
+    var grp = _findGroupByApiId(api.id);
+    if (grp && window.hasApiKey(grp, api.id)) return true;
+  }
+  /* legacy fallback */
+  try { return (localStorage.getItem(api.keyName)||'').length > 6; } catch(_) { return false; }
+}
+
+function _findGroupByApiId(apiId){
+  var map = window.MOCA_API_LEGACY_MAP || {};
+  var found = '';
+  Object.keys(map).forEach(function(g){
+    if (map[g] && map[g][apiId]) found = g;
+  });
+  return found;
+}
+
+/* ── 탭 전환 ── */
+function ucSwitchTab(tabId){
+  window._mocaApiActiveTab = tabId;
+  document.getElementById('api-settings-overlay')?.remove();
+  renderApiSettings();
+}
+
+/* ── provider 탭 패널 렌더 ── */
+function _mocaRenderProviderTab(cat, apis, group) {
+  var html = '<div class="moca-tab-panel">';
+  apis.forEach(function(api){
+    var hasKey = api.keyName && _hasUnifiedKey(api);
+    var noKey  = !api.keyName;
+    var existing = (typeof window.getApiProvider === 'function') ? window.getApiProvider(group, api.id) : null;
+    var enabled  = existing && existing.enabled !== false;
+    var baseUrl  = (existing && existing.baseUrl) || '';
+    var modelVal = (existing && existing.model) || '';
+
+    html += '<div class="moca-prov-card">' +
+      '<div class="moca-prov-hd">' +
+        '<div class="moca-prov-info">' +
+          '<div class="moca-prov-name">' + api.name + '</div>' +
+          '<div class="moca-prov-desc">' + api.desc + '</div>' +
+          '<div class="moca-prov-free">'+ api.free + '</div>' +
+        '</div>' +
+        '<div class="moca-prov-side">' +
+          '<span class="moca-prov-status moca-st-'+(noKey?'free':hasKey?'on':'off')+'">'+
+            (noKey?'🆓 무료':hasKey?'✅ 저장됨':'⚠️ 키 없음')+
+          '</span>' +
+          (api.url ? '<button class="moca-prov-guide" onclick="studioApiGuide(\''+api.id+'\')">📋 발급 방법</button>' : '') +
+        '</div>' +
+      '</div>' +
+
+      (noKey ?
+        '<div class="moca-prov-nokey">'+api.placeholder+'</div>'
+      :
+        '<div class="moca-prov-form">' +
+          '<label class="moca-prov-label">API Key</label>' +
+          '<div class="moca-prov-row">' +
+            '<input type="password" id="moca-key-'+api.id+'" class="moca-prov-input" '+
+              'placeholder="'+api.placeholder+'" autocomplete="off" '+
+              (hasKey ? 'value="'+_mask(_getCurrentKey(group, api.id))+'" ' : '') + '>' +
+            '<button type="button" class="moca-prov-eye" onclick="ucToggleKeyVis(\''+api.id+'\')" title="보기/숨기기">👁</button>' +
+          '</div>' +
+          '<div class="moca-prov-row">' +
+            '<label class="moca-prov-label" style="flex:1">Base URL <span style="color:#999;font-weight:400">(선택)</span></label>' +
+          '</div>' +
+          '<input type="text" id="moca-base-'+api.id+'" class="moca-prov-input" placeholder="기본값 사용 (비워두기)" value="'+_esc(baseUrl)+'">' +
+          '<div class="moca-prov-row" style="margin-top:8px">' +
+            '<label class="moca-prov-toggle">' +
+              '<input type="checkbox" id="moca-en-'+api.id+'" '+(enabled?'checked':'')+'> 사용 활성화' +
+            '</label>' +
+            '<button class="moca-prov-save" onclick="ucSaveApiKeyV2(\''+api.id+'\')">💾 저장</button>' +
+            (hasKey ? '<button class="moca-prov-del" onclick="ucClearApiKeyV2(\''+api.id+'\')">🗑 삭제</button>' : '') +
+          '</div>' +
+        '</div>'
+      ) +
+    '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ── 기본 선호 탭 ── */
+function _mocaRenderPrefTab() {
+  var prefOpts = [
+    { id:'budget',   ico:'💰', label:'가격 우선',  desc:'대량 생성·저비용 위주' },
+    { id:'balanced', ico:'⚖️', label:'가성비',     desc:'품질·속도·비용 균형' },
+    { id:'quality',  ico:'🎯', label:'품질 우선',  desc:'고품질·완성도 우선' },
+    { id:'speed',    ico:'⚡', label:'속도 우선',  desc:'빠른 생성 우선' },
+  ];
+  var curPref = (typeof window.getUserPreferredMode === 'function') ? (window.getUserPreferredMode() || '') : '';
+  var html = '<div class="moca-tab-panel">' +
+    '<div class="moca-pref-section">' +
+      '<div class="moca-pref-title">🎚 기본 선호 기준 — 추천 1~3순위 정렬에 반영</div>' +
+      '<div class="moca-pref-grid">' +
+      prefOpts.map(function(o){
+        var on = (curPref === o.id);
+        return '<button onclick="ucSetPrefMode(\''+o.id+'\')" class="moca-pref-btn'+(on?' on':'')+'">'+
+          '<div class="moca-pref-ico">'+o.ico+'</div>'+
+          '<div class="moca-pref-lbl">'+o.label+'</div>'+
+          '<div class="moca-pref-d">'+o.desc+'</div>'+
+        '</button>';
+      }).join('') +
+      '</div>' +
+      '<div class="moca-pref-hint">💡 추천은 통합 설정에 길게 표시되지 않습니다. 각 작업 단계에서 1~3순위 카드로 보입니다.</div>' +
+    '</div>' +
+    /* 추천 스택 프리셋 — 기본 선호 탭 안으로 이동 */
+    (typeof window.MOCA_RECOMMENDED_STACKS !== 'undefined' && typeof window.applyStackPreset === 'function'
+      ? _mocaRenderStackPresets()
+      : '') +
+  '</div>';
+  return html;
+}
+
+function _mocaRenderStackPresets() {
+  var stacks = window.MOCA_RECOMMENDED_STACKS;
+  var appliedId = (window.STUDIO && window.STUDIO.project && window.STUDIO.project.appliedStackPreset) || '';
+  var stackHtml = '';
+  Object.keys(stacks).forEach(function(id){
+    var s = stacks[id];
+    var on = (appliedId === id);
+    stackHtml += '<button class="moca-stack-card'+(on?' on':'')+'" onclick="ucApplyStack(\''+id+'\')">' +
+      '<div class="moca-stack-card-hd">' +
+        '<span class="moca-stack-card-label">'+s.label+'</span>' +
+        (on ? '<span class="moca-stack-card-on">적용됨</span>' : '') +
+      '</div>' +
+      '<div class="moca-stack-card-desc">'+s.description+'</div>' +
+    '</button>';
+  });
+  return '<div class="moca-pref-section" style="margin-top:14px">' +
+    '<div class="moca-pref-title">📦 추천 스택 프리셋 — 5개 단계 1순위 자동 채택</div>' +
+    '<div class="moca-stack-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:8px">' + stackHtml + '</div>' +
+  '</div>';
+}
+
+function _esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function _mask(k){ if (!k) return ''; var s = String(k); return s.length <= 8 ? '••••' : s.slice(0,4) + '••••' + s.slice(-4); }
+function _getCurrentKey(group, providerId){
+  if (typeof window.mocaGetApiKey === 'function') return window.mocaGetApiKey(group, providerId);
+  return '';
+}
+
+window.ucToggleKeyVis = function(apiId){
+  var el = document.getElementById('moca-key-'+apiId);
+  if (!el) return;
+  el.type = (el.type === 'password') ? 'text' : 'password';
+};
+
 function ucSaveApiKeyV2(apiId){
-  var input = document.getElementById('api-key-'+apiId);
+  var input = document.getElementById('moca-key-'+apiId)
+            || document.getElementById('api-key-'+apiId);
   if(!input || !input.value.trim()){ alert('키를 입력해주세요'); return; }
-  /* MOCA_APIS_V2에서 keyName 찾기 */
+  var val = input.value.trim();
+  /* 마스킹된 값(••••)이 그대로 들어오면 저장하지 않음 */
+  if (/^[•]+$/.test(val) || val.indexOf('••••') >= 0) {
+    alert('마스킹된 값은 저장되지 않습니다. 새 키를 직접 입력하세요.'); return;
+  }
   var api = null;
   Object.values(MOCA_APIS_V2).forEach(function(apis){
     apis.forEach(function(a){ if(a.id===apiId) api=a; });
   });
   if(!api || !api.keyName) return;
-  localStorage.setItem(api.keyName, input.value.trim());
+  /* 1) legacy key — 호환 유지 */
+  try { localStorage.setItem(api.keyName, val); } catch(_) {}
+  /* 2) 통합 store */
+  var grp = _findGroupByApiId(apiId);
+  if (grp && typeof window.setApiProvider === 'function') {
+    var base = (document.getElementById('moca-base-'+apiId)||{}).value || '';
+    var en   = !!(document.getElementById('moca-en-'+apiId)||{}).checked;
+    window.setApiProvider(grp, apiId, { apiKey: val, baseUrl: base, enabled: en !== false });
+  }
   if(typeof ucShowToast==='function') ucShowToast('✅ '+api.name+' 키 저장됨','success');
-  /* 모달 새로고침 */
   document.getElementById('api-settings-overlay')?.remove();
   renderApiSettings();
 }
@@ -472,12 +597,57 @@ function ucApplyStack(presetId){
   }
 }
 
-/* 스택 프리셋 카드 CSS */
+/* 통합 설정 — 탭 + 카드 + 스택 프리셋 CSS */
 (function(){
-  if (document.getElementById('moca-stack-style')) return;
+  if (document.getElementById('moca-api-settings-style')) return;
   var st = document.createElement('style');
-  st.id = 'moca-stack-style';
+  st.id = 'moca-api-settings-style';
   st.textContent =
+    /* 탭 nav */
+    '.moca-tab-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;padding:6px;background:#fff;border:1px solid var(--line);border-radius:12px;position:sticky;top:0;z-index:2}'+
+    '.moca-tab-btn{display:flex;align-items:center;gap:5px;padding:8px 12px;border:1.5px solid transparent;background:transparent;color:#666;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s;white-space:nowrap}'+
+    '.moca-tab-btn:hover{background:#f5f0ff;color:#5a4a8a}'+
+    '.moca-tab-btn.on{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(145,129,255,.25)}'+
+    '.moca-tab-ico{font-size:14px}'+
+    '.moca-tab-cnt{margin-left:4px;padding:1px 6px;background:rgba(255,255,255,.5);border-radius:8px;font-size:10px;font-weight:800}'+
+    '.moca-tab-btn.on .moca-tab-cnt{background:rgba(255,255,255,.3)}'+
+    /* provider 카드 */
+    '.moca-tab-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}'+
+    '.moca-prov-card{padding:14px 0;border-bottom:1px solid #f3eff8}'+
+    '.moca-prov-card:last-child{border-bottom:none;padding-bottom:4px}'+
+    '.moca-prov-hd{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}'+
+    '.moca-prov-info{flex:1;min-width:0}'+
+    '.moca-prov-name{font-size:13.5px;font-weight:900;color:#2b2430}'+
+    '.moca-prov-desc{font-size:11.5px;color:#7b6080;margin-top:2px;line-height:1.4}'+
+    '.moca-prov-free{font-size:11px;color:#1a7a5a;margin-top:3px}'+
+    '.moca-prov-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px}'+
+    '.moca-prov-status{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}'+
+    '.moca-st-on{background:#effbf7;color:#1a7a5a}.moca-st-off{background:#fff1f1;color:#c0392b}.moca-st-free{background:#eef5ff;color:#2b66c4}'+
+    '.moca-prov-guide{border:1.5px solid #4a90c4;background:#fff;color:#4a90c4;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '.moca-prov-nokey{font-size:11px;color:#7b6080;background:#f8f5fc;border-radius:8px;padding:8px 10px}'+
+    '.moca-prov-form{display:flex;flex-direction:column;gap:6px}'+
+    '.moca-prov-label{font-size:11px;font-weight:800;color:#5b1a4a}'+
+    '.moca-prov-row{display:flex;gap:6px;align-items:center}'+
+    '.moca-prov-input{flex:1;border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;font-family:inherit;box-sizing:border-box;width:100%}'+
+    '.moca-prov-input:focus{outline:none;border-color:#9181ff}'+
+    '.moca-prov-eye{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13px}'+
+    '.moca-prov-toggle{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#5a4a56;cursor:pointer;flex:1}'+
+    '.moca-prov-toggle input{accent-color:#ef6fab}'+
+    '.moca-prov-save{border:none;background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}'+
+    '.moca-prov-del{border:1.5px solid #fee;background:#fff;color:#c0392b;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}'+
+    /* 기본 선호 패널 */
+    '.moca-pref-section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}'+
+    '.moca-pref-title{font-size:13px;font-weight:900;color:#5b1a4a;margin-bottom:8px}'+
+    '.moca-pref-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}'+
+    '@media(max-width:640px){.moca-pref-grid{grid-template-columns:repeat(2,1fr)}}'+
+    '.moca-pref-btn{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:10px 8px;cursor:pointer;font-family:inherit;text-align:center;transition:.12s}'+
+    '.moca-pref-btn.on{border-color:#ef6fab;background:linear-gradient(135deg,#fff5fa,#f5f0ff)}'+
+    '.moca-pref-ico{font-size:18px;line-height:1}'+
+    '.moca-pref-lbl{font-size:12px;font-weight:800;color:#2b2430;margin-top:4px}'+
+    '.moca-pref-btn.on .moca-pref-lbl{color:#ef6fab}'+
+    '.moca-pref-d{font-size:10px;color:#7b6080;margin-top:2px;line-height:1.3}'+
+    '.moca-pref-hint{font-size:11px;color:#7b6080;margin-top:8px;line-height:1.5;background:#f8f5fc;border-radius:8px;padding:8px 10px}'+
+    /* 스택 프리셋 카드 */
     '.moca-stack-card{text-align:left;background:#fafafe;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-family:inherit;transition:.12s}'+
     '.moca-stack-card:hover{border-color:#9181ff;background:#f5f0ff}'+
     '.moca-stack-card.on{border-color:#ef6fab;background:linear-gradient(135deg,#fff5fa,#f5f0ff)}'+
@@ -505,7 +675,12 @@ function ucClearApiKeyV2(apiId){
   });
   if(!api || !api.keyName) return;
   if(!confirm(api.name+' 키를 삭제할까요?')) return;
-  localStorage.removeItem(api.keyName);
+  /* legacy + 통합 store 모두 삭제 */
+  try { localStorage.removeItem(api.keyName); } catch(_) {}
+  var grp = _findGroupByApiId(apiId);
+  if (grp && typeof window.deleteApiProvider === 'function') {
+    window.deleteApiProvider(grp, apiId);
+  }
   if(typeof ucShowToast==='function') ucShowToast('🗑 '+api.name+' 키 삭제됨','success');
   document.getElementById('api-settings-overlay')?.remove();
   renderApiSettings();
