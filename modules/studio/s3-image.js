@@ -129,19 +129,19 @@ function _studioS3(){
        }) : '') +
     apiHtml +
     (function(){
-      /* 신규 모달 (s3-image-keys.js) 가 로드됐으면 그것을 우선 사용 */
-      var hasNewModal = (typeof window.s3OpenImageApiKeyModal === 'function');
+      /* 모든 키 설정 진입은 통합 API 설정으로 redirect */
       var hasKeyFn    = (typeof window.s3HasImageApiKey === 'function');
       var keyOk       = hasKeyFn ? window.s3HasImageApiKey(api) :
                         (typeof ucApiKeyStatus === 'function' ? ucApiKeyStatus(api).ok : !!savedKey);
-      var keyLabel    = keyOk ? '✅ 키 저장됨' : '⚠️ 키 필요';
-      var openCall    = hasNewModal ? 's3OpenImageApiKeyModal()'
-                       : (typeof renderApiSettings === 'function' ? 'renderApiSettings()'
-                       : 'alert(\'키 설정 모달이 로드되지 않았습니다.\')');
-      return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px">' +
+      var keyLabel    = keyOk ? '✅ 키 저장됨' : '⚠️ 키 없음 — 통합 설정 필요';
+      var openCall    = 'mocaOpenApiSettings(\'image\')';
+      return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px;flex-wrap:wrap">' +
         '<span style="font-size:12px;font-weight:700;color:'+(keyOk?'#27ae60':'#e74c3c')+'">'+keyLabel+'</span>' +
-        '<span style="font-size:12px;color:var(--sub)">'+api+' API 키</span>' +
-        '<button onclick="'+openCall+'" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 키 설정</button>' +
+        '<span style="font-size:12px;color:var(--sub)">'+api+' API</span>' +
+        '<button onclick="'+openCall+'" style="margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⚙️ 통합 API 설정 열기</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--sub);margin-top:6px;padding:6px 10px;background:#f8f5fc;border-radius:6px">'+
+          '💡 API 키는 통합 API 설정에서 한 번만 입력하면 모든 단계에서 자동 사용됩니다.'+
         '</div></div>';
     })() +
 

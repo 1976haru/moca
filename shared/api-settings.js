@@ -394,20 +394,34 @@ function renderApiSettings(){
 
   html += '</div>';
 
-  /* 모달 */
+  /* 모달 — drawer/하단버튼/글로벌바보다 위 */
   var modal = document.createElement('div');
   modal.id = 'api-settings-overlay';
   modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'+
-    'background:rgba(0,0,0,0.55);z-index:9999;overflow-y:auto;padding:20px;box-sizing:border-box';
+    'background:rgba(0,0,0,0.55);z-index:20000;overflow-y:auto;padding:20px;box-sizing:border-box';
   modal.innerHTML =
-    '<div style="max-width:780px;margin:40px auto;background:#f8f8f8;border-radius:20px;position:relative">' +
-    '<button onclick="document.getElementById(\'api-settings-overlay\').remove()" '+
+    '<div id="api-settings-dialog" style="max-width:820px;margin:40px auto;background:#f8f8f8;border-radius:20px;position:relative">' +
+    '<button onclick="ucCloseApiSettings()" '+
       'style="position:sticky;top:0;float:right;border:none;background:#eee;'+
       'border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;'+
       'margin:16px 16px 0 0;z-index:1">닫기 ✕</button>' +
     html + '</div>';
+  /* 배경 클릭 닫기 */
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) ucCloseApiSettings();
+  });
   document.body.appendChild(modal);
+  /* ESC 닫기 */
+  document.addEventListener('keydown', _ucApiSettingsEsc);
+  try { console.log('[api-settings] modal ready · tab:', activeTab); } catch(_) {}
 }
+
+function ucCloseApiSettings(){
+  var ex = document.getElementById('api-settings-overlay');
+  if (ex) ex.remove();
+  document.removeEventListener('keydown', _ucApiSettingsEsc);
+}
+function _ucApiSettingsEsc(e){ if (e.key === 'Escape') ucCloseApiSettings(); }
 
 /* ── 통합 store 키 보유 여부 (legacy + 신규 모두 검사) ── */
 function _hasUnifiedKey(api){
