@@ -72,15 +72,22 @@
     if (window.cbRenderTab1 && !window.cbRenderTab1Source)    window.cbRenderTab1Source    = window.cbRenderTab1;
     if (window.cbRenderTab2 && !window.cbRenderTab2Recipes)   window.cbRenderTab2Recipes   = window.cbRenderTab2;
     if (window.cbRenderTab3 && !window.cbRenderTab3Templates) window.cbRenderTab3Templates = window.cbRenderTab3;
-    /* 신규 t4 AI 디자인 보드 — 별도 렌더 없으면 templates(legacy t3)로 폴백 */
-    if (!window.cbRenderTab4Designboard && window.cbRenderTab3Templates) {
-      window.cbRenderTab4Designboard = window.cbRenderTab3Templates;
+    /* 신규 1/3 단계: 'purpose' / 'design-board' 별칭 매핑 — t1/t4 와 동일 */
+    if (window.cbRenderTabPurpose && !window.cbRenderTab1Purpose) {
+      window.cbRenderTab1Purpose = window.cbRenderTabPurpose;
+    }
+    if (!window.cbRenderTab4Designboard) {
+      window.cbRenderTab4Designboard = window.cbRenderTabDesignBoard || window.cbRenderTab3Templates;
     }
     const renderMap = {
-      t1: window.cbRenderTab1Purpose    || window.cbRenderTab1,    /* 신규: 목적 선택 */
-      t2: window.cbRenderTab2Examples   || window.cbRenderTab2,    /* 신규: 예시 갤러리 */
+      /* 신규 alias (1/3 단계) */
+      'purpose':       window.cbRenderTabPurpose       || window.cbRenderTab1Purpose || window.cbRenderTab1,
+      'design-board':  window.cbRenderTabDesignBoard   || window.cbRenderTab4Designboard,
+      /* 기존 t1~t8 — direct link 보존 */
+      t1: window.cbRenderTabPurpose     || window.cbRenderTab1Purpose || window.cbRenderTab1,
+      t2: window.cbRenderTab2Examples   || window.cbRenderTab2,
       t3: window.cbRenderTab4           || window.cbRenderTab3,    /* 블록 구성 (legacy cbRenderTab4) */
-      t4: window.cbRenderTab4Designboard|| window.cbRenderTab3,    /* AI 디자인 보드 = templates 폴백 */
+      t4: window.cbRenderTabDesignBoard || window.cbRenderTab4Designboard || window.cbRenderTab3,
       t5: window.cbRenderTab5,                                      /* 미디어 슬롯 */
       t6: window.cbRenderTab6,                                      /* 스타일 */
       t7: window.cbRenderTab7,                                      /* 미리보기·검수 */
@@ -176,7 +183,7 @@
       if (document.getElementById('view-cb')) {
         cbSwitchMode('builder');
         /* tab 파라미터가 있으면 해당 탭으로 이동 */
-        if (tab && /^t[1-8]$/.test(tab)) {
+        if (tab && (/^t[1-8]$/.test(tab) || tab === 'purpose' || tab === 'design-board')) {
           setTimeout(function(){ cbGotoTab(tab); }, 30);
         }
       }
