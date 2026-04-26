@@ -60,7 +60,7 @@ const V2_PROVIDERS = [
 const V2_SPEEDS = [0.7, 0.8, 0.85, 0.9, 1.0, 1.1, 1.2, 1.3];
 
 /* ── 전역 상태 ── */
-let _v2Tab       = 'auto';  // 'auto' | 'manual'
+let _v2Tab       = 'auto';  // 'auto' | 'manual' | 'lab' | 'recent'
 let _v2Voice     = null;    // 저장된 voice 설정
 let _v2Generating= {};      // { sceneIdx: true }
 
@@ -137,6 +137,12 @@ function _studioS2Step(wrapId) {
     ? '<div id="vmpPanelHost">' + window.vmpRenderPanel() + '</div>'
     : '<div class="v2-no-scenes">⚠️ 수동 음성 picker 모듈(s2-voice-manual-picker.js) 미로드</div>';
 
+  const _labBodyHtml = (typeof window.vlRenderPanel === 'function')
+    ? '<div id="vlPanelHost">' + window.vlRenderPanel() + '</div>'
+    : '<div class="v2-no-scenes">⚠️ Voice Lab 모듈(s2-voice-lab.js) 미로드</div>';
+
+  const _recentBodyHtml = _v2RenderRecentTab();
+
   wrap.innerHTML = `
   <div class="v2-wrap">
 
@@ -149,15 +155,22 @@ function _studioS2Step(wrapId) {
     <!-- 💡 추천 음성 API (provider) -->
     ${_recCardsHtml}
 
-    <!-- 🎚 탭: 자동 추천 ↔ 수동 선택 -->
+    <!-- 🎚 탭: 자동 추천 ↔ 수동 선택 ↔ 프롬프트 음성 제작소 ↔ 최근/즐겨찾기 -->
     <div class="v2-tab-row">
       <button type="button" class="v2-tab-btn ${_v2Tab==='auto'?'on':''}"
         onclick="_v2SetTab('auto','${wrapId||'studioS2Wrap'}')">🤖 자동 추천</button>
       <button type="button" class="v2-tab-btn ${_v2Tab==='manual'?'on':''}"
         onclick="_v2SetTab('manual','${wrapId||'studioS2Wrap'}')">🎙 수동 선택</button>
+      <button type="button" class="v2-tab-btn ${_v2Tab==='lab'?'on':''}"
+        onclick="_v2SetTab('lab','${wrapId||'studioS2Wrap'}')">🧪 프롬프트 음성 제작소</button>
+      <button type="button" class="v2-tab-btn ${_v2Tab==='recent'?'on':''}"
+        onclick="_v2SetTab('recent','${wrapId||'studioS2Wrap'}')">⭐ 최근/즐겨찾기</button>
     </div>
 
-    ${_v2Tab === 'manual' ? _manualBodyHtml : _autoBodyHtml}
+    ${_v2Tab === 'manual' ? _manualBodyHtml :
+      _v2Tab === 'lab'    ? _labBodyHtml    :
+      _v2Tab === 'recent' ? _recentBodyHtml :
+      _autoBodyHtml}
 
     <!-- API + 속도 설정 -->
     <div class="v2-block">
@@ -340,11 +353,12 @@ async function _v2GenScene(idx, wrapId) {
       throw new Error('TTS dispatcher (_s2DispatchTts) 미로드');
     }
     const res = await window._s2DispatchTts({
-      provider: route.dispatchProvider,
-      voiceId:  route.voiceId,
-      voice:    route.voiceId,    /* OpenAI 의 'voice' 인자 */
-      text:     text,
-      speed:    spd,
+      provider:     route.dispatchProvider,
+      voiceId:      route.voiceId,
+      voice:        route.voiceId,    /* OpenAI 의 'voice' 인자 */
+      text:         text,
+      speed:        spd,
+      instructions: route.instructions || '',
     });
     if (!res || !res.url) {
       /* 키 미설정 등으로 dispatcher 가 안내 후 null 반환한 경우 */
@@ -408,7 +422,9 @@ function _v2ResolveRoute() {
   const voiceId = (cand && cand.voiceId)
                 || (wantJa ? (_v2Voice.voiceJaId || '') : (_v2Voice.voiceKoId || ''))
                 || (provAbbr === 'OA' ? 'nova' : '21m00Tcm4TlvDq8ikWAM');
-  return { provAbbr: provAbbr, dispatchProvider: dispatchProvider, voiceId: voiceId };
+  /* instructions — OpenAI instructions_preset 만 적용 */
+  const instructions = (cand && cand.source === 'instructions_preset' && cand.instructions) || '';
+  return { provAbbr: provAbbr, dispatchProvider: dispatchProvider, voiceId: voiceId, instructions: instructions };
 }
 
 /* ════════════════════════════════════════════════
@@ -471,6 +487,8 @@ function _v2Save() {
   proj.s2.voiceProvider = route.dispatchProvider;
   proj.s2.provider      = route.dispatchProvider;  /* legacy alias */
   proj.s2.voiceId       = route.voiceId;
+  proj.s2.voiceInstructions = route.instructions || '';
+  if (route.instructions) proj.s2.voiceSource = 'instructions_preset';
   proj.s2.voiceSpeed = _v2Voice.speed    || 1.0;
   proj.s2.voiceVol   = _v2Voice.voiceVol || proj.s2.voiceVol || 100;
   proj.s2.bgmVol     = _v2Voice.bgmVol   || proj.s2.bgmVol   || 30;
@@ -483,6 +501,90 @@ window._v2SetTab = function(tab, wid) {
   _v2Tab = (tab === 'manual') ? 'manual' : 'auto';
   _studioS2Step(wid);
 };
+
+/* ── 최근/즐겨찾기 + Lab 저장 음성 통합 탭 ── */
+function _v2RenderRecentTab() {
+  const recents = (typeof window.vfvGetRecent === 'function') ? window.vfvGetRecent() : [];
+  const favs    = (typeof window.vfvGetFavorites === 'function') ? window.vfvGetFavorites() : [];
+  const lab     = (typeof window.vlbAsCandidates === 'function') ? window.vlbAsCandidates() : [];
+  function _renderEntries(list, title, emptyMsg, source) {
+    if (!list.length) return `<div class="v2-recent-empty">${emptyMsg}</div>`;
+    return `<div class="v2-recent-grid">${list.map(function(item){
+      const id = item.id || (item.provider + ':' + (item.voiceId || ''));
+      const label = item.displayName || item.label || item.voiceName || id;
+      const prov = item.provider || '';
+      return `<div class="v2-recent-card">
+        <div class="v2-recent-name">${label}</div>
+        <div class="v2-recent-prov">${prov}${item.source ? ' · ' + item.source : ''}</div>
+        <div class="v2-recent-actions">
+          <button type="button" class="v2-mini-btn" onclick="_v2RecentPreview('${id}')">▶ 미리듣기</button>
+          <button type="button" class="v2-mini-btn pri" onclick="_v2RecentApply('${id}')">선택</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  return '<div class="v2-recent-wrap">' +
+    '<div class="v2-recent-section">' +
+      '<div class="v2-recent-hd">⭐ 즐겨찾기</div>' +
+      _renderEntries(favs, '즐겨찾기', '★ 표시한 음성이 없습니다.', 'fav') +
+    '</div>' +
+    '<div class="v2-recent-section">' +
+      '<div class="v2-recent-hd">🕘 최근 사용</div>' +
+      _renderEntries(recents, '최근', '최근 사용한 음성이 없습니다.', 'recent') +
+    '</div>' +
+    '<div class="v2-recent-section">' +
+      '<div class="v2-recent-hd">🧪 내가 만든 음성/프리셋</div>' +
+      _renderEntries(lab, '내 음성', '프롬프트 음성 제작소에서 만든 voice/preset 이 없습니다.', 'lab') +
+    '</div>' +
+  '</div>';
+}
+
+window._v2RecentPreview = function(id) {
+  const cand = _v2FindCandidateAnywhere(id);
+  if (!cand) return;
+  if (typeof window.previewVoice === 'function') {
+    window.previewVoice(cand, { lang: cand.languageSupport && cand.languageSupport[0] === 'ja' ? 'ja' : 'ko' });
+  } else if (typeof window._v2Preview === 'function') {
+    window._v2Preview(cand, 'ko');
+  }
+};
+window._v2RecentApply = function(id) {
+  const cand = _v2FindCandidateAnywhere(id);
+  if (!cand) return;
+  if (typeof window._v2ApplyCandidate === 'function') {
+    window._v2ApplyCandidate(cand, cand.languageSupport && cand.languageSupport[0] === 'ja' ? 'ja' : 'ko', { source:'manual' });
+  }
+  if (typeof window.vfvAddRecent === 'function') {
+    window.vfvAddRecent(cand, 'ko');
+  }
+  _studioS2Step();
+};
+
+function _v2FindCandidateAnywhere(id) {
+  if (!id) return null;
+  if (typeof window._v2GetCandidateById === 'function') {
+    var c = window._v2GetCandidateById(id);
+    if (c) return c;
+  }
+  /* lab candidates */
+  var lab = (typeof window.vlbAsCandidates === 'function') ? window.vlbAsCandidates() : [];
+  var labMatch = lab.find(function(x){ return x.id === id; });
+  if (labMatch) return labMatch;
+  /* recent/fav 자체 entry — 최소 schema 변환 */
+  var r = (typeof window.vfvGetRecent === 'function') ? window.vfvGetRecent() : [];
+  var f = (typeof window.vfvGetFavorites === 'function') ? window.vfvGetFavorites() : [];
+  var rec = r.concat(f).find(function(x){ return x.id === id; });
+  if (rec) {
+    return {
+      id: rec.id, displayName: rec.label,
+      provider: rec.provider === 'EL' ? 'elevenlabs' : rec.provider === 'OA' ? 'openai' : rec.provider === 'SS' ? 'browser' : (rec.provider || 'openai'),
+      voiceId: rec.voiceId, voiceToneGender: rec.gender, ageTone: rec.age,
+      languageSupport: [rec.lang || 'ko'], styleTags: [],
+      previewStrategy:'provider_tts_sample',
+    };
+  }
+  return null;
+}
 
 /* ── 추천 그룹 렌더 (한 언어당 후보 6+ 카드) ── */
 function _v2RenderRecGroup(langKey, style, currentVoiceId, wrapId) {
@@ -727,6 +829,19 @@ function _v2InjectCSS() {
 
 /* warn 톤 (브라우저 대체) */
 .v2-rec-tag.warn{background:#fef3c7;color:#92400e}
+
+/* 최근/즐겨찾기 탭 */
+.v2-recent-wrap{display:flex;flex-direction:column;gap:10px}
+.v2-recent-section{background:#fff;border:1.5px solid #f1dce7;border-radius:12px;padding:10px 12px}
+.v2-recent-hd{font-size:12px;font-weight:800;color:#5b1a4a;margin-bottom:8px}
+.v2-recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
+.v2-recent-card{border:1.5px solid #f1dce7;border-radius:10px;padding:8px 10px;background:#fafafe;display:flex;flex-direction:column;gap:4px}
+.v2-recent-name{font-size:12px;font-weight:800;color:#2b2430}
+.v2-recent-prov{font-size:10.5px;color:#7b6080}
+.v2-recent-actions{display:flex;gap:4px;margin-top:4px}
+.v2-recent-actions .v2-mini-btn{flex:1;padding:5px 8px;font-size:10.5px}
+.v2-mini-btn.pri{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border:none}
+.v2-recent-empty{font-size:11.5px;color:#9b8a93;padding:8px}
 .v2-rec-voices{display:flex;flex-direction:column;gap:8px}
 .v2-rec-voice{display:flex;align-items:center;gap:10px;padding:10px;
   background:#fff;border-radius:12px;border:1.5px solid #f1dce7}

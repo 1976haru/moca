@@ -221,13 +221,19 @@
     };
   }
 
-  /* ── id → 후보 객체 (custom 포함) ── */
+  /* ── id → 후보 객체 (custom + lab 포함) ── */
   function _v2GetCandidateById(id) {
     if (!id) return null;
     if (V2_VOICE_BY_ID[id]) return V2_VOICE_BY_ID[id];
     /* 원격 ElevenLabs voice 캐시 */
     var remote = (window.V2_EL_VOICES || []).find(function(v){ return v.id === id; });
     if (remote) return remote;
+    /* lab 라이브러리 (사용자가 만든 EL 음성 / OA instructions 프리셋) */
+    if (typeof window.vlbAsCandidates === 'function') {
+      var lab = window.vlbAsCandidates();
+      var labMatch = lab.find(function(v){ return v.id === id; });
+      if (labMatch) return labMatch;
+    }
     var m = String(id).match(/^custom_([a-z]+)_(.+)$/i);
     if (m) return _v2BuildCustomCandidate(m[1], m[2]);
     return null;

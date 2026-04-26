@@ -81,16 +81,31 @@ async function _s2DispatchTts(opts) {
 async function _s2CallOpenAiTts(opts) {
   var key = _s2GetVoiceKey('openaiTts');
   if (!key) { _s2PromptOpenVoiceSettings('OpenAI TTS'); return null; }
-  var voice = opts.voice || 'nova';
+  var voice = opts.voice || opts.voiceId || 'nova';
   var speed = parseFloat(opts.speed != null ? opts.speed : 1.0);
+  /* instructions 가 있으면 gpt-4o-mini-tts 우선, 실패 시 tts-1 fallback */
+  var instructions = opts.instructions || '';
+  var hasInstr = !!instructions;
+  var body = { model: hasInstr ? 'gpt-4o-mini-tts' : 'tts-1', input:opts.text, voice:voice, speed:speed };
+  if (hasInstr) body.instructions = instructions;
   var r = await fetch('https://api.openai.com/v1/audio/speech', {
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify({ model:'tts-1', input:opts.text, voice:voice, speed:speed })
+    body:JSON.stringify(body)
   });
+  if (!r.ok && hasInstr && r.status === 404) {
+    /* 모델 미지원 → tts-1 fallback */
+    var r2 = await fetch('https://api.openai.com/v1/audio/speech', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({ model:'tts-1', input:opts.text, voice:voice, speed:speed })
+    });
+    if (!r2.ok) throw new Error('OpenAI TTS 실패 ('+r2.status+')');
+    var blob2 = await r2.blob();
+    return { url:URL.createObjectURL(blob2), blob:blob2, provider:'openaiTts', voiceId:voice, instructionsApplied:false };
+  }
   if (!r.ok) throw new Error('OpenAI TTS 실패 ('+r.status+')');
   var blob = await r.blob();
-  return { url:URL.createObjectURL(blob), blob:blob, provider:'openaiTts', voiceId:voice };
+  return { url:URL.createObjectURL(blob), blob:blob, provider:'openaiTts', voiceId:voice, instructionsApplied:hasInstr };
 }
 
 async function _s2CallElevenLabsTts(opts) {
