@@ -74,6 +74,10 @@ function _studioS2Step(wrapId) {
   const proj   = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   const scenes = proj.scenes || [];
   const lenSec = proj.lengthSec || 60;
+  /* 저장된 탭 상태 복원 (새로고침/재진입 시 마지막 탭 유지) */
+  if (proj.s2 && proj.s2.voiceTab && ['auto','manual','lab','recent'].indexOf(proj.s2.voiceTab) >= 0) {
+    _v2Tab = proj.s2.voiceTab;
+  }
 
   /* 🎯 contentProfile resolver — 대본 장르/톤/타깃/언어 통합 */
   const profile = (typeof window.resolveContentProfile === 'function')
@@ -496,9 +500,22 @@ function _v2Save() {
   if (typeof studioSave === 'function') studioSave();
 }
 
-/* ── 탭 전환 (auto / manual) ── */
+/* ── 탭 전환 (auto / manual / lab / recent) ── */
 window._v2SetTab = function(tab, wid) {
-  _v2Tab = (tab === 'manual') ? 'manual' : 'auto';
+  var ALLOWED = ['auto','manual','lab','recent'];
+  _v2Tab = ALLOWED.indexOf(tab) >= 0 ? tab : 'auto';
+  /* lab/recent 모듈 미로드 안내 (조용한 실패 방지) */
+  if (_v2Tab === 'lab' && typeof window.vlRenderPanel !== 'function') {
+    if (typeof window.ucShowToast === 'function') {
+      window.ucShowToast('⚠️ Voice Lab 모듈(s2-voice-lab.js)이 로드되지 않았습니다.', 'warn');
+    }
+  }
+  try { console.debug('[s2-voice] tab →', _v2Tab); } catch(_) {}
+  /* STUDIO.project.s2 에 마지막 탭 저장 (탭 전환 후 복귀 시 유지) */
+  var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  proj.s2 = proj.s2 || {};
+  proj.s2.voiceTab = _v2Tab;
+  if (typeof studioSave === 'function') studioSave();
   _studioS2Step(wid);
 };
 
