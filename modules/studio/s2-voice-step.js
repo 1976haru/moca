@@ -10,74 +10,16 @@
    - STUDIO.project.voice 저장
    ================================================ */
 
-/* ── 음성 추천 매핑 (이슈 1: 각 스타일·언어별 2~3개 후보) ── */
-const V2_VOICE_RECOMMEND = {
-  emotional: {
-    ko: [
-      { id:'rachel',     label:'Rachel',            provider:'EL', desc:'따뜻함·감성 최적' },
-      { id:'calm_senior',label:'Calm Senior Female',provider:'OA', desc:'차분한 시니어 톤' },
-      { id:'warm_narr',  label:'Warm Narrator',     provider:'EL', desc:'감동 내레이션' },
-    ],
-    ja: [
-      { id:'haruka',     label:'Haruka',            provider:'NJ', desc:'시니어 감성 일본어' },
-      { id:'calm_jp',    label:'Calm JP Narrator',  provider:'OA', desc:'차분한 일본어 내레이션' },
-    ],
-  },
-  info: {
-    ko: [
-      { id:'adam',       label:'Adam',              provider:'EL', desc:'차분·신뢰감' },
-      { id:'nova',       label:'Nova',              provider:'OA', desc:'명료·정보형' },
-      { id:'mid_male',   label:'중년 남성',          provider:'CV', desc:'전문성 강조' },
-    ],
-    ja: [
-      { id:'kenji',      label:'Kenji',             provider:'NJ', desc:'정보형 일본어' },
-      { id:'jp_male_mid',label:'中年男性',           provider:'OA', desc:'안정적 일본어' },
-    ],
-  },
-  humor: {
-    ko: [
-      { id:'grace',      label:'Grace',             provider:'EL', desc:'밝고 경쾌' },
-      { id:'young_male', label:'청년 남성',          provider:'CV', desc:'활기찬 톤' },
-    ],
-    ja: [
-      { id:'yuki',       label:'Yuki',              provider:'NJ', desc:'활기찬 일본어' },
-      { id:'jp_young_f', label:'若い女性',           provider:'OA', desc:'밝은 일본어' },
-    ],
-  },
-  drama: {
-    ko: [
-      { id:'josh',       label:'Josh',              provider:'EL', desc:'깊고 묵직한' },
-      { id:'serious_m',  label:'Serious Male',      provider:'OA', desc:'드라마틱' },
-    ],
-    ja: [
-      { id:'takeshi',    label:'Takeshi',           provider:'NJ', desc:'드라마틱 일본어' },
-    ],
-  },
-  senior: {
-    ko: [
-      { id:'rachel',     label:'Rachel',            provider:'EL', desc:'시니어 채널 최적' },
-      { id:'senior_f',   label:'시니어 여성',        provider:'CV', desc:'친숙한 시니어 톤' },
-      { id:'senior_m',   label:'시니어 남성',        provider:'CV', desc:'관록 있는 톤' },
-    ],
-    ja: [
-      { id:'sachiko',    label:'Sachiko',           provider:'NJ', desc:'시니어 일본어 최적' },
-      { id:'jp_senior_f',label:'シニア女性',         provider:'OA', desc:'따뜻한 시니어 일본어' },
-    ],
-  },
-  knowledge: {
-    ko: [
-      { id:'adam',       label:'Adam',              provider:'EL', desc:'전문적·차분' },
-      { id:'narrator',   label:'Narrator',          provider:'OA', desc:'다큐형' },
-    ],
-    ja: [
-      { id:'kenji',      label:'Kenji',             provider:'NJ', desc:'교양 일본어' },
-    ],
-  },
-};
-
-/* 호환 — 기존 단일 추천을 사용하던 코드는 [0] 가 KO 첫 후보 */
+/* ── 음성 추천 — s2-voice-data.js 의 V2_VOICE_RECOMMEND / _v2GetRecommendCandidates 사용 ──
+   (legacy 객체 그대로 두면 카탈로그·필터·수동 picker 와 데이터가 어긋남) */
+function _v2RecCandidates(style, langKey) {
+  if (typeof window._v2GetRecommendCandidates === 'function') {
+    return window._v2GetRecommendCandidates(style, langKey);
+  }
+  return [];
+}
 function _v2RecOne(style, langKey) {
-  const arr = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
+  var arr = _v2RecCandidates(style, langKey);
   return arr[0] || null;
 }
 
@@ -146,8 +88,6 @@ function _studioS2Step(wrapId) {
     }
   }
 
-  const rec = V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional;
-
   /* 💡 추천 음성 API (provider 단위) — 장르/언어 → task 자동 매핑 */
   const _recTaskKey = _v2RecTaskKeyForProj({ style: style, lang: lang });
   const _recCardsHtml = (typeof window.renderRecommendationCards === 'function')
@@ -157,13 +97,12 @@ function _studioS2Step(wrapId) {
       })
     : '';
 
-  wrap.innerHTML = `
-  <div class="v2-wrap">
+  /* 🔌 API 연결 상태 + 🎚 탭 (auto/manual) */
+  const _apiStatusHtml = (typeof window.vasRenderStatusPanel === 'function')
+    ? window.vasRenderStatusPanel() : '';
 
-    <!-- 💡 추천 음성 API (provider) -->
-    ${_recCardsHtml}
-
-    <!-- AI 자동 추천 (이슈 1 — 후보 2~3개 카드 + 미리듣기 + 단일 적용 표시) -->
+  const _autoBodyHtml = `
+    <!-- AI 자동 추천 (이슈 1 — 후보 6+ 카드 + 미리듣기 + 단일 적용 표시) -->
     <div class="v2-recommend-banner">
       <div class="v2-rec-hd">
         🤖 AI 음성 자동 추천 — 후보 비교 후 1개 선택
@@ -171,7 +110,30 @@ function _studioS2Step(wrapId) {
       </div>
       ${lang !== 'ja' ? _v2RenderRecGroup('ko', style, _v2Voice.voiceKo, wrapId) : ''}
       ${lang !== 'ko' ? _v2RenderRecGroup('ja', style, _v2Voice.voiceJa, wrapId) : ''}
+    </div>`;
+
+  const _manualBodyHtml = (typeof window.vmpRenderPanel === 'function')
+    ? '<div id="vmpPanelHost">' + window.vmpRenderPanel() + '</div>'
+    : '<div class="v2-no-scenes">⚠️ 수동 음성 picker 모듈(s2-voice-manual-picker.js) 미로드</div>';
+
+  wrap.innerHTML = `
+  <div class="v2-wrap">
+
+    <!-- 🔌 API 연결 상태 -->
+    ${_apiStatusHtml}
+
+    <!-- 💡 추천 음성 API (provider) -->
+    ${_recCardsHtml}
+
+    <!-- 🎚 탭: 자동 추천 ↔ 수동 선택 -->
+    <div class="v2-tab-row">
+      <button type="button" class="v2-tab-btn ${_v2Tab==='auto'?'on':''}"
+        onclick="_v2SetTab('auto','${wrapId||'studioS2Wrap'}')">🤖 자동 추천</button>
+      <button type="button" class="v2-tab-btn ${_v2Tab==='manual'?'on':''}"
+        onclick="_v2SetTab('manual','${wrapId||'studioS2Wrap'}')">🎙 수동 선택</button>
     </div>
+
+    ${_v2Tab === 'manual' ? _manualBodyHtml : _autoBodyHtml}
 
     <!-- API + 속도 설정 -->
     <div class="v2-block">
@@ -333,7 +295,9 @@ function _v2RenderScene(scene, idx, wrapId) {
 }
 
 /* ════════════════════════════════════════════════
-   음성 생성
+   음성 생성 — 통합 dispatcher (_s2DispatchTts) 경유
+   * 통합 store(getApiProvider) → ucGetApiKey → legacy 순으로 키 조회
+   * provider 별 voice_id 도 함께 전달
    ════════════════════════════════════════════════ */
 async function _v2GenScene(idx, wrapId) {
   const proj  = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
@@ -344,32 +308,43 @@ async function _v2GenScene(idx, wrapId) {
   _studioS2Step(wrapId);
 
   try {
-    const text = scene.text || scene.caption || '';
-    const api  = _v2Voice.api || 'elevenlabs';
-    const spd  = _v2Voice.speed || 1.0;
+    const text  = scene.text || scene.caption || '';
+    const spd   = _v2Voice.speed || 1.0;
+    const route = _v2ResolveRoute();
 
-    let audioUrl = '';
-
-    if (api === 'elevenlabs') {
-      audioUrl = await _v2CallElevenLabs(text, spd);
-    } else if (api === 'openai') {
-      audioUrl = await _v2CallOpenAI(text, spd);
-    } else {
-      // Nijivoice 등 수동 안내
-      alert(`${api} 음성 생성은 API 연동 후 사용 가능합니다.`);
+    if (typeof window._s2DispatchTts !== 'function') {
+      throw new Error('TTS dispatcher (_s2DispatchTts) 미로드');
+    }
+    const res = await window._s2DispatchTts({
+      provider: route.dispatchProvider,
+      voiceId:  route.voiceId,
+      voice:    route.voiceId,    /* OpenAI 의 'voice' 인자 */
+      text:     text,
+      speed:    spd,
+    });
+    if (!res || !res.url) {
+      /* 키 미설정 등으로 dispatcher 가 안내 후 null 반환한 경우 */
       _v2Generating[idx] = false;
       _studioS2Step(wrapId);
       return;
     }
 
     if (typeof vqSaveSceneAudio === 'function') {
-      await vqSaveSceneAudio(idx, audioUrl);
+      await vqSaveSceneAudio(idx, res.url);
     } else {
       if (!_v2Voice.scenes) _v2Voice.scenes = [];
-      _v2Voice.scenes[idx] = { audioUrl, duration: 0 };
+      _v2Voice.scenes[idx] = { audioUrl: res.url, duration: 0 };
     }
+    /* STUDIO.project.s2.voiceResults 메타도 함께 기록 (s2-voice.js 와 동일 구조) */
+    proj.s2 = proj.s2 || {};
+    proj.s2.voiceResults = proj.s2.voiceResults || [];
+    proj.s2.voiceResults[idx] = {
+      sceneNumber: idx + 1, provider: res.provider, voiceId: res.voiceId,
+      audioUrl: res.url, status: 'done',
+    };
     proj.voice = _v2Voice;
     _v2Save();
+    try { console.log('[v2] tts ok scene', idx+1, '·', res.provider, '·', res.voiceId); } catch(_) {}
 
   } catch(err) {
     console.error('음성 생성 오류:', err);
@@ -391,81 +366,46 @@ async function _v2GenAll(wrapId) {
   }
 }
 
-/* ── ElevenLabs 호출 ── */
-async function _v2CallElevenLabs(text, speed) {
-  const key    = localStorage.getItem('el_api_key') ||
-                 localStorage.getItem('elevenlabs_key') || '';
-  const voiceId= _v2Voice.voiceKo || 'EXAVITQu4vr4xnSDxMaL'; // Rachel
+/* ── 현재 선택 → dispatcher 인자 (provider id + voice_id) ── */
+function _v2ResolveRoute() {
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  const lang = proj.lang || 'both';
+  /* 언어 따라 voiceKo / voiceJa 우선 */
+  const wantJa = (lang === 'ja');
+  const candId = wantJa ? (_v2Voice.voiceJa || _v2Voice.voiceKo)
+                        : (_v2Voice.voiceKo || _v2Voice.voiceJa);
+  const cand   = (typeof window._v2GetCandidateById === 'function')
+                  ? window._v2GetCandidateById(candId) : null;
 
-  if (!key) {
-    alert('ElevenLabs API 키를 설정 탭에서 입력해주세요.');
-    throw new Error('No ElevenLabs API key');
-  }
-
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': key,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text,
-      model_id: 'eleven_multilingual_v2',
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        speed,
-      },
-    }),
-  });
-
-  if (!res.ok) throw new Error(`ElevenLabs 오류: ${res.status}`);
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
-
-/* ── OpenAI TTS 호출 ── */
-async function _v2CallOpenAI(text, speed) {
-  const key  = localStorage.getItem('openai_key') || '';
-  const voice= 'nova'; // 기본 음성
-
-  if (!key) {
-    alert('OpenAI API 키를 설정 탭에서 입력해주세요.');
-    throw new Error('No OpenAI API key');
-  }
-
-  const res = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'tts-1',
-      input: text,
-      voice,
-      speed: Math.min(4.0, Math.max(0.25, speed)),
-    }),
-  });
-
-  if (!res.ok) throw new Error(`OpenAI TTS 오류: ${res.status}`);
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  /* 후보를 못 찾으면 _v2Voice.api 와 ElevenLabs 기본 voice 로 fallback */
+  const apiId  = _v2Voice.api || 'elevenlabs';
+  const provAbbr = cand ? cand.provider : (window._v2ProvAbbr ? window._v2ProvAbbr(apiId) : 'EL');
+  const dispatchProvider = (window._v2DispatchProvider ? window._v2DispatchProvider(provAbbr) : 'elevenlabs');
+  const voiceId = (cand && cand.voiceId)
+                || (wantJa ? (_v2Voice.voiceJaId || '') : (_v2Voice.voiceKoId || ''))
+                || (provAbbr === 'OA' ? 'nova' : '21m00Tcm4TlvDq8ikWAM');
+  return { provAbbr: provAbbr, dispatchProvider: dispatchProvider, voiceId: voiceId };
 }
 
 /* ════════════════════════════════════════════════
    헬퍼
    ════════════════════════════════════════════════ */
 function _v2DefaultVoice(style, lang, lenSec) {
-  const rec   = V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional;
+  const recKo = _v2RecCandidates(style, 'ko');
+  const recJa = _v2RecCandidates(style, 'ja');
   const speed = V2_SPEED_RECOMMEND[lenSec] || 1.0;
   const isSenior = style === 'senior';
   const bgm   = V2_BGM_RECOMMEND[style] || 'emotional_piano';
+  const firstKo = recKo[0] || {};
+  const firstJa = recJa[0] || {};
 
   return {
     api:      'elevenlabs',
-    voiceKo:  rec.ko.id,
-    voiceJa:  rec.ja.id,
+    voiceKo:  firstKo.id || '',
+    voiceJa:  firstJa.id || '',
+    voiceKoId: firstKo.voiceId || '',  /* 실제 provider voice_id (TTS 호출에 사용) */
+    voiceJaId: firstJa.voiceId || '',
+    provider: firstKo.provider || 'EL',
     speed:    isSenior ? Math.max(0.85, speed - 0.1) : speed,
     bgm,
     bgmVol:   30,
@@ -501,43 +441,62 @@ function _v2Save() {
   proj.voice = _v2Voice;
   /* 이슈 2 — STUDIO.project.s2 에 핵심 선택값 동기화 (씬별 음성 생성 시 읽힘) */
   if (!proj.s2) proj.s2 = {};
-  proj.s2.provider   = _v2Voice.provider || proj.s2.provider || 'elevenlabs';
+  /* dispatcher 가 읽는 provider id / voice_id 도 함께 동기화 */
+  const route = _v2ResolveRoute();
+  proj.s2.voiceProvider = route.dispatchProvider;
+  proj.s2.provider      = route.dispatchProvider;  /* legacy alias */
+  proj.s2.voiceId       = route.voiceId;
   proj.s2.voiceSpeed = _v2Voice.speed    || 1.0;
   proj.s2.voiceVol   = _v2Voice.voiceVol || proj.s2.voiceVol || 100;
   proj.s2.bgmVol     = _v2Voice.bgmVol   || proj.s2.bgmVol   || 30;
   proj.s2.bgm        = _v2Voice.bgm      || proj.s2.bgm      || '';
-  /* voice 필드는 _v2ApplyRecommend 에서 langKey 기준으로 설정 */
   if (typeof studioSave === 'function') studioSave();
 }
 
-/* ── 추천 그룹 렌더 (한 언어당 후보 2~3개 카드) ── */
+/* ── 탭 전환 (auto / manual) ── */
+window._v2SetTab = function(tab, wid) {
+  _v2Tab = (tab === 'manual') ? 'manual' : 'auto';
+  _studioS2Step(wid);
+};
+
+/* ── 추천 그룹 렌더 (한 언어당 후보 6+ 카드) ── */
 function _v2RenderRecGroup(langKey, style, currentVoiceId, wrapId) {
   const flag = langKey === 'ja' ? '🇯🇵' : '🇰🇷';
   const langLabel = langKey === 'ja' ? '일본어' : '한국어';
-  const candidates = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
+  const candidates = _v2RecCandidates(style, langKey);
   if (!candidates.length) return '';
+  const wid = wrapId || 'studioS2Wrap';
   return `
   <div class="v2-rec-group">
     <div class="v2-rec-group-hd">${flag} ${langLabel} 후보 (${candidates.length}개) — 1개 선택</div>
     <div class="v2-rec-cards">
       ${candidates.map(function(c){
         const isApplied = currentVoiceId === c.id;
-        const cdata = encodeURIComponent(JSON.stringify(c));
+        const genderLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[c.gender]) || c.gender;
+        const ageLabel    = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[c.age])       || c.age;
+        const fav = (typeof window.vfvIsFavorite === 'function') && window.vfvIsFavorite(c.id);
         return `
         <div class="v2-rec-card ${isApplied?'applied':''}"
-          onclick="_v2ApplyRecommend('${langKey}','${c.id}','${wrapId||'studioS2Wrap'}')">
+          onclick="_v2ApplyRecommend('${langKey}','${c.id}','${wid}')">
           <div class="v2-rec-card-hd">
             <span class="v2-rec-name">${c.label}</span>
             <span class="v2-rec-provider v2-prov-${c.provider}">${c.provider}</span>
+            <button type="button" class="v2-rec-fav ${fav?'on':''}"
+              onclick="event.stopPropagation();_v2ToggleFav('${langKey}','${c.id}','${wid}')"
+              title="즐겨찾기">★</button>
           </div>
-          <div class="v2-rec-desc">${c.desc}</div>
+          <div class="v2-rec-meta">
+            <span class="v2-rec-tag">${genderLabel}</span>
+            <span class="v2-rec-tag">${ageLabel}</span>
+          </div>
+          <div class="v2-rec-desc">${c.desc || ''}</div>
           <div class="v2-rec-actions">
             <button type="button" class="v2-rec-preview"
               onclick="event.stopPropagation();_v2PreviewById('${langKey}','${c.id}')">
               ▶ 미리듣기
             </button>
             <button type="button" class="v2-rec-apply ${isApplied?'on':''}"
-              onclick="event.stopPropagation();_v2ApplyRecommend('${langKey}','${c.id}','${wrapId||'studioS2Wrap'}')">
+              onclick="event.stopPropagation();_v2ApplyRecommend('${langKey}','${c.id}','${wid}')">
               ${isApplied?'✅ 적용됨':'적용'}
             </button>
           </div>
@@ -547,38 +506,63 @@ function _v2RenderRecGroup(langKey, style, currentVoiceId, wrapId) {
   </div>`;
 }
 
-/* ── 적용 (이슈 2: 단일 적용 + STUDIO.project.s2 통합 저장) ── */
-window._v2ApplyRecommend = function(langKey, voiceId, wid) {
-  const proj  = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
-  const style = proj.style || 'emotional';
-  const candidates = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
-  const found = candidates.find(function(c){ return c.id === voiceId; }) || candidates[0];
-  if (!found) return;
-  if (langKey === 'ko') _v2Voice.voiceKo = found.id;
-  if (langKey === 'ja') _v2Voice.voiceJa = found.id;
-  _v2Voice.provider = found.provider;
-  /* 후보 전체와 선택 상세를 STUDIO.project.s2 에 누적 저장 */
+/* ── 핵심 적용 — 자동·수동 picker 공통 ── */
+window._v2ApplyCandidate = function(cand, langKey) {
+  if (!cand) return;
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  const lk   = langKey === 'ja' ? 'ja' : 'ko';
+  if (lk === 'ko') {
+    _v2Voice.voiceKo   = cand.id;
+    _v2Voice.voiceKoId = cand.voiceId || '';
+  } else {
+    _v2Voice.voiceJa   = cand.id;
+    _v2Voice.voiceJaId = cand.voiceId || '';
+  }
+  /* api 라벨 동기화 — 세그먼트 버튼 표시용 */
+  const provAbbr = (cand.provider || 'EL').toUpperCase();
+  _v2Voice.api = (provAbbr === 'OA') ? 'openai'
+                : (provAbbr === 'NJ') ? 'nijivoice'
+                : (provAbbr === 'SS') ? 'system'
+                : 'elevenlabs';
+  _v2Voice.provider = provAbbr;
+  /* STUDIO.project.s2 풍부한 메타 보존 */
   if (!proj.s2) proj.s2 = {};
-  proj.s2.voice         = found.id;
-  proj.s2.voiceLabel    = found.label;
-  proj.s2.voiceLang     = langKey === 'ja' ? 'JP' : 'KR';
-  proj.s2.provider      = found.provider;
-  proj.s2.voiceSpeed    = _v2Voice.speed || 1.0;
-  if (!proj.s2.voiceCandidates) proj.s2.voiceCandidates = {};
-  proj.s2.voiceCandidates[langKey] = candidates;
+  proj.s2.voice      = cand.id;
+  proj.s2.voiceLabel = cand.label;
+  proj.s2.voiceLang  = lk === 'ja' ? 'JP' : 'KR';
+  proj.s2.voiceGender= cand.gender;
+  proj.s2.voiceAge   = cand.age;
   _v2Save();
+};
+
+/* ── 적용 (자동 추천 카드 클릭) — _v2ApplyCandidate 위임 ── */
+window._v2ApplyRecommend = function(langKey, voiceId, wid) {
+  const cand = (typeof window._v2GetCandidateById === 'function')
+                ? window._v2GetCandidateById(voiceId) : null;
+  if (!cand) return;
+  window._v2ApplyCandidate(cand, langKey);
+  if (typeof window.vfvAddRecent === 'function') window.vfvAddRecent(cand, langKey);
+  _studioS2Step(wid);
+};
+
+/* ── 즐겨찾기 토글 (자동 추천 카드의 ★) ── */
+window._v2ToggleFav = function(langKey, voiceId, wid) {
+  const cand = (typeof window._v2GetCandidateById === 'function')
+                ? window._v2GetCandidateById(voiceId) : null;
+  if (!cand) return;
+  if (typeof window.vfvToggleFavorite === 'function') {
+    window.vfvToggleFavorite(cand, langKey);
+  }
   _studioS2Step(wid);
 };
 
 /* ── 미리듣기 (s2-voice-preview.js 의 _v2Preview 호출) ── */
 window._v2PreviewById = function(langKey, voiceId) {
-  const proj  = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
-  const style = proj.style || 'emotional';
-  const candidates = ((V2_VOICE_RECOMMEND[style] || V2_VOICE_RECOMMEND.emotional)[langKey]) || [];
-  const found = candidates.find(function(c){ return c.id === voiceId; });
-  if (!found) return;
+  const cand = (typeof window._v2GetCandidateById === 'function')
+                ? window._v2GetCandidateById(voiceId) : null;
+  if (!cand) return;
   if (typeof window._v2Preview === 'function') {
-    window._v2Preview(found, langKey);
+    window._v2Preview(cand, langKey);
   } else {
     alert('🔊 미리듣기 모듈(s2-voice-preview.js)이 로드되지 않았습니다.');
   }
@@ -694,6 +678,18 @@ function _v2InjectCSS() {
 .v2-prov-NJ{background:#fff1f8;color:#c0357a}
 .v2-prov-CV{background:#f0fdf4;color:#16a34a}
 .v2-rec-card .v2-rec-desc{font-size:11px;color:#7b7077;line-height:1.4;min-height:32px}
+.v2-rec-meta{display:flex;gap:4px;flex-wrap:wrap}
+.v2-rec-tag{font-size:10px;padding:2px 7px;background:#f6eef3;color:#7b7077;border-radius:20px;font-weight:600}
+.v2-rec-fav{border:none;background:transparent;font-size:14px;cursor:pointer;color:#d1d5db;padding:0;line-height:1;margin-left:auto}
+.v2-rec-fav.on{color:#fbbf24}
+
+/* 탭 (auto / manual) */
+.v2-tab-row{display:flex;gap:6px;border-bottom:1.5px solid #f1dce7;padding-bottom:0}
+.v2-tab-btn{padding:8px 16px;border:none;background:transparent;font-size:12px;font-weight:800;
+  color:#9b8a93;cursor:pointer;border-bottom:2px solid transparent;transition:.14s;font-family:inherit}
+.v2-tab-btn:hover{color:#9181ff}
+.v2-tab-btn.on{color:#ef6fab;border-bottom-color:#ef6fab}
+
 .v2-rec-actions{display:flex;gap:4px;margin-top:auto}
 .v2-rec-preview{flex:1;padding:5px 8px;border:1.5px solid #f1dce7;border-radius:8px;
   background:#fff;font-size:10.5px;font-weight:700;color:#5a4a56;cursor:pointer;
