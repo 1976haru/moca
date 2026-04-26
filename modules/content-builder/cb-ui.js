@@ -5,11 +5,14 @@
 (function(){
   'use strict';
 
+  /* 신규 8탭 — 결과물 중심 흐름 (목적 → 예시 → 블록 → 디자인보드 → 슬롯 → 스타일 → 미리보기 → 출력)
+     기존 t1 소스 가져오기 / t2 AI 레시피 / t3 템플릿 함수는 alias로 보존
+     (cbRenderTab1Source / cbRenderTab2Recipes / cbRenderTab3Templates) */
   const CB_TABS = [
-    { id:'t1', icon:'📥', label:'소스 가져오기' },
-    { id:'t2', icon:'🍳', label:'AI 레시피' },
-    { id:'t3', icon:'📄', label:'템플릿' },
-    { id:'t4', icon:'🧱', label:'블록 구성' },
+    { id:'t1', icon:'🎯', label:'목적 선택' },
+    { id:'t2', icon:'🎨', label:'예시 갤러리' },
+    { id:'t3', icon:'🧱', label:'블록 구성' },
+    { id:'t4', icon:'🪄', label:'AI 디자인 보드' },
     { id:'t5', icon:'🖼', label:'미디어 슬롯' },
     { id:'t6', icon:'🎨', label:'스타일' },
     { id:'t7', icon:'👁', label:'미리보기·검수' },
@@ -65,15 +68,23 @@
     const body = document.getElementById('cbBody');
     if (!body) return;
 
+    /* legacy 함수 alias 보존 — 기존 cbRenderTab1/2/3 가 source/recipes/templates 였음 */
+    if (window.cbRenderTab1 && !window.cbRenderTab1Source)    window.cbRenderTab1Source    = window.cbRenderTab1;
+    if (window.cbRenderTab2 && !window.cbRenderTab2Recipes)   window.cbRenderTab2Recipes   = window.cbRenderTab2;
+    if (window.cbRenderTab3 && !window.cbRenderTab3Templates) window.cbRenderTab3Templates = window.cbRenderTab3;
+    /* 신규 t4 AI 디자인 보드 — 별도 렌더 없으면 templates(legacy t3)로 폴백 */
+    if (!window.cbRenderTab4Designboard && window.cbRenderTab3Templates) {
+      window.cbRenderTab4Designboard = window.cbRenderTab3Templates;
+    }
     const renderMap = {
-      t1: window.cbRenderTab1,   /* recipes 의 source 입력 */
-      t2: window.cbRenderTab2,   /* recipes 의 AI 레시피 */
-      t3: window.cbRenderTab3,   /* templates */
-      t4: window.cbRenderTab4,   /* blocks */
-      t5: window.cbRenderTab5,   /* slots */
-      t6: window.cbRenderTab6,   /* style */
-      t7: window.cbRenderTab7,   /* preview·quality */
-      t8: window.cbRenderTab8,   /* output */
+      t1: window.cbRenderTab1Purpose    || window.cbRenderTab1,    /* 신규: 목적 선택 */
+      t2: window.cbRenderTab2Examples   || window.cbRenderTab2,    /* 신규: 예시 갤러리 */
+      t3: window.cbRenderTab4           || window.cbRenderTab3,    /* 블록 구성 (legacy cbRenderTab4) */
+      t4: window.cbRenderTab4Designboard|| window.cbRenderTab3,    /* AI 디자인 보드 = templates 폴백 */
+      t5: window.cbRenderTab5,                                      /* 미디어 슬롯 */
+      t6: window.cbRenderTab6,                                      /* 스타일 */
+      t7: window.cbRenderTab7,                                      /* 미리보기·검수 */
+      t8: window.cbRenderTab8,                                      /* 출력 */
     };
     const fn = renderMap[tabId];
     if (typeof fn === 'function') {
