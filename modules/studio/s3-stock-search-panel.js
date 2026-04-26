@@ -102,39 +102,56 @@
 
     /* status banner — 초기 진입 시 안내, 로딩은 fetch 중에만 */
     var statusHtml = '';
-    if (STATE.status === 'loading') statusHtml = '<div class="s3ss-status s3ss-loading">🔍 스톡 검색 중...</div>';
+    var sceneNoMsg = (STATE.sceneIdx === 'all' || STATE.sceneIdx == null) ? '' : ((STATE.sceneIdx|0) + 1);
+    if (STATE.status === 'loading') statusHtml = '<div class="s3ss-status s3ss-loading">🔍 씬 ' + (sceneNoMsg||'?') + ' 스톡 검색 중...</div>';
     else if (STATE.status === 'no-results') statusHtml = '<div class="s3ss-status s3ss-empty">📭 검색 결과가 없습니다. 검색어를 수정하거나 다른 provider를 선택해주세요.</div>';
     else if (STATE.status === 'error') statusHtml = '<div class="s3ss-status s3ss-err">❌ 스톡 검색 중 오류가 발생했습니다. API 설정과 검색어를 확인해주세요. (' + _esc(STATE.errorMsg || '') + ')</div>';
-    else if (STATE.status === 'ok') statusHtml = '<div class="s3ss-status s3ss-ok">✅ 검색 결과 ' + STATE.results.length + '건</div>';
-    else if (!scenes.length) statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 대본 씬을 찾지 못했습니다. 현재 저장된 s1/s3 데이터를 확인해주세요.</div>';
-    else if (STATE.sceneIdx === 'all') statusHtml = '<div class="s3ss-status s3ss-init">📋 전체 씬의 프롬프트를 미리보고, 원하는 씬을 선택해 스톡 검색할 수 있습니다.</div>';
-    else if (STATE.query) statusHtml = '<div class="s3ss-status s3ss-init">✅ 현재 씬 프롬프트로 검색어를 만들었습니다. "🔍 스톡 검색" 버튼을 누르세요.</div>';
-    else statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 검색어를 만들 수 없습니다. 이미지/영상 프롬프트를 먼저 컴파일해주세요.</div>';
+    else if (STATE.status === 'ok') statusHtml = '<div class="s3ss-status s3ss-ok">✅ 씬 ' + sceneNoMsg + ' 검색 결과 ' + STATE.results.length + '건</div>';
+    else if (!scenes.length) statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 현재 저장된 s1/s3 데이터에서 씬을 찾지 못했습니다. 상단 소스 현황 데이터와 resolver 경로를 확인해주세요.</div>';
+    else if (STATE.sceneIdx === 'all') statusHtml = '<div class="s3ss-status s3ss-init">📋 전체 씬의 프롬프트를 미리보고, 원하는 씬만 스톡 검색할 수 있습니다.</div>';
+    else if (STATE.query) statusHtml = '<div class="s3ss-status s3ss-init">✅ 현재 씬 프롬프트를 스톡 검색어로 변환했습니다. "🔍 스톡 검색" 버튼을 누르세요.</div>';
+    else statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 검색어를 만들 수 없습니다. 프롬프트를 먼저 컴파일하거나 직접 입력해주세요.</div>';
 
     /* results grid */
     var resultsHtml = '';
     if (STATE.results.length) {
-      resultsHtml = STATE.results.map(function(item, i){
+      var sceneNoForBtn = (STATE.sceneIdx === 'all' || STATE.sceneIdx == null)
+                         ? 1 : ((STATE.sceneIdx|0) + 1);
+      var headerHtml =
+        '<div class="s3ss-results-hd">' +
+          '<span class="s3ss-results-hd-title">씬 ' + sceneNoForBtn + ' 검색 결과 ' + STATE.results.length + '건</span>' +
+          '<button class="s3ss-results-hd-btn" onclick="sspResearchScene(' + (STATE.sceneIdx === 'all' ? 0 : STATE.sceneIdx|0) + ')" title="현재 씬 query 로 다시 검색">🔄 다른 결과 보기</button>' +
+          '<button class="s3ss-results-hd-btn" onclick="sspEditQuery(' + (STATE.sceneIdx === 'all' ? 0 : STATE.sceneIdx|0) + ')" title="검색어 직접 수정">✏️ 검색어 수정</button>' +
+        '</div>';
+      var ratioBadge = function(item){
+        if (!(item.width && item.height)) return '';
+        var g = (function(a,b){return b?arguments.callee(b,a%b):a;})(item.width, item.height);
+        return '<span class="s3ss-result-ratio">'+(item.width/g)+':'+(item.height/g)+'</span>';
+      };
+      var cardsHtml = STATE.results.map(function(item, i){
         var typeBadge = item.type === 'video' ? '🎬' : '📷';
         var thumbHtml = item.type === 'video'
-          ? '<div class="s3ss-result-thumb s3ss-vid">' +
+          ? '<div class="s3ss-result-thumb s3ss-vid" onclick="sspOpenPreview('+i+')">' +
               (item.thumb ? '<img src="'+_escAttr(item.thumb)+'" alt="" onerror="this.style.display=\'none\'">' : '') +
               '<span class="s3ss-vid-icon">▶</span>' +
               (item.duration ? '<span class="s3ss-vid-dur">'+item.duration+'s</span>' : '') +
             '</div>'
-          : '<div class="s3ss-result-thumb"><img src="'+_escAttr(item.thumb)+'" alt="" onerror="this.style.display=\'none\'"></div>';
+          : '<div class="s3ss-result-thumb" onclick="sspOpenPreview('+i+')"><img src="'+_escAttr(item.thumb)+'" alt="" onerror="this.style.display=\'none\'"></div>';
         return '<div class="s3ss-result-card">' +
           thumbHtml +
           '<div class="s3ss-result-meta">' +
             '<span class="s3ss-result-prov">' + typeBadge + ' ' + _esc(item.provider) + '</span>' +
+            ratioBadge(item) +
             (item.credit ? '<span class="s3ss-result-credit">' + _esc(item.credit) + '</span>' : '') +
           '</div>' +
           '<div class="s3ss-result-actions">' +
             '<button class="s3ss-result-btn pri" onclick="s3SsAdoptResult('+i+')">씬에 적용</button>' +
+            '<button class="s3ss-result-btn" onclick="sspOpenPreview('+i+')">🔍 미리보기</button>' +
             (item.creditUrl ? '<a class="s3ss-result-btn" href="'+_escAttr(item.creditUrl)+'" target="_blank" rel="noopener">출처</a>' : '') +
           '</div>' +
         '</div>';
       }).join('');
+      resultsHtml = headerHtml + '<div class="s3ss-results-grid">' + cardsHtml + '</div>';
     }
 
     return '<div class="s3ss-wrap">' +
@@ -271,7 +288,11 @@
       STATE.sceneIdx = parseInt(v, 10);
       if (!Number.isFinite(STATE.sceneIdx)) STATE.sceneIdx = 0;
       _autoFillQuery();
+      /* DOM input 즉시 반영 — 사용자가 다른 씬으로 바꾸면 input.value 도 따라 변경 */
+      var input = document.querySelector('#s3-stock-panel .s3ss-query, #s3ss-holder .s3ss-query');
+      if (input) input.value = STATE.query;
     }
+    try { console.debug('[stock-ui] selectedSceneIndex:', STATE.sceneIdx); } catch(_) {}
     _refresh();
   };
   window.s3SsSetType = function(t) {
@@ -365,10 +386,24 @@
      검색 실행
      ════════════════════════════════════════════════ */
   window.s3SsSearch = async function() {
+    /* 전체 씬 모드에서 검색 시도 — 첫 씬으로 fallback + query 자동 생성 */
+    if (STATE.sceneIdx === 'all' || STATE.sceneIdx == null) {
+      var scenes2 = (typeof window.resolveStudioScenes === 'function') ? window.resolveStudioScenes() : [];
+      if (scenes2.length) {
+        STATE.sceneIdx = scenes2[0].sceneIndex;
+        _autoFillQuery();
+      }
+    }
+    /* query 비면 자동 생성 시도 */
+    if ((!STATE.query || !STATE.query.trim()) && typeof window.buildStockSearchQuery === 'function' && STATE.sceneIdx !== 'all') {
+      var built = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type, force:true });
+      if (built && built.query) STATE.query = built.query;
+    }
     if (!STATE.query || !STATE.query.trim()) {
-      alert('현재 씬에서 검색어를 만들 수 없습니다. 이미지 또는 영상 프롬프트를 먼저 생성해주세요.');
+      _toast('⚠️ 검색어를 만들 수 없습니다. 프롬프트를 먼저 컴파일하거나 직접 입력해주세요.', 'warn');
       return;
     }
+    try { console.debug('[stock-ui] selectedSceneIndex:', STATE.sceneIdx); } catch(_) {}
     /* 키 확인 */
     var keyOk = (typeof window.hasApiKey === 'function') ? window.hasApiKey('stock', STATE.provider) : true;
     if (!keyOk) {
@@ -492,32 +527,31 @@
   }
 
   /* ════════════════════════════════════════════════
-     결과 채택 — adoptSceneImage
+     결과 채택 — sspApplyResult 위임 (통합 schema 저장)
      ════════════════════════════════════════════════ */
   window.s3SsAdoptResult = function(idx) {
     var item = STATE.results[idx];
     if (!item) return;
-    var sceneIdx = STATE.sceneIdx;
-    if (typeof window.adoptSceneImage !== 'function') {
-      alert('s3-scene-image-state.js 가 로드되지 않았습니다.');
+    if (STATE.sceneIdx === 'all' || STATE.sceneIdx == null) {
+      _toast('⚠️ 먼저 적용할 씬을 선택해주세요. (전체 미리보기 모드)', 'warn');
       return;
     }
-    var ok = window.adoptSceneImage(sceneIdx, {
-      url: item.url || item.thumb,
-      thumbUrl: item.thumb,
-      previewUrl: item.previewUrl || item.thumb,
-      fullUrl: item.fullUrl || item.url,
-      provider: item.provider,
-      type: item.type,
-      credit: item.credit,
-      creditUrl: item.creditUrl,
-      width: item.width || 0,
-      height: item.height || 0,
-      aspectRatio: '',
-    }, 'stock');
-    if (ok && typeof ucShowToast === 'function') {
-      ucShowToast('✅ 씬 ' + (sceneIdx+1) + ' 에 ' + item.provider + ' 채택', 'success');
+    /* preview 모듈이 통합 schema 로 저장 + adoptSceneImage 위임 */
+    if (typeof window.sspApplyResult === 'function') {
+      window.sspApplyResult(idx); return;
     }
+    /* fallback — 모듈 미로드 시 직접 adoptSceneImage */
+    if (typeof window.adoptSceneImage !== 'function') {
+      alert('s3-scene-image-state.js / s3-stock-preview.js 모두 로드되지 않았습니다.');
+      return;
+    }
+    var ok = window.adoptSceneImage(STATE.sceneIdx, {
+      url: item.url || item.thumb, thumbUrl: item.thumb,
+      previewUrl: item.previewUrl || item.thumb, fullUrl: item.fullUrl || item.url,
+      provider: item.provider, type: item.type, credit: item.credit,
+      creditUrl: item.creditUrl, width: item.width || 0, height: item.height || 0, aspectRatio: '',
+    }, 'stock');
+    if (ok) _toast('✅ 씬 ' + (STATE.sceneIdx+1) + ' 에 ' + item.provider + ' 채택', 'success');
     if (typeof window.renderStudio === 'function') window.renderStudio();
   };
 
@@ -598,7 +632,15 @@
       '.s3ss-pp-btn:hover{border-color:#9181ff;color:#9181ff}'+
       '.s3ss-pp-btn.pri{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border:none}'+
       '.s3ss-pp-btn.pri:hover{opacity:.92;color:#fff}'+
-      '.s3ss-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:6px}'+
+      '.s3ss-results{display:flex;flex-direction:column;gap:8px;margin-top:6px}'+
+      '.s3ss-results-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff5fa;border:1px solid #f1dce7;border-radius:10px;padding:8px 12px}'+
+      '.s3ss-results-hd-title{font-weight:800;color:#5b1a4a;font-size:12px;flex:1}'+
+      '.s3ss-results-hd-btn{border:1.5px solid #ef6fab;background:#fff;color:#5b1a4a;border-radius:20px;padding:5px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit}'+
+      '.s3ss-results-hd-btn:hover{background:#ef6fab;color:#fff}'+
+      '.s3ss-results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}'+
+      '.s3ss-result-thumb{cursor:pointer}'+
+      '.s3ss-result-thumb:hover img{transform:scale(1.04);transition:.2s}'+
+      '.s3ss-result-ratio{font-size:9.5px;color:#9b8a93;background:#fafafe;padding:1px 6px;border-radius:6px;font-weight:700}'+
       '.s3ss-result-card{background:#fff;border:1px solid #ece6f5;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}'+
       '.s3ss-result-thumb{position:relative;aspect-ratio:16/9;background:#1a1a2e;display:flex;align-items:center;justify-content:center;overflow:hidden}'+
       '.s3ss-result-thumb img{width:100%;height:100%;object-fit:cover;display:block}'+
