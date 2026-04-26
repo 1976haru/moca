@@ -50,6 +50,7 @@
       pika:         'uc_pika_key',
       luma:         'uc_luma_key',
       minimax_video:'uc_minimax_key',
+      magiclight:   'uc_magiclight_key',
     },
     music: {
       suno: 'uc_suno_key',

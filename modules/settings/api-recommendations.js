@@ -35,6 +35,7 @@
       luma:      { priceHint:'중간',   unit:'초',    notes:'자연 모션' },
       heygen:    { priceHint:'고비용', unit:'분',    notes:'아바타 영상' },
       invideo:   { priceHint:'저비용', unit:'분',    notes:'템플릿 영상' },
+      magiclight:{ priceHint:'중간',   unit:'credit',notes:'스토리/캐릭터 (실험적)' },
       /* 음성 */
       elevenlabs:{ priceHint:'고비용', unit:'문자',  notes:'감정·캐릭터 강점' },
       openaiTts: { priceHint:'저비용', unit:'문자',  notes:'대량·안정' },
@@ -74,6 +75,7 @@
       luma:    { label:'Luma',      legacyKey:'uc_luma_key',    strengths:['자연 모션','루프'],     scores:{quality:8, speed:7, stability:8, cost:6} },
       heygen:  { label:'HeyGen',    legacyKey:'uc_heygen_key',  strengths:['아바타','한일'],         scores:{quality:8, speed:7, stability:8, cost:3} },
       invideo: { label:'InVideo',   legacyKey:'',               strengths:['템플릿','수동연동'],     scores:{quality:6, speed:9, stability:8, cost:9} },
+      magiclight: { label:'Magiclight', legacyKey:'uc_magiclight_key', strengths:['스토리','캐릭터 일관성','이미지→영상','애니메이션'], scores:{quality:8, speed:7, stability:7, cost:5} },
     },
     voice: {
       elevenlabs:{ label:'ElevenLabs', legacyKey:'uc_eleven_key',     strengths:['감정','한국어','캐릭터'], scores:{quality:10,speed:8, stability:9, cost:3} },
@@ -127,6 +129,10 @@
                    reason:'립싱크·아바타' },
       template:  { label:'템플릿 빠른 영상',         priority:'speed_low_cost', recommended:['invideo','pika','luma'],
                    reason:'템플릿 기반 빠른 제작' },
+      story:     { label:'스토리/캐릭터 영상',       priority:'story_character',recommended:['magiclight','runway','pika'],
+                   reason:'긴 스토리 + 캐릭터 일관성 + 이미지→영상' },
+      character: { label:'캐릭터/애니메이션',         priority:'character',      recommended:['magiclight','pika','luma'],
+                   reason:'캐릭터 중심 애니메이션·동물 캐릭터' },
     },
     voice: {
       seniorEmotion: { label:'시니어 감동 내레이션', priority:'emotion_quality',recommended:['elevenlabs','openaiTts','nijivoice'],

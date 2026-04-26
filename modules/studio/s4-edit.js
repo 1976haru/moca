@@ -106,6 +106,7 @@ function _studioS4Edit(wrapId) {
         ['t4','🎬 영상 구성'],
         ['t5','🎵 BGM·음향'],
         ['t6','🎯 편집 전략'],
+        ['t7','🎬 Magiclight'],
       ].map(([id,label]) => `
         <button class="s4e-tab ${_s4Tab===id?'on':''}"
           onclick="_s4eSetTab('${id}','${wrapId||'studioS4EditWrap'}')">${label}</button>
@@ -119,6 +120,7 @@ function _studioS4Edit(wrapId) {
       ${_s4Tab==='t4' ? _s4eT4Compose()                        : ''}
       ${_s4Tab==='t5' ? _s4eT5Audio()                          : ''}
       ${_s4Tab==='t6' ? '<div id="studioS4StrategyWrap"></div>' : ''}
+      ${_s4Tab==='t7' ? '<div id="s4-magiclight-host"></div>'   : ''}
     </div>
 
     <div class="s4e-footer">
@@ -136,6 +138,13 @@ function _studioS4Edit(wrapId) {
   /* TAB 6: s4-strategy.js 의 _studioS4Strategy(wrapId) 로 패널 주입 */
   if (_s4Tab === 't6' && typeof _studioS4Strategy === 'function') {
     _studioS4Strategy('studioS4StrategyWrap');
+  }
+  /* TAB 7: s4-magiclight-panel.js 의 s4mlRenderPanel(hostId) 로 패널 주입 */
+  if (_s4Tab === 't7' && typeof window.s4mlRenderPanel === 'function') {
+    window.s4mlRenderPanel('s4-magiclight-host');
+  } else if (_s4Tab === 't7') {
+    var host = document.getElementById('s4-magiclight-host');
+    if (host) host.innerHTML = '<div style="padding:12px;color:#92400e;background:#fef3c7;border-radius:10px;font-size:12px">⚠️ Magiclight 모듈이 로드되지 않았습니다. (s4-magiclight-panel.js)</div>';
   }
 }
 
