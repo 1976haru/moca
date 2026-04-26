@@ -8,8 +8,42 @@
    - 품질 점수 연동 (studio-quality.js)
    ================================================ */
 
+/* ── 레퍼런스 기반 영상 스타일 (s3-video-reference-style.js V_REF_STYLE 키) ── */
+const S3VT_REF_STYLES = [
+  { id:'realperson',  label:'실사 인물' },
+  { id:'animation',   label:'애니메이션' },
+  { id:'animal',      label:'동물 캐릭터' },
+  { id:'character3d', label:'3D 캐릭터' },
+  { id:'avatar',      label:'아바타' },
+  { id:'none',        label:'없음 (배경/오브젝트)' },
+];
+let _s3vtRefStyle = 'realperson';
+let _s3vtRefMods  = { comic:false, emotional:false, fastCut:false, safeArea:true };
+window._s3vtRefStyle = _s3vtRefStyle;
+window._s3vtRefMods  = _s3vtRefMods;
+
 /* ── 도구별 프롬프트 템플릿 ── */
 const S3VT_TOOLS = {
+  reference: {
+    label: '🎬 레퍼런스 기반',
+    ico:   '🎬',
+    type:  'auto',
+    url:   '',
+    template: function(scene, char, style) {
+      var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+      var refAnalysis = (proj.s1 && proj.s1.referenceAnalysis) || null;
+      if (typeof window.compileReferenceVideoPrompt !== 'function') {
+        return (scene.desc || scene.label || '') + ' [레퍼런스 컴파일러 미로드]';
+      }
+      var built = window.compileReferenceVideoPrompt(scene, refAnalysis, {
+        styleId:    _s3vtRefStyle,
+        modifiers:  _s3vtRefMods,
+        sceneIndex: scene.idx,
+      });
+      return built && built.prompt ? built.prompt : '';
+    },
+    tips: ['Step 1 유튜브 레퍼런스 분석 결과 + 선택 스타일 자동 반영', '주 피사체·동작·표정·카메라·배경·자막영역 모두 포함'],
+  },
   runway: {
     label: 'Runway ML',
     ico: '⚡',
@@ -277,6 +311,7 @@ function _s3vtRenderStyleSettings() {
 function _s3vtRenderScenePrompts(scenes, char, wrapId) {
   const tool   = S3VT_TOOLS[_s3vtTool];
   const isManual = tool?.type === 'manual';
+  const isReference = _s3vtTool === 'reference';
 
   // 스타일 객체 변환
   const styleObj = {
@@ -289,13 +324,46 @@ function _s3vtRenderScenePrompts(scenes, char, wrapId) {
     lang:       _s3vtStyle.lang,
   };
 
-  const prompts = scenes.map(s => tool?.template(s, char, styleObj) || '');
+  /* sceneIdx 주입 — reference 컴파일러가 scene index 사용 */
+  scenes.forEach(function(s, i){ if (s.idx == null) s.idx = i; });
+
+  /* reference 모드면 컴파일러로 일괄 빌드 + 메타 함께 저장 */
+  let prompts, builtMeta = [];
+  if (isReference && typeof window.compileAllReferenceVideoPrompts === 'function') {
+    var proj0 = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+    var refAnalysis = (proj0.s1 && proj0.s1.referenceAnalysis) || null;
+    builtMeta = window.compileAllReferenceVideoPrompts(scenes, refAnalysis, {
+      styleId:   _s3vtRefStyle,
+      modifiers: _s3vtRefMods,
+    });
+    prompts = builtMeta.map(function(b){ return b.prompt; });
+  } else {
+    prompts = scenes.map(s => tool?.template(s, char, styleObj) || '');
+  }
 
   // STUDIO.project에 저장
   const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   proj.videoPrompts = scenes.map((s,i) => ({
     sceneIdx: i, prompt: prompts[i], tool: _s3vtTool,
   }));
+  /* s3.videoPrompts (resolver/stock-query 호환) + scenePrompts 메타 보강 */
+  proj.s3 = proj.s3 || {};
+  proj.s3.videoPrompts = prompts.slice();
+  proj.s3.scenePrompts = proj.s3.scenePrompts || [];
+  scenes.forEach(function(s, i){
+    var existing = proj.s3.scenePrompts[i] || {};
+    var meta = builtMeta[i] || {};
+    proj.s3.scenePrompts[i] = Object.assign({}, existing, {
+      sceneIndex:       i,
+      videoPrompt:      prompts[i],
+      motionSummary:    meta.motionSummary || existing.motionSummary || '',
+      cameraCue:        meta.cameraCue || existing.cameraCue || '',
+      sfxCue:           meta.sfxCue || existing.sfxCue || '',
+      captionSafeArea:  meta.captionSafeArea != null ? meta.captionSafeArea : (existing.captionSafeArea || false),
+      source:           isReference ? 'youtube_reference_adapt' : (existing.source || _s3vtTool),
+    });
+  });
+  if (typeof window.studioSave === 'function') window.studioSave();
 
   // 품질 계산
   if (typeof sqCalcVideoPrompt === 'function') {
@@ -304,12 +372,47 @@ function _s3vtRenderScenePrompts(scenes, char, wrapId) {
 
   const allPrompts = prompts.join('\n\n---\n\n');
 
+  /* reference 모드 modifier 툴바 */
+  const refToolbarHtml = isReference ? `
+    <div class="s3vt-ref-toolbar">
+      <div class="s3vt-ref-row">
+        <span class="s3vt-ref-label">📺 영상 스타일</span>
+        <div class="s3vt-seg">
+          ${S3VT_REF_STYLES.map(s => `
+            <button type="button" class="s3vt-seg-btn ${_s3vtRefStyle===s.id?'on':''}"
+              onclick="_s3vtSetRefStyle('${s.id}','${wrapId||'studioS3VTWrap'}')">${s.label}</button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="s3vt-ref-row">
+        <span class="s3vt-ref-label">🎚 표현 강조</span>
+        <div class="s3vt-seg">
+          <button type="button" class="s3vt-seg-btn ${_s3vtRefMods.comic?'on':''}"
+            onclick="_s3vtToggleRefMod('comic','${wrapId||'studioS3VTWrap'}')">😄 더 코믹하게</button>
+          <button type="button" class="s3vt-seg-btn ${_s3vtRefMods.emotional?'on':''}"
+            onclick="_s3vtToggleRefMod('emotional','${wrapId||'studioS3VTWrap'}')">💝 더 감동적으로</button>
+          <button type="button" class="s3vt-seg-btn ${_s3vtRefMods.fastCut?'on':''}"
+            onclick="_s3vtToggleRefMod('fastCut','${wrapId||'studioS3VTWrap'}')">⚡ 더 빠른 컷 리듬</button>
+          <button type="button" class="s3vt-seg-btn ${_s3vtRefMods.safeArea?'on':''}"
+            onclick="_s3vtToggleRefMod('safeArea','${wrapId||'studioS3VTWrap'}')">📐 자막 공간 확보</button>
+        </div>
+      </div>
+      <div class="s3vt-ref-row">
+        <button type="button" class="s3vt-btn-outline"
+          onclick="_s3vtRegenAllRef('${wrapId||'studioS3VTWrap'}')">🔄 전체 영상 프롬프트 재생성</button>
+        <button type="button" class="s3vt-btn-outline"
+          onclick="_s3vtApplyRefStyleToAll('${wrapId||'studioS3VTWrap'}')">🎬 레퍼런스 스타일 반영</button>
+      </div>
+    </div>` : '';
+
   return `
   <div class="s3vt-block">
     <div class="s3vt-label">
       📋 씬별 프롬프트
       ${tool ? `<span class="s3vt-tool-badge">${tool.ico} ${tool.label}</span>` : ''}
     </div>
+
+    ${refToolbarHtml}
 
     <!-- 전체 복사 -->
     <div class="s3vt-all-row">
@@ -453,6 +556,22 @@ window._s3vtRegenPrompt = function(idx, wid) {
 };
 
 /* ── CSS ── */
+function _s3vtInjectCSS_refToolbar() {
+  if (document.getElementById('s3vt-ref-style')) return;
+  var st = document.createElement('style');
+  st.id = 's3vt-ref-style';
+  st.textContent = ''+
+'.s3vt-ref-toolbar{background:linear-gradient(135deg,#fff5fa,#f5f0ff);border:1.5px solid #e8d9f5;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;margin-bottom:8px}'+
+'.s3vt-ref-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'+
+'.s3vt-ref-label{font-size:11px;font-weight:800;color:#5b1a4a;min-width:90px}'+
+'';
+  document.head.appendChild(st);
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _s3vtInjectCSS_refToolbar);
+  else _s3vtInjectCSS_refToolbar();
+}
+
 function _s3vtInjectCSS() {
   if (document.getElementById('s3vt-style')) return;
   const st = document.createElement('style');
@@ -509,3 +628,76 @@ function _s3vtInjectCSS() {
 }
 
 window._studioS3VideoTools = _studioS3VideoTools;
+
+/* ── reference 모드 modifier 핸들러 ── */
+window._s3vtSetRefStyle = function(styleId, wid) {
+  _s3vtRefStyle = styleId; window._s3vtRefStyle = _s3vtRefStyle;
+  try { console.debug('[s3vt-ref] style →', styleId); } catch(_) {}
+  _studioS3VideoTools(wid);
+};
+window._s3vtToggleRefMod = function(key, wid) {
+  _s3vtRefMods[key] = !_s3vtRefMods[key];
+  window._s3vtRefMods = _s3vtRefMods;
+  try { console.debug('[s3vt-ref] modifier:', key, '→', _s3vtRefMods[key]); } catch(_) {}
+  _studioS3VideoTools(wid);
+};
+window._s3vtRegenAllRef = function(wid) {
+  /* 단순히 다시 그리면 컴파일러가 다시 실행되어 prompt 갱신 */
+  _studioS3VideoTools(wid);
+  if (typeof window.ucShowToast === 'function') {
+    window.ucShowToast('🔄 ' + S3VT_REF_STYLES.find(function(s){return s.id===_s3vtRefStyle;}).label + ' 스타일 + ' +
+      Object.keys(_s3vtRefMods).filter(function(k){return _s3vtRefMods[k];}).length +
+      '개 표현 강조로 전체 재생성', 'success');
+  }
+};
+window._s3vtApplyRefStyleToAll = function(wid) {
+  _s3vtTool = 'reference';
+  _studioS3VideoTools(wid);
+  if (typeof window.ucShowToast === 'function') {
+    window.ucShowToast('✅ 레퍼런스 기반 스타일 적용 — 전체 씬 영상 프롬프트 재컴파일', 'success');
+  }
+};
+
+/* 씬별 reference 재생성 (기존 _s3vtRegenPrompt 대체 — reference 일 때만 별도 처리) */
+(function(){
+  var _origRegen = window._s3vtRegenPrompt;
+  window._s3vtRegenPrompt = function(idx, wid) {
+    if (_s3vtTool !== 'reference') {
+      if (typeof _origRegen === 'function') return _origRegen(idx, wid);
+      return;
+    }
+    var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+    var scenes = proj.scenes || (proj.s3 && proj.s3.scenes) || [];
+    var sc = scenes[idx]; if (!sc) return;
+    if (sc.idx == null) sc.idx = idx;
+    var refAnalysis = (proj.s1 && proj.s1.referenceAnalysis) || null;
+    if (typeof window.compileReferenceVideoPrompt !== 'function') {
+      if (typeof window.ucShowToast === 'function') window.ucShowToast('⚠️ 컴파일러 미로드', 'warn');
+      return;
+    }
+    var built = window.compileReferenceVideoPrompt(sc, refAnalysis, {
+      styleId:    _s3vtRefStyle,
+      modifiers:  _s3vtRefMods,
+      sceneIndex: idx,
+    });
+    if (proj.videoPrompts && proj.videoPrompts[idx]) {
+      proj.videoPrompts[idx].prompt = built.prompt;
+      proj.videoPrompts[idx].tool = 'reference';
+    }
+    proj.s3 = proj.s3 || {};
+    proj.s3.videoPrompts = proj.s3.videoPrompts || [];
+    proj.s3.videoPrompts[idx] = built.prompt;
+    proj.s3.scenePrompts = proj.s3.scenePrompts || [];
+    proj.s3.scenePrompts[idx] = Object.assign({}, proj.s3.scenePrompts[idx] || {}, {
+      sceneIndex: idx, videoPrompt: built.prompt,
+      motionSummary: built.motionSummary, cameraCue: built.cameraCue,
+      sfxCue: built.sfxCue, captionSafeArea: built.captionSafeArea,
+      source: 'youtube_reference_adapt',
+    });
+    if (typeof window.studioSave === 'function') window.studioSave();
+    /* DOM 직접 업데이트 — 재렌더 없이 즉시 반영 */
+    var pEl = document.getElementById('s3vtPrompt' + idx);
+    if (pEl) pEl.textContent = built.prompt;
+    if (typeof window.ucShowToast === 'function') window.ucShowToast('✅ 씬 ' + (idx+1) + ' 영상 프롬프트 재생성', 'success');
+  };
+})();
