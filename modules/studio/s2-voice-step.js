@@ -113,15 +113,22 @@ function _studioS2Step(wrapId) {
   /* 🎤 현재 적용된 음성 패널 */
   const _currentVoiceHtml = _v2RenderCurrentVoice(profile);
 
+  const _badgeHtml = (typeof window.renderVoiceProfileBadge === 'function')
+    ? window.renderVoiceProfileBadge(profile)
+    : `<span class="v2-rec-badge category">대상: ${profile.mainCategoryLabel || profile.mainGenreLabel}</span>` +
+      `<span class="v2-rec-badge type">유형: ${profile.contentTypeLabel || ''}</span>` +
+      `<span class="v2-rec-badge tone">톤: ${profile.toneLabel || ''}</span>`;
+  const _profileSourceLine = profile.sourcePath
+    ? `<div class="v2-rec-source">기준: ${profile.sourcePath}</div>` : '';
+
   const _autoBodyHtml = `
     <!-- AI 자동 추천 -->
     <div class="v2-recommend-banner">
       <div class="v2-rec-hd">
         🤖 AI 음성 자동 추천 — 후보 비교 후 1개 선택
-        <span class="v2-rec-badge">장르: ${profile.mainGenreLabel}</span>
-        <span class="v2-rec-badge tone">톤: ${profile.toneLabel}</span>
-        ${profile.target === 'senior' ? '<span class="v2-rec-badge target">타깃: 시니어</span>' : ''}
+        ${_badgeHtml}
       </div>
+      ${_profileSourceLine}
       ${lang !== 'ja' ? _v2RenderRecGroup('ko', recKey, _v2Voice.voiceKo, wrapId) : ''}
       ${lang !== 'ko' ? _v2RenderRecGroup('ja', recKey, _v2Voice.voiceJa, wrapId) : ''}
     </div>`;
@@ -544,7 +551,9 @@ function _v2RenderCurrentVoice(profile) {
   const toneLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[cand.voiceToneGender]) || '· 톤 미확인';
   const ageLabel  = (window.V2_AGE_LABEL    && window.V2_AGE_LABEL[cand.ageTone])           || '미확인';
   const sourceLabel = v._source === 'manual' ? '수동 선택' : '자동 추천';
-  const reasonText  = profile.mainGenreLabel + ' · ' + profile.toneLabel + (profile.target==='senior'?' · 시니어 타깃':'');
+  const reasonText  = '대상 ' + (profile.mainCategoryLabel || profile.mainGenreLabel) +
+                    ' · 유형 ' + (profile.contentTypeLabel || '-') +
+                    ' · 톤 ' + (profile.toneLabel || '-');
   return `
   <div class="v2-current-voice">
     <div class="v2-cv-hd">🎤 현재 음성</div>
@@ -699,6 +708,9 @@ function _v2InjectCSS() {
   font-size:11px;font-weight:700;margin-left:4px}
 .v2-rec-badge.tone{background:#ef6fab}
 .v2-rec-badge.target{background:#16a34a}
+.v2-rec-badge.category{background:#16a34a}
+.v2-rec-badge.type{background:#9181ff}
+.v2-rec-source{font-size:10px;color:#9b8a93;margin:4px 4px 8px;font-family:monospace}
 
 /* 현재 음성 패널 */
 .v2-current-voice{background:linear-gradient(135deg,#fff5fa,#f5f0ff);

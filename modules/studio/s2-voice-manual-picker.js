@@ -63,7 +63,7 @@
     });
   }
 
-  /* ── 단일 카드 HTML ── */
+  /* ── 단일 카드 HTML — 모든 click 은 data-* 속성으로 delegated bind ── */
   function _vmpCardHtml(c) {
     var fav = (typeof window.vfvIsFavorite === 'function') && window.vfvIsFavorite(c.id);
     var toneLabel = (window.V2_GENDER_LABEL && window.V2_GENDER_LABEL[c.voiceToneGender]) || '· 톤 미확인';
@@ -71,16 +71,18 @@
     var provLabelMap = window.V2_PROVIDER_LABEL || { elevenlabs:'ElevenLabs', openai:'OpenAI', browser:'브라우저 대체' };
     var provBadgeMap = { elevenlabs:'EL', openai:'OA', browser:'SS' };
     var provBadge = provBadgeMap[c.provider] || (c.provider||'').slice(0,2).toUpperCase();
-    var jsonId    = JSON.stringify(c.id);
     var tagsShort = (c.styleTags || []).slice(0, 3).join(' · ');
     var isBrowser = c.provider === 'browser';
+    var idAttr   = String(c.id || '').replace(/"/g,'&quot;');
+    var provAttr = String(c.provider || '').replace(/"/g,'&quot;');
+    var vidAttr  = String(c.voiceId || '').replace(/"/g,'&quot;');
     return ''+
-    '<div class="vmp-card" data-id="'+c.id+'">'+
+    '<div class="vmp-card" data-voice-id="'+idAttr+'" data-provider="'+provAttr+'" data-voice-vid="'+vidAttr+'">'+
       '<div class="vmp-card-hd">'+
         '<span class="vmp-name">'+(c.displayName||c.id)+'</span>'+
         '<span class="vmp-prov vmp-prov-'+provBadge+'" title="'+(provLabelMap[c.provider]||c.provider)+'">'+provBadge+'</span>'+
         '<button type="button" class="vmp-fav '+(fav?'on':'')+'" '+
-          'onclick="vmpToggleFav('+jsonId+')" title="즐겨찾기">★</button>'+
+          'data-vmp-action="fav" data-vmp-id="'+idAttr+'" title="즐겨찾기">★</button>'+
       '</div>'+
       '<div class="vmp-meta">'+
         '<span class="vmp-tag">'+toneLabel+'</span>'+
@@ -89,8 +91,8 @@
       '</div>'+
       '<div class="vmp-desc">'+tagsShort+'</div>'+
       '<div class="vmp-actions">'+
-        '<button type="button" class="vmp-prev" onclick="vmpPreview('+jsonId+')">▶ 미리듣기</button>'+
-        '<button type="button" class="vmp-pick" onclick="vmpApply('+jsonId+')">선택</button>'+
+        '<button type="button" class="vmp-prev" data-vmp-action="preview" data-vmp-id="'+idAttr+'">▶ 미리듣기</button>'+
+        '<button type="button" class="vmp-pick" data-vmp-action="apply"   data-vmp-id="'+idAttr+'">선택</button>'+
       '</div>'+
     '</div>';
   }
@@ -166,10 +168,11 @@
   }
 
   function _vmpPinChipHtml(it) {
-    var jsonId = JSON.stringify(it.id);
-    return '<button type="button" class="vmp-pin-chip" onclick="vmpApply('+jsonId+')" title="'+(it.provider||'')+' · '+(it.label||'')+'">'+
-      (it.label||it.id)+
-    '</button>';
+    var idAttr = String(it.id || '').replace(/"/g,'&quot;');
+    var label  = String(it.label || it.id || '').replace(/[<>&]/g, function(c){
+      return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; });
+    var titleAttr = ((it.provider||'') + ' · ' + (it.label||'')).replace(/"/g,'&quot;');
+    return '<button type="button" class="vmp-pin-chip" data-vmp-action="apply" data-vmp-id="'+idAttr+'" title="'+titleAttr+'">'+label+'</button>';
   }
 
   /* ── 패널 다시 그리기 (자기 영역만) ── */
@@ -218,16 +221,39 @@
     vmpRefresh();
   }
 
-  /* ── 미리듣기 — preview_url 우선, 없으면 SpeechSynthesis ── */
+  /* ── 미리듣기 — 자동 추천과 동일한 router (previewVoice/_v2Preview) 사용 ── */
   function vmpPreview(id) {
     var c = (typeof window._v2GetCandidateById === 'function') && window._v2GetCandidateById(id);
     if (!c) c = (window.V2_EL_VOICES || []).find(function(x){ return x.id === id; }) || null;
-    if (!c) return;
-    if (typeof window._v2Preview === 'function') {
+    if (!c) {
+      _vmpToast('⚠️ 후보를 찾을 수 없습니다 (id=' + id + ')', 'warn');
+      return;
+    }
+    if (!c.voiceId && c.provider !== 'browser') {
+      _vmpToast('⚠️ 이 음성은 voiceId 가 없어 미리듣기할 수 없습니다.', 'warn');
+      return;
+    }
+    if (c.provider !== 'browser' && typeof window.hasApiKey === 'function') {
+      var grp = c.provider === 'elevenlabs' ? 'elevenlabs' : 'openai_tts';
+      if (!window.hasApiKey('voice', grp)) {
+        _vmpToast('⚠️ ' + (c.provider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI') +
+                  ' API 키가 없습니다. 통합 API 설정에서 입력해주세요.', 'warn');
+        if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('voice');
+        return;
+      }
+    }
+    /* 자동 추천과 동일한 router 호출 */
+    if (typeof window.previewVoice === 'function') {
+      window.previewVoice(c, { lang: _vmpLangForCand(c) });
+    } else if (typeof window._v2Preview === 'function') {
       window._v2Preview(c, _vmpLangForCand(c));
     } else {
-      alert('미리듣기 모듈이 로드되지 않았습니다.');
+      _vmpToast('⚠️ 미리듣기 모듈(preview-router)이 로드되지 않았습니다.', 'warn');
     }
+  }
+  function _vmpToast(msg, kind){
+    if (typeof window.ucShowToast === 'function') window.ucShowToast(msg, kind || 'info');
+    else try { console.debug('[vmp]', msg); } catch(_) {}
   }
 
   /* ── voice_id 직접 입력 ── */
@@ -314,6 +340,35 @@
 '.vmp-empty{padding:24px;text-align:center;color:#9b8a93;font-size:12px}'+
 '';
     document.head.appendChild(st);
+  }
+
+  /* ════════════════════════════════════════════════
+     Delegated event binding — document level (단 1회)
+     * 패널이 다시 그려져도 새 button 에 자동 적용
+     * inline onclick 의 따옴표 충돌 (id 가 JSON.stringify 되면 broken HTML) 회피
+     ════════════════════════════════════════════════ */
+  function _vmpBindDelegated() {
+    if (window.__vmpDelegatedBound) return;
+    window.__vmpDelegatedBound = true;
+    document.addEventListener('click', function(e){
+      var btn = e.target && e.target.closest && e.target.closest('[data-vmp-action]');
+      if (!btn) return;
+      var action = btn.getAttribute('data-vmp-action');
+      var id     = btn.getAttribute('data-vmp-id');
+      if (!action || !id) return;
+      e.stopPropagation();
+      try { console.debug('[vmp] delegated:', action, id); } catch(_) {}
+      if (action === 'preview') vmpPreview(id);
+      else if (action === 'apply') vmpApply(id);
+      else if (action === 'fav')   vmpToggleFav(id);
+    }, false);
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _vmpBindDelegated);
+    } else {
+      _vmpBindDelegated();
+    }
   }
 
   /* 전역 노출 */

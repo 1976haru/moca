@@ -1,44 +1,51 @@
 /* ================================================
    modules/studio/s2-voice-profile-resolver.js
-   Step 3 음성 — 대본 contentProfile 추출
+   Step 3 음성 — 대본 contentProfile 추출 (v2)
 
-   * resolveContentProfile() → { mainGenre, tone, target, lang, channel,
-                                  channelLabel, mainGenreLabel, toneLabel }
-   * 우선순위:
-     - mainGenre: s1.genre/style → topic 키워드(senior/노후/건강 등) →
-                   channel context(senior 채널이면 senior bias)
-     - tone: emotional/warm/calm/news/comic 등 — style 또는 mode 에서 추출
-     - target: senior / adult / general — channel + topic 키워드
-     - lang: ko / ja / both / multi
-   * "시니어 감동" 케이스 처리: mainGenre=senior 유지 + tone=emotional
+   * 핵심 원칙: mainCategory(대상/채널)는 contentType(유형/포맷)에
+     절대 덮어쓰지 않는다.
+     - 시니어 채널 + emotional 스타일 → mainCategory:senior + contentType:emotional + tone:warm
+     - 시니어 채널 + info 스타일 → mainCategory:senior + contentType:info + tone:clear
+     - 일반 채널 + info 스타일 → mainCategory:general + contentType:info + tone:clear
+   * resolveContentProfile() 반환:
+     {
+       mainCategory:      'senior' | 'general' | 'japanese',
+       mainCategoryLabel: '시니어' | '일반' | '일본어',
+       contentType:       'info' | 'emotional' | 'comic' | ...
+       contentTypeLabel:  '정보' | '감동' | '코믹' | ...
+       tone:              'clear' | 'warm' | 'energetic' | ...
+       toneLabel:         '명료함' | '따뜻함' | '활기참' | ...
+       lang:              'ko' | 'ja' | 'both',
+       channel, channelLabel, styleId, topic,
+       sourcePath:        진단용 (어디서 어떤 값이 왔는지),
+       reasons:           ['topic: 시니어 키워드', ...]
+     }
    ================================================ */
 (function(){
   'use strict';
 
-  /* style id (S1_STYLES) → mainGenre / 기본 tone */
-  var STYLE_TO_GENRE = {
-    emotional: { genre:'senior_emotional', tone:'emotional' }, /* ex post에서 senior 채널이면 senior 로 */
-    info:      { genre:'info',             tone:'clear' },
-    humor:     { genre:'comic',            tone:'energetic' },
-    drama:     { genre:'drama',            tone:'tense' },
-    senior:    { genre:'senior',           tone:'warm' },
-    knowledge: { genre:'knowledge',        tone:'documentary' },
-    tikitaka:  { genre:'dialog',           tone:'energetic' },
-    trivia:    { genre:'trivia',           tone:'curious' },
-    saying:    { genre:'wisdom',           tone:'calm' },
-    lyric:     { genre:'lyric',            tone:'expressive' },
-    longform:  { genre:'longform',         tone:'narration' },
-    custom:    { genre:'general',          tone:'neutral' },
+  /* style id (S1_STYLES) → contentType / 기본 tone */
+  var STYLE_TO_TYPE = {
+    emotional: { type:'emotional', tone:'emotional' },
+    info:      { type:'info',      tone:'clear' },
+    humor:     { type:'comic',     tone:'energetic' },
+    drama:     { type:'drama',     tone:'tense' },
+    senior:    { type:'senior_life', tone:'warm' },  /* 명시적 senior style 자체 */
+    knowledge: { type:'knowledge', tone:'documentary' },
+    tikitaka:  { type:'dialog',    tone:'energetic' },
+    trivia:    { type:'trivia',    tone:'curious' },
+    saying:    { type:'wisdom',    tone:'calm' },
+    lyric:     { type:'lyric',     tone:'expressive' },
+    longform:  { type:'longform',  tone:'narration' },
+    custom:    { type:'general',   tone:'neutral' },
   };
 
-  /* mainGenre 라벨 */
-  var GENRE_LABEL = {
-    senior:'시니어', senior_emotional:'시니어 감동',
-    info:'정보', comic:'코믹', drama:'드라마',
-    knowledge:'지식', dialog:'티키타카', trivia:'잡학',
-    wisdom:'명언·지혜', lyric:'가사·음원', longform:'롱폼',
+  /* contentType 라벨 */
+  var TYPE_LABEL = {
+    info:'정보', emotional:'감동', comic:'코믹', drama:'드라마',
+    senior_life:'시니어 생활', knowledge:'지식', dialog:'티키타카',
+    trivia:'잡학', wisdom:'명언·지혜', lyric:'가사·음원', longform:'롱폼',
     news:'뉴스', public:'공공·소상공인', general:'일반',
-    japanese:'일본어',
   };
 
   /* tone 라벨 */
@@ -49,11 +56,15 @@
     narration:'내레이션', neutral:'중립', news:'뉴스',
   };
 
-  /* topic 키워드 → genre/target bias */
+  /* category 라벨 */
+  var CATEGORY_LABEL = {
+    senior:'시니어', general:'일반', japanese:'일본어',
+  };
+
+  /* topic 키워드 */
   var SENIOR_KEYWORDS = ['시니어','60대','70대','80대','노후','노년','어르신','부모님','할머니','할아버지',
                          '실버','엔카','쇼와','관절','무릎','허리','연금','은퇴','요양'];
   var HEALTH_KEYWORDS = ['건강','통증','관절염','당뇨','혈압','다이어트','운동','스트레칭','재활'];
-  var INFO_KEYWORDS   = ['팁','노하우','방법','정리','비교','차이','이유','분석'];
   var EMOTIONAL_KW    = ['감동','눈물','후회','외로움','사랑','부모','자식','이별','가족'];
   var COMIC_KW        = ['웃긴','웃음','반전','어이','코믹','병맛'];
   var NEWS_KW         = ['뉴스','속보','공지','발표','정책','보도'];
@@ -67,7 +78,6 @@
     return false;
   }
 
-  /* lang 정규화 */
   function _normLang(v) {
     var x = String(v || '').toLowerCase();
     if (x === 'ja' || x === 'jp' || x.indexOf('일본') >= 0) return 'ja';
@@ -76,109 +86,139 @@
     return 'ko';
   }
 
-  /* channel → target / lang 추정 */
+  /* channel → category / lang / 라벨 */
   function _channelInfo(channel) {
     var c = String(channel || '').toLowerCase();
-    var label = channel || '';
-    var target = 'general', lang = 'ko';
-    if (c === 'ja') { lang = 'ja'; target = 'general'; label='🇯🇵 일본'; }
+    var lang = 'ko', label = '🇰🇷 한국', isSenior = false;
+    if (c === 'ja') { lang = 'ja'; label='🇯🇵 일본'; }
     else if (c === 'both') { lang = 'both'; label='🇰🇷🇯🇵 한·일'; }
-    else if (c === 'ko') { lang = 'ko'; label='🇰🇷 한국'; }
-    /* "senior" 채널 특수 케이스 (dashboard 에서 STUDIO.project.channel = 'senior' 로 들어올 수 있음) */
+    /* "senior" 채널 명시 (dashboard 에서 STUDIO.project.channel = 'senior') */
     if (c.indexOf('senior') >= 0 || c.indexOf('시니어') >= 0) {
-      target = 'senior'; if (lang === 'ko') label = '👴 시니어';
+      isSenior = true; label = '👴 시니어 채널';
     }
-    return { target: target, lang: lang, channelLabel: label };
+    return { lang: lang, channelLabel: label, isSeniorChannel: isSenior };
   }
 
   function resolveContentProfile() {
     var proj = (window.STUDIO && window.STUDIO.project) || {};
     var s1 = proj.s1 || {};
-    var styleId = (s1.genre || s1.style || proj.style || 'emotional').toLowerCase();
+    var styleId = String(s1.genre || s1.style || proj.style || 'emotional').toLowerCase();
     var topic = (s1.topic || proj.topic || s1.title || proj.title || '').toString();
     var channel = proj.channel || s1.channel || 'ko';
     var ci = _channelInfo(channel);
 
-    /* base mapping */
-    var base = STYLE_TO_GENRE[styleId] || STYLE_TO_GENRE.custom;
-    var mainGenre = base.genre;
-    var tone      = base.tone;
-    var target    = ci.target;
+    /* base style → contentType / tone */
+    var base = STYLE_TO_TYPE[styleId] || STYLE_TO_TYPE.custom;
+    var contentType = base.type;
+    var tone        = base.tone;
 
-    /* topic 기반 bias */
+    /* topic-based 가중치 */
     var seniorHit  = _hasAny(topic, SENIOR_KEYWORDS);
     var healthHit  = _hasAny(topic, HEALTH_KEYWORDS);
-    var infoHit    = _hasAny(topic, INFO_KEYWORDS);
     var emotionHit = _hasAny(topic, EMOTIONAL_KW);
     var comicHit   = _hasAny(topic, COMIC_KW);
     var newsHit    = _hasAny(topic, NEWS_KW);
 
-    if (seniorHit) target = 'senior';
-    if (target === 'senior' && (mainGenre === 'senior_emotional' || mainGenre === 'general')) {
-      mainGenre = 'senior';
-      if (emotionHit || styleId === 'emotional') tone = 'emotional';
-      else if (healthHit) tone = 'clear';
-    }
-    /* style=emotional → 시니어 채널/타깃이면 senior + emotional */
-    if (styleId === 'emotional' && target === 'senior') {
-      mainGenre = 'senior';
-      tone = 'emotional';
-    } else if (styleId === 'emotional') {
-      /* 일반 채널의 감동 → emotional 단독 */
-      mainGenre = 'senior_emotional'; /* compat: 추천 데이터에서 emotional 키와 매핑 */
-      tone = 'emotional';
-    }
-    if (newsHit && mainGenre === 'general') { mainGenre = 'news'; tone = 'news'; }
-    if (comicHit && mainGenre === 'general') { mainGenre = 'comic'; tone = 'energetic'; }
-    if (ci.lang === 'ja') {
-      /* 일본어 채널은 별도 추천 풀 사용 */
-      if (mainGenre === 'general') mainGenre = 'japanese';
+    /* mainCategory 결정 — channel/style/topic 순 */
+    var mainCategory;
+    if (ci.isSeniorChannel || styleId === 'senior' || seniorHit) {
+      mainCategory = 'senior';
+    } else if (ci.lang === 'ja') {
+      mainCategory = 'japanese';
+    } else {
+      mainCategory = 'general';
     }
 
-    /* 라벨 */
-    var mgLabelKey = mainGenre === 'senior_emotional' ? 'senior_emotional' : mainGenre;
+    /* topic 가 강한 경우 contentType 보정 (단, mainCategory 는 보존) */
+    if (newsHit  && contentType === 'general') contentType = 'news';
+    if (comicHit && contentType === 'general') contentType = 'comic';
+    if (emotionHit && contentType === 'general') contentType = 'emotional';
+    if (healthHit && contentType === 'general') contentType = 'info';
+
+    /* tone 미세 조정 — senior + emotional → warm 강조 */
+    if (mainCategory === 'senior' && contentType === 'emotional') tone = 'warm';
+    if (mainCategory === 'senior' && contentType === 'info' && healthHit) tone = 'clear';
+    if (contentType === 'emotional' && tone !== 'warm') tone = 'emotional';
+
+    /* sourcePath — 진단 정보 */
+    var sourcePath = [];
+    sourcePath.push('style: s1.' + (s1.genre ? 'genre' : 's1.style') + '=' + styleId);
+    if (proj.channel) sourcePath.push('channel: project.channel=' + proj.channel);
+    if (ci.isSeniorChannel) sourcePath.push('channel: senior detected');
+    if (seniorHit) sourcePath.push('topic: senior keyword');
+    if (healthHit) sourcePath.push('topic: health keyword');
+    if (emotionHit) sourcePath.push('topic: emotional keyword');
+
     var profile = {
-      mainGenre:      mainGenre,
-      mainGenreLabel: GENRE_LABEL[mgLabelKey] || mainGenre,
-      tone:           tone,
-      toneLabel:      TONE_LABEL[tone] || tone,
-      target:         target,
-      lang:           ci.lang,
-      channel:        channel,
-      channelLabel:   ci.channelLabel,
-      styleId:        styleId,
-      topic:          topic,
-      reasons:        []
+      mainCategory:       mainCategory,
+      mainCategoryLabel:  CATEGORY_LABEL[mainCategory] || mainCategory,
+      contentType:        contentType,
+      contentTypeLabel:   TYPE_LABEL[contentType] || contentType,
+      tone:               tone,
+      toneLabel:          TONE_LABEL[tone] || tone,
+      lang:               ci.lang,
+      channel:            channel,
+      channelLabel:       ci.channelLabel,
+      styleId:            styleId,
+      topic:              topic,
+      reasons:            [],
+      sourcePath:         sourcePath.join(' / '),
+      /* legacy 호환 — 이전 필드명 사용처를 위해 유지 */
+      mainGenre:          mainCategory === 'senior' ? 'senior' : contentType,
+      mainGenreLabel:     CATEGORY_LABEL[mainCategory] || mainCategory,
+      target:             mainCategory === 'senior' ? 'senior' : 'general',
     };
     if (seniorHit) profile.reasons.push('topic: 시니어 키워드');
     if (healthHit) profile.reasons.push('topic: 건강 키워드');
     if (emotionHit) profile.reasons.push('topic: 감동 키워드');
-    if (target === 'senior') profile.reasons.push('target: senior');
-    try { console.debug('[voice-profile] resolved:', profile.mainGenre, '·', profile.tone, '·', profile.target, '·', profile.lang); } catch(_) {}
+    try {
+      console.debug('[voice-profile] mainCategory:', profile.mainCategory,
+                    '· contentType:', profile.contentType,
+                    '· tone:', profile.tone,
+                    '· lang:', profile.lang);
+    } catch(_) {}
     return profile;
   }
 
-  /* recommendation pool key (s2-voice-data.js V2_VOICE_RECOMMEND 의 키) 매핑 */
+  /* recommendation pool key (V2_VOICE_RECOMMEND 키) — mainCategory 우선 */
   function profileToRecommendKey(profile) {
     if (!profile) return 'emotional';
-    var g = profile.mainGenre;
-    if (g === 'senior') return 'senior';
-    if (g === 'senior_emotional') return 'emotional';
-    if (g === 'comic') return 'comic';
-    if (g === 'news') return 'news';
-    if (g === 'public') return 'public';
-    if (g === 'dialog') return 'dialog';
-    if (g === 'japanese') return 'japanese';
-    if (g === 'knowledge' || g === 'wisdom' || g === 'trivia') return 'knowledge';
-    if (g === 'info') return 'info';
-    if (g === 'drama') return 'drama';
+    /* mainCategory 가 senior 면 무조건 senior 풀 (contentType 별 순서 조정은 추천 측에서) */
+    if (profile.mainCategory === 'senior') {
+      /* senior 안에서 contentType 별 분기 */
+      if (profile.contentType === 'emotional') return 'senior';     /* warm/emotional */
+      if (profile.contentType === 'info')      return 'senior';     /* calm/clear */
+      if (profile.contentType === 'knowledge') return 'senior';
+      return 'senior';
+    }
+    if (profile.mainCategory === 'japanese' && profile.lang === 'ja') return 'japanese';
+    /* general — contentType 별 풀 */
+    var t = profile.contentType;
+    if (t === 'comic')      return 'comic';
+    if (t === 'drama')      return 'drama';
+    if (t === 'news')       return 'news';
+    if (t === 'public')     return 'public';
+    if (t === 'dialog')     return 'dialog';
+    if (t === 'knowledge' || t === 'wisdom' || t === 'trivia') return 'knowledge';
+    if (t === 'info')       return 'info';
+    if (t === 'emotional')  return 'emotional';
     return 'emotional';
+  }
+
+  /* UI 배지용 — 3개 항목 */
+  function renderVoiceProfileBadge(profile) {
+    if (!profile) return '';
+    return ''+
+      '<span class="v2-rec-badge category">대상: '+profile.mainCategoryLabel+'</span>'+
+      '<span class="v2-rec-badge type">유형: '+profile.contentTypeLabel+'</span>'+
+      '<span class="v2-rec-badge tone">톤: '+profile.toneLabel+'</span>';
   }
 
   window.resolveContentProfile = resolveContentProfile;
   window.profileToRecommendKey = profileToRecommendKey;
-  window.V2_GENRE_LABEL_MAP    = GENRE_LABEL;
+  window.renderVoiceProfileBadge = renderVoiceProfileBadge;
+  window.V2_TYPE_LABEL_MAP     = TYPE_LABEL;
   window.V2_TONE_LABEL_MAP     = TONE_LABEL;
-  /* lang 정규화 helper 도 노출 (preview 에서 사용) */
+  window.V2_CATEGORY_LABEL_MAP = CATEGORY_LABEL;
   window._v2NormLang           = _normLang;
 })();
