@@ -78,6 +78,12 @@
   /* ─── API 키 관리 ─── */
   function getApiKey(provider){
     const p = provider || getProvider();
+    /* 1순위: 통합 store (ucGetApiKey 가 있으면 그것이 통합 store 우선) */
+    if (typeof window.ucGetApiKey === 'function') {
+      var v = window.ucGetApiKey(p);
+      if (v && v.length > 4) return v.trim();
+    }
+    /* 2순위: legacy uc_*_key 직접 읽기 (fallback) */
     const key = localStorage.getItem(STORAGE_KEYS[p]) || '';
     return key.trim();
   }

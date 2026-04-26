@@ -417,10 +417,15 @@ async function studioS4GenScene(idx){
   var sc=scenes[idx]; if(!sc) return;
   var text=sc.desc||sc.label||'';
   if(typeof ucShowToast==='function') ucShowToast('⏳ 씬'+(idx+1)+' 음성 생성 중...','info');
-  /* TTS API 호출 (OpenAI 기준) */
+  /* TTS API 호출 (OpenAI 기준) — 통합 store(voice/script) 자동 */
   var api=s4.voiceApi||'openai';
   var key=(typeof ucGetApiKey==='function')?ucGetApiKey('openai'):localStorage.getItem('uc_openai_key')||'';
-  if(!key){ alert('API 키를 설정해주세요'); return; }
+  if(!key){
+    if (confirm('OpenAI API 키가 없습니다. 통합 API 설정(음성 탭)을 열까요?')) {
+      if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('voice');
+    }
+    return;
+  }
   try {
     var r=await fetch('https://api.openai.com/v1/audio/speech',{
       method:'POST',
@@ -700,8 +705,14 @@ async function studioS4SearchBgm(){
     '감동':'emotional','히스토리':'epic cinematic','사자성어':'traditional',
   };
   var query=moodMap[genre]||'background music';
+  /* 통합 store(stock.pixabay) → ucGetApiKey 가 자동 처리 */
   var key=(typeof ucGetApiKey==='function')?ucGetApiKey('pixabay'):localStorage.getItem('uc_pixabay_key')||'';
-  if(!key){alert('Pixabay API 키를 설정해주세요 (무료 발급 가능)');return;}
+  if(!key){
+    if (confirm('Pixabay API 키가 없습니다. 통합 API 설정(스톡 탭)을 열까요?')) {
+      if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('stock');
+    }
+    return;
+  }
 
   if(typeof ucShowToast==='function') ucShowToast('⏳ BGM 검색 중: '+query,'info');
 

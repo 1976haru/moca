@@ -229,8 +229,16 @@ async function benchAnalyzeThumb(){
 async function benchGenThumb(){
   const v = BENCH.video;
   if(!v.analysis){ alert('먼저 영상 분석을 완료해주세요'); return; }
-  const key = localStorage.getItem('uc_openai_key');
-  if(!key){ alert('OpenAI 키가 필요해요 (DALL·E 3)'); return; }
+  /* 통합 store(script.openai) 우선, legacy uc_openai_key fallback */
+  const key = (typeof window.ucGetApiKey === 'function')
+    ? window.ucGetApiKey('openai')
+    : (localStorage.getItem('uc_openai_key') || '');
+  if(!key){
+    if (confirm('OpenAI 키가 필요해요 (DALL·E 3). 통합 API 설정을 열까요?')) {
+      if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('script');
+    }
+    return;
+  }
   const title = v.myTopic || v.title;
   try{
     const prompt = 'YouTube thumbnail, 16:9, bold Korean text ' + title.replace(/[^a-zA-Z0-9가-힣\s]/g,'') + ', high contrast emotional face, dramatic lighting, red and yellow accents';

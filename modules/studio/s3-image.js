@@ -576,8 +576,15 @@ async function studioS3GenScene(idx){
   var sizeStr = (api === 'dalle3' || api === 'dalle2') ? (size.w + 'x' + size.h) : null;
   try {
     if(api==='dalle3'||api==='dalle2'){
+      /* 통합 store(image.dalle3 = OpenAI 키 공유) — ucGetApiKey 가 자동 처리 */
       var key = (typeof ucGetApiKey==='function') ? ucGetApiKey('openai') : localStorage.getItem('uc_openai_key')||'';
-      if(!key){ alert('OpenAI API 키를 입력해주세요'); return; }
+      if(!key){
+        if (confirm('OpenAI API 키가 없습니다. 통합 API 설정(이미지 탭)을 열까요?')) {
+          if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('image');
+        }
+        return;
+      }
+      try { console.log('[api] image provider ready: image.'+api); } catch(_) {}
       if(typeof ucShowToast==='function') ucShowToast('⏳ 이미지 생성 중...','info');
       var r = await fetch('https://api.openai.com/v1/images/generations',{
         method:'POST',

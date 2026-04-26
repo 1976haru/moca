@@ -735,8 +735,24 @@ function studioApiGuide(apiId){
   document.body.appendChild(popup);
 }
 
-/* 기존 ucGetApiKey 호환 유지 */
+/* ucGetApiKey — 통합 store 우선, legacy uc_*_key fallback
+   1순위: moca_api_settings_v1[group][provider].apiKey  (api-settings-store.js)
+   2순위: legacy uc_*_key (마이그레이션 안 된 경우)
+   3순위: '' */
 function ucGetApiKey(apiId){
+  /* 1) 통합 store — LEGACY_MAP 에서 (group, provider) 역추적 */
+  if (typeof window.MOCA_API_LEGACY_MAP !== 'undefined' && typeof window.getApiProvider === 'function') {
+    var map = window.MOCA_API_LEGACY_MAP;
+    var foundGroup = '', foundProv = '';
+    Object.keys(map).forEach(function(g){
+      if (map[g] && map[g][apiId]) { foundGroup = g; foundProv = apiId; }
+    });
+    if (foundGroup) {
+      var p = window.getApiProvider(foundGroup, foundProv);
+      if (p && p.apiKey && p.apiKey.length > 4) return p.apiKey;
+    }
+  }
+  /* 2) MOCA_APIS_V2 의 keyName 으로 legacy 직접 조회 */
   var api = null;
   if(typeof MOCA_APIS_V2 !== 'undefined'){
     Object.values(MOCA_APIS_V2).forEach(function(apis){
@@ -744,8 +760,8 @@ function ucGetApiKey(apiId){
     });
   }
   if(api && api.keyName) return localStorage.getItem(api.keyName)||'';
-  /* 구버전 fallback */
-  var legacyMap = {
+  /* 3) 구버전 alias fallback (apiId가 MOCA_APIS_V2에 없는 케이스) */
+  var legacyAlias = {
     claude:'uc_claude_key', openai:'uc_openai_key', gemini:'uc_gemini_key',
     perplexity:'uc_perplexity_key',
     elevenlabs:'uc_eleven_key', clova:'uc_clova_key', nijivoice:'uc_nijivoice_key',
@@ -755,12 +771,13 @@ function ucGetApiKey(apiId){
     sd:'uc_sd_key', gemini_imagen:'uc_gemini_key',
     runway:'uc_runway_key', pika:'uc_pika_key', luma:'uc_luma_key',
     minimax_video:'uc_minimax_key',
-    suno:'uc_suno_key', udio:'uc_udio_key',
+    suno:'uc_suno_key', udio:'uc_udio_key', heygen:'uc_heygen_key',
     facebook:'uc_facebook_key', naver_blog:'uc_naver_key', threads:'uc_threads_key',
   };
-  var k = legacyMap[apiId];
-  return k ? localStorage.getItem(k)||'' : '';
+  var k = legacyAlias[apiId];
+  return k ? (localStorage.getItem(k)||'') : '';
 }
+window.ucGetApiKey = ucGetApiKey;
 
 function ucApiKeyStatus(apiId){
   var key = ucGetApiKey(apiId);

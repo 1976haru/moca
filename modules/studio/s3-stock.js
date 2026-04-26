@@ -104,12 +104,26 @@ async function studioS3StockSearch(){
   var type   = document.getElementById('s3-stock-type')?.value || 'image';
   var s3     = STUDIO.project.s3 || {};
   var api    = s3.stockApi || 'pexels';
-  var keyName = STOCK_APIS.find(function(a){ return a.id===api; })?.keyName || 'uc_pexels_key';
-  var key    = localStorage.getItem(keyName) || '';
+  /* 통합 store(stock 그룹) 우선, legacy uc_*_key fallback */
+  var key = '';
+  if (typeof window.getApiProvider === 'function') {
+    var prov = window.getApiProvider('stock', api);
+    if (prov && prov.apiKey) key = prov.apiKey;
+  }
+  if (!key) {
+    var keyName = STOCK_APIS.find(function(a){ return a.id===api; })?.keyName || 'uc_pexels_key';
+    key = localStorage.getItem(keyName) || '';
+  }
+  try { console.log('[api] stock provider:', api, key ? 'ready' : 'missing'); } catch(_) {}
   var out    = document.getElementById('s3-stock-results');
 
   if(!query){ alert('검색어를 입력해주세요'); return; }
-  if(!key){   alert(api+' API 키를 입력해주세요 (무료 발급 버튼 클릭)'); return; }
+  if(!key){
+    if (confirm(api+' API 키가 없습니다. 통합 API 설정(스톡 탭)을 열까요?')) {
+      if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('stock');
+    }
+    return;
+  }
   if(!out) return;
 
   /* 한국어 → 영어 번역 */

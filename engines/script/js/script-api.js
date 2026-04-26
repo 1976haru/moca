@@ -44,9 +44,15 @@ function toggleApi(){ /* legacy no-op */ }
 function saveKey(){ location.href = '../../index.html?set=ai'; }
 function showKS(msg,cls){var el=document.getElementById('ks');el.textContent=msg;el.className='ks '+cls;if(cls==='ok')setTimeout(function(){el.textContent='';},4000);}
 
-// 키 가져오기 (통합설정의 uc_*_key 에서 자동 읽기)
+// 키 가져오기 — 통합 store(moca_api_settings_v1) 우선, legacy uc_*_key fallback
 function getApiKey(provider){
   var p = provider || (typeof AI_PROVIDER !== 'undefined' ? AI_PROVIDER : 'claude');
+  /* 1순위: 통합 store via window.ucGetApiKey */
+  if (typeof window.ucGetApiKey === 'function') {
+    var v = window.ucGetApiKey(p);
+    if (v && v.length > 4) return sanitizeApiKey(v);
+  }
+  /* 2순위: legacy uc_*_key */
   var keyMap = { claude:'uc_claude_key', openai:'uc_openai_key', gemini:'uc_gemini_key', minimax:'uc_minimax_key' };
   var raw = localStorage.getItem(keyMap[p] || 'uc_claude_key') || '';
   return sanitizeApiKey(raw);

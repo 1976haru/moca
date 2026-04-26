@@ -317,9 +317,40 @@ function _s4eSyncEditPlan() {
       highlightKeywords:proj.s4.highlightKeywords,
       safeAreaCheck:    proj.s4.safeAreaCheck,
     },
+    /* 2단계 보드에서 저장한 씬별 imageTransform + safeArea 동기화 (비파괴) */
+    scenes:    _s4CollectSceneEditPlans(proj),
+    safeArea:  (proj.s3 && proj.s3.safeArea) || null,
+    aspectMode:(proj.s3 && proj.s3.aspectMode) || null,
   };
 
   if (typeof studioSave === 'function') studioSave();
+}
+
+/* ── s3.imagesV3 의 transform 을 editPlan.scenes 형식으로 복사 ── */
+function _s4CollectSceneEditPlans(proj) {
+  var s3 = proj.s3 || {};
+  var v3 = s3.imagesV3 || {};
+  var scenes = s3.scenes || [];
+  var out = [];
+  var n = Math.max(scenes.length, Object.keys(v3).length);
+  for (var i = 0; i < n; i++) {
+    var slot = v3[i] || {};
+    var sel  = (slot.candidates || []).find(function(c){ return c.id === slot.selectedCandidateId; })
+            || (slot.candidates && slot.candidates[0]) || null;
+    out.push({
+      sceneIndex: i,
+      sceneRole:  (scenes[i] && scenes[i].role) || '',
+      sceneTime:  (scenes[i] && scenes[i].time) || '',
+      url:        sel ? sel.url : (s3.images || [])[i] || '',
+      provider:   sel ? sel.provider : (s3.api || ''),
+      aspectRatio:sel ? sel.aspectRatio : (s3.aspectRatio || ''),
+      width:      sel ? sel.width : 0,
+      height:     sel ? sel.height : 0,
+      imageTransform: (sel && sel.transform) || (slot.transform) || null,
+      skipped:    !!slot.skipped,
+    });
+  }
+  return out;
 }
 
 /* ── 편집 설정 요약 (미리보기 — 이슈 5) ── */
