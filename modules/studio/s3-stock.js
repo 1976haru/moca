@@ -98,23 +98,39 @@ function studioS3SaveStockKey(){
   if(typeof ucShowToast==='function') ucShowToast('✅ '+api+' 키 저장됨','success');
 }
 
-/* 스톡 검색 실행 */
-async function studioS3StockSearch(){
+/* 스톡 검색 실행 — sceneIndex 옵션 지원 (spec section 7 형태) */
+async function studioS3StockSearch(sceneIndex){
   var input  = document.getElementById('s3-stock-query');
   var query  = (input && input.value || '').trim();
-  var type   = document.getElementById('s3-stock-type')?.value || 'image';
+  var type   = document.getElementById('s3-stock-type')?.value
+            || (typeof window.getCurrentStockMediaType === 'function' ? window.getCurrentStockMediaType() : 'image');
   var s3     = STUDIO.project.s3 || {};
   var api    = s3.stockApi || 'pexels';
 
-  /* query 비면 현재 활성 씬의 prompt 로 자동 생성 */
+  /* query 비면 sceneIndex / 활성 씬 / 첫 씬 순으로 자동 생성 */
   if (!query && typeof window.buildStockSearchQuery === 'function') {
-    var idx = (s3._stockActiveScene != null) ? s3._stockActiveScene : 0;
-    var built = window.buildStockSearchQuery(idx, { prefer: type === 'video' ? 'video' : 'image', force:true });
+    var idx = sceneIndex;
+    if (idx == null && typeof window.getCurrentStockSceneIndex === 'function') {
+      idx = window.getCurrentStockSceneIndex();
+    }
+    if (idx == null || idx === 'all') idx = (s3._stockActiveScene != null) ? s3._stockActiveScene : 0;
+    var built = window.buildStockSearchQuery(idx, { prefer: type === 'video' ? 'video' : 'image', force:false });
     if (built && built.query) {
       query = built.query;
       if (input) input.value = query;
-      try { console.debug('[stock-query] auto-filled for scene', idx, ':', query); } catch(_) {}
+      try {
+        console.debug('[stock-query] sceneIndex:', idx);
+        console.debug('[stock-query] auto-filled:', query);
+      } catch(_) {}
     }
+  }
+  if (!query) {
+    if (typeof window.ucShowToast === 'function') {
+      window.ucShowToast('⚠️ 검색어가 없습니다. 씬 프롬프트를 확인하거나 직접 입력하세요.', 'warn');
+    } else {
+      alert('검색어가 없습니다. 씬 프롬프트를 확인하거나 직접 입력하세요.');
+    }
+    return;
   }
   /* 통합 store(stock 그룹) 우선, legacy uc_*_key fallback */
   var key = '';
@@ -129,7 +145,6 @@ async function studioS3StockSearch(){
   try { console.log('[api] stock provider:', api, key ? 'ready' : 'missing'); } catch(_) {}
   var out    = document.getElementById('s3-stock-results');
 
-  if(!query){ alert('검색어를 입력해주세요'); return; }
   if(!key){
     if (confirm(api+' API 키가 없습니다. 통합 API 설정(스톡 탭)을 열까요?')) {
       if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('stock');
