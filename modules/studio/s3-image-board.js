@@ -175,8 +175,32 @@
     var empty = !rows.length
       ? '<div class="s3b-empty-row">표시할 씬이 없습니다. (필터: '+BOARD_STATE.filter+')</div>' : '';
     return _toolbarHtml(scenes) +
+      _costWarnHtml() +
       '<div class="s3b-info-bar">📋 씬 ' + scenes.length + '개 · 표시 ' + rows.length + '개 · 클릭하면 상세 편집 패널이 열립니다.</div>' +
       '<div class="s3b-grid">' + cards + '</div>' + empty;
+  }
+
+  /* 비용 경고 — 모든 씬에 high/premium 이미지 API 사용 중일 때 */
+  function _costWarnHtml() {
+    var s3 = _s3();
+    var providerIds = [];
+    var v3 = s3.imagesV3 || {};
+    Object.keys(v3).forEach(function(k){
+      var sel = (typeof window.s3GetSelectedCandidate === 'function') ? window.s3GetSelectedCandidate(+k) : null;
+      if (sel && sel.provider) providerIds.push(sel.provider);
+      else if (s3.api) providerIds.push(s3.api);
+    });
+    if (!providerIds.length) return '';
+    if (typeof window.warnHighCostUsage !== 'function') return '';
+    var w = window.warnHighCostUsage('image', providerIds);
+    if (!w.warn) return '';
+    return '<div class="s3b-cost-warn">' +
+      '<div class="s3b-cost-warn-msg">' + w.message + '</div>' +
+      '<div class="s3b-cost-warn-actions">' +
+        '<button class="s3b-cost-warn-btn pri" onclick="window.applyStackPreset(\'shortsBudget\')">💰 비용 절감 조합 적용</button>' +
+        '<button class="s3b-cost-warn-btn" onclick="window.s3BoardSetAspect(\'shorts\')">📐 비율 재설정</button>' +
+      '</div>' +
+    '</div>';
   }
   window.s3RenderBoard = renderBoard;
 
@@ -445,6 +469,11 @@
       + '.s3b-bulk-btn:hover{border-color:#9181ff;color:#9181ff}'
       + '.s3b-bulk-btn.pri:hover{opacity:.92;color:#fff}'
       + '.s3b-info-bar{font-size:11px;color:#7b6080;background:#f8f5fc;border-radius:8px;padding:6px 10px;margin-bottom:8px}'
+      + '.s3b-cost-warn{background:linear-gradient(135deg,#fff5e6,#fff1f1);border:1.5px solid #f4cda5;border-radius:12px;padding:10px 14px;margin-bottom:10px}'
+      + '.s3b-cost-warn-msg{font-size:12.5px;color:#8a4a00;font-weight:700;margin-bottom:8px;line-height:1.5}'
+      + '.s3b-cost-warn-actions{display:flex;gap:6px;flex-wrap:wrap}'
+      + '.s3b-cost-warn-btn{padding:5px 11px;border:1.5px solid #d4cdec;background:#fff;color:#5a4a8a;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit}'
+      + '.s3b-cost-warn-btn.pri{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border:none}'
       + '.s3b-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}'
       + '@media(max-width:1366px){.s3b-grid{grid-template-columns:repeat(3,1fr)}}'
       + '@media(max-width:900px){.s3b-grid{grid-template-columns:repeat(2,1fr)}}'

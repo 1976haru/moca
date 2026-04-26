@@ -23,6 +23,12 @@ var MOCA_APIS_V2 = {
       guide:'1. aistudio.google.com 접속\n2. Get API Key 클릭\n3. 키 복사',
       url:'https://aistudio.google.com/apikey',
       free:'무료 티어 제공 (분당 60회)' },
+    { id:'perplexity',name:'Perplexity',          keyName:'uc_perplexity_key',
+      desc:'웹 검색 기반 사실 확인·뉴스/리서치',
+      placeholder:'pplx-...',
+      guide:'1. perplexity.ai/settings/api 접속\n2. API Key 발급',
+      url:'https://www.perplexity.ai/settings/api',
+      free:'유료 (월 $5~)' },
   ],
   '이미지 생성': [
     { id:'openai_img', name:'DALL-E 3 (OpenAI)',  keyName:'uc_openai_key',
@@ -49,18 +55,38 @@ var MOCA_APIS_V2 = {
       guide:'1. ideogram.ai 접속\n2. 회원가입 → API\n3. 키 발급',
       url:'https://ideogram.ai/api',
       free:'이미지당 약 ₩20' },
-    { id:'pexels',    name:'Pexels (스톡)',        keyName:'uc_pexels_key',
-      desc:'무료 스톡 이미지·영상 검색',
+    { id:'sd',           name:'Stable Diffusion',     keyName:'uc_sd_key',
+      desc:'저비용 대량·커스터마이즈',
+      placeholder:'...',
+      guide:'1. stability.ai 또는 RunPod 등 호스팅 사이트에서 발급',
+      url:'https://platform.stability.ai/',
+      free:'호스팅 별 다름' },
+    { id:'gemini_imagen',name:'Gemini Imagen',         keyName:'uc_gemini_key',
+      desc:'무료 한도·속도 (Gemini 키 공유)',
+      placeholder:'AIzaSy... (Gemini 키와 동일)',
+      guide:'Gemini API 키와 동일하게 사용됩니다.',
+      url:'https://aistudio.google.com/apikey',
+      free:'Gemini 무료 한도 내' },
+  ],
+  '스톡 이미지·영상': [
+    { id:'pexels',    name:'Pexels',              keyName:'uc_pexels_key',
+      desc:'무료 스톡 이미지·영상 (월 25,000회)',
       placeholder:'...',
       guide:'1. pexels.com/api 접속\n2. 이메일 가입\n3. API 키 즉시 발급',
       url:'https://www.pexels.com/api/',
       free:'무료·상업용 OK·월 25,000회' },
-    { id:'pixabay',   name:'Pixabay (스톡)',       keyName:'uc_pixabay_key',
-      desc:'무료 스톡 이미지·영상 검색',
+    { id:'pixabay',   name:'Pixabay',             keyName:'uc_pixabay_key',
+      desc:'무료 스톡 이미지·영상 (무제한)',
       placeholder:'...',
       guide:'1. pixabay.com 가입\n2. pixabay.com/api/docs 접속\n3. 키 발급',
       url:'https://pixabay.com/api/docs/',
       free:'무료·상업용 OK·무제한' },
+    { id:'unsplash',  name:'Unsplash',            keyName:'uc_unsplash_key',
+      desc:'고품질 사진·감성',
+      placeholder:'...',
+      guide:'1. unsplash.com/oauth/applications 접속\n2. New Application\n3. Access Key 복사',
+      url:'https://unsplash.com/developers',
+      free:'시간당 50회 무료' },
   ],
   '음성 생성': [
     { id:'elevenlabs', name:'ElevenLabs',         keyName:'uc_eleven_key',
@@ -87,6 +113,24 @@ var MOCA_APIS_V2 = {
       guide:'1. voicevox.hiroshiba.jp 접속\n2. 다운로드 → 설치\n3. 실행 후 자동 연결',
       url:'https://voicevox.hiroshiba.jp/',
       free:'완전 무료' },
+    { id:'nijivoice', name:'Nijivoice',           keyName:'uc_nijivoice_key',
+      desc:'일본어 캐릭터 TTS·억양 자연스러움',
+      placeholder:'...',
+      guide:'1. nijivoice.com 가입\n2. API Key 발급',
+      url:'https://app.nijivoice.com/',
+      free:'유료 ($5~)' },
+    { id:'google_tts',name:'Google TTS',          keyName:'uc_google_key',
+      desc:'다국어 안정·무료 한도',
+      placeholder:'AIzaSy...',
+      guide:'1. console.cloud.google.com 접속\n2. Text-to-Speech API 활성화\n3. API 키 생성',
+      url:'https://cloud.google.com/text-to-speech',
+      free:'월 4M자 무료 (WaveNet 1M자)' },
+    { id:'azure_tts', name:'Azure TTS',           keyName:'uc_azure_key',
+      desc:'엔터프라이즈·다국어',
+      placeholder:'subscription key',
+      guide:'1. portal.azure.com 가입\n2. Speech 서비스 생성\n3. Key 복사',
+      url:'https://portal.azure.com/',
+      free:'월 50만자 무료' },
   ],
   '영상 편집·렌더링': [
     { id:'shotstack', name:'Shotstack',           keyName:'uc_shotstack_key',
@@ -107,6 +151,62 @@ var MOCA_APIS_V2 = {
       guide:'1. heygen.com 접속\n2. 회원가입\n3. API → Key 발급',
       url:'https://app.heygen.com/settings?nav=API',
       free:'월 1분 무료' },
+    { id:'invideo',   name:'InVideo',             keyName:'',
+      desc:'템플릿 영상·수동 연동 (외부 도구)',
+      placeholder:'(API 없음 — 외부 사이트 사용)',
+      guide:'invideo.io 접속하여 직접 사용',
+      url:'https://invideo.io/',
+      free:'무료 플랜 있음' },
+    { id:'runway',    name:'Runway ML',           keyName:'uc_runway_key',
+      desc:'시네마틱 영상·Gen-3·고품질 (고비용)',
+      placeholder:'...',
+      guide:'1. runwayml.com 가입\n2. API Key 발급',
+      url:'https://runwayml.com/',
+      free:'유료 (월 $12~)' },
+    { id:'pika',      name:'Pika',                keyName:'uc_pika_key',
+      desc:'이미지→영상·모션·애니',
+      placeholder:'...',
+      guide:'1. pika.art 가입\n2. API 신청',
+      url:'https://pika.art/',
+      free:'유료 ($10~)' },
+    { id:'luma',      name:'Luma',                keyName:'uc_luma_key',
+      desc:'자연 모션·루프 영상',
+      placeholder:'...',
+      guide:'1. lumalabs.ai 가입\n2. API Key 발급',
+      url:'https://lumalabs.ai/',
+      free:'유료' },
+    { id:'minimax_video', name:'MiniMax Video',   keyName:'uc_minimax_key',
+      desc:'아시아 인물·감성 영상',
+      placeholder:'... (MiniMax 키 공유)',
+      guide:'MiniMax API 키와 동일하게 사용됩니다.',
+      url:'https://www.minimax.io/',
+      free:'유료' },
+  ],
+  '음악·Suno': [
+    { id:'suno',         name:'Suno',                  keyName:'uc_suno_key',
+      desc:'프롬프트 기반 곡·가사 매칭',
+      placeholder:'...',
+      guide:'1. suno.ai 가입\n2. API/Pro 플랜 가입',
+      url:'https://suno.ai/',
+      free:'월 $10 (Pro)' },
+    { id:'udio',         name:'Udio',                  keyName:'uc_udio_key',
+      desc:'고품질 보컬·창작 음악',
+      placeholder:'...',
+      guide:'1. udio.com 가입\n2. 유료 플랜',
+      url:'https://www.udio.com/',
+      free:'유료' },
+    { id:'free_bgm',     name:'무료 BGM',                keyName:'',
+      desc:'YouTube Audio Library 등 무료 BGM 사용',
+      placeholder:'(API 없음)',
+      guide:'YouTube Studio > Audio Library 활용',
+      url:'https://studio.youtube.com/',
+      free:'무료' },
+    { id:'suno_prompt',  name:'Suno 복사용 프롬프트',     keyName:'',
+      desc:'가사·음원 프롬프트 생성 후 Suno에 복사',
+      placeholder:'(API 없음 — 프롬프트만 생성)',
+      guide:'프로젝트에서 가사·음원 프롬프트 생성 → Suno 사이트에 복사',
+      url:'https://suno.ai/',
+      free:'무료 (프롬프트만)' },
   ],
   '업로드·배포': [
     { id:'youtube',   name:'YouTube Data API',    keyName:'uc_youtube_key',
@@ -127,6 +227,24 @@ var MOCA_APIS_V2 = {
       guide:'1. developers.tiktok.com 접속\n2. 앱 등록\n3. Content Posting API 신청',
       url:'https://developers.tiktok.com/',
       free:'무료 (심사 필요)' },
+    { id:'facebook',  name:'Facebook Pages',       keyName:'uc_facebook_key',
+      desc:'페이지 자동 게시',
+      placeholder:'EAA...',
+      guide:'1. developers.facebook.com 접속\n2. 앱 생성\n3. Pages API 권한 승인',
+      url:'https://developers.facebook.com/',
+      free:'무료' },
+    { id:'naver_blog',name:'Naver Blog',           keyName:'uc_naver_key',
+      desc:'네이버 블로그 자동 게시',
+      placeholder:'Client ID:Secret',
+      guide:'1. developers.naver.com 가입\n2. 애플리케이션 등록\n3. 블로그 API 권한',
+      url:'https://developers.naver.com/apps/',
+      free:'무료' },
+    { id:'threads',   name:'Threads',              keyName:'uc_threads_key',
+      desc:'스레드 단문 게시',
+      placeholder:'access token',
+      guide:'1. Meta Developers 등록\n2. Threads API 신청',
+      url:'https://developers.facebook.com/docs/threads',
+      free:'무료' },
   ],
   '기타 (확장)': [
     { id:'notion',    name:'Notion API',          keyName:'uc_notion_key',
@@ -155,8 +273,8 @@ function renderApiSettings(){
   if(ex){ ex.remove(); return; }
 
   var catIcons = {
-    '대본 생성':'📝','이미지 생성':'🖼','음성 생성':'🎙',
-    '영상 편집·렌더링':'🎬','업로드·배포':'📤','기타 (확장)':'🔧'
+    '대본 생성':'📝','이미지 생성':'🎨','스톡 이미지·영상':'🖼','음성 생성':'🎙',
+    '영상 편집·렌더링':'🎬','음악·Suno':'🎵','업로드·배포':'📤','기타 (확장)':'🔧'
   };
 
   /* 전체 설정 완료 개수 */
@@ -183,6 +301,32 @@ function renderApiSettings(){
     '<div style="background:#eee;border-radius:999px;height:6px;margin-bottom:20px">' +
       '<div style="background:linear-gradient(135deg,var(--pink),var(--purple));height:100%;border-radius:999px;width:'+Math.round(doneApis/totalApis*100)+'%;transition:.5s"></div>' +
     '</div>';
+
+  /* 추천 스택 프리셋 — 6개 패키지 한 번에 적용 */
+  if (typeof window.MOCA_RECOMMENDED_STACKS !== 'undefined' && typeof window.applyStackPreset === 'function') {
+    var stacks = window.MOCA_RECOMMENDED_STACKS;
+    var appliedId = (window.STUDIO && window.STUDIO.project && window.STUDIO.project.appliedStackPreset) || '';
+    var stackHtml = '';
+    Object.keys(stacks).forEach(function(id){
+      var s = stacks[id];
+      var on = (appliedId === id);
+      stackHtml += '<button class="moca-stack-card'+(on?' on':'')+'" onclick="ucApplyStack(\''+id+'\')">' +
+        '<div class="moca-stack-card-hd">' +
+          '<span class="moca-stack-card-label">'+s.label+'</span>' +
+          (on ? '<span class="moca-stack-card-on">적용됨</span>' : '') +
+        '</div>' +
+        '<div class="moca-stack-card-desc">'+s.description+'</div>' +
+      '</button>';
+    });
+    html += '<details open style="margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px">' +
+      '<summary style="cursor:pointer;list-style:none;font-weight:900;font-size:14px;display:flex;align-items:center;gap:8px">' +
+        '<span>📦 추천 스택 프리셋</span>' +
+        '<span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:auto">하나 선택 시 5개 단계 추천 자동 설정</span>' +
+        '<span style="font-size:12px;color:var(--sub)">▾</span>' +
+      '</summary>' +
+      '<div class="moca-stack-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px">' + stackHtml + '</div>' +
+    '</details>';
+  }
 
   /* 기본 선호 기준 — 추천 엔진이 사용 (각 단계에서 자동 적용) */
   if (typeof window.setUserPreferredMode === 'function') {
@@ -318,6 +462,33 @@ function ucSaveApiKeyV2(apiId){
   renderApiSettings();
 }
 
+function ucApplyStack(presetId){
+  if(typeof window.applyStackPreset === 'function'){
+    var ok = window.applyStackPreset(presetId);
+    if(ok){
+      document.getElementById('api-settings-overlay')?.remove();
+      renderApiSettings();
+    }
+  }
+}
+
+/* 스택 프리셋 카드 CSS */
+(function(){
+  if (document.getElementById('moca-stack-style')) return;
+  var st = document.createElement('style');
+  st.id = 'moca-stack-style';
+  st.textContent =
+    '.moca-stack-card{text-align:left;background:#fafafe;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-family:inherit;transition:.12s}'+
+    '.moca-stack-card:hover{border-color:#9181ff;background:#f5f0ff}'+
+    '.moca-stack-card.on{border-color:#ef6fab;background:linear-gradient(135deg,#fff5fa,#f5f0ff)}'+
+    '.moca-stack-card-hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}'+
+    '.moca-stack-card-label{font-size:13px;font-weight:900;color:#5b1a4a}'+
+    '.moca-stack-card-on{margin-left:auto;font-size:10px;font-weight:800;background:#ef6fab;color:#fff;padding:2px 8px;border-radius:999px}'+
+    '.moca-stack-card-desc{font-size:11.5px;color:#7b6080;line-height:1.4}'+
+    '';
+  document.head.appendChild(st);
+})();
+
 function ucSetPrefMode(mode){
   if(typeof window.setUserPreferredMode === 'function'){
     window.setUserPreferredMode(mode);
@@ -387,9 +558,16 @@ function ucGetApiKey(apiId){
   /* 구버전 fallback */
   var legacyMap = {
     claude:'uc_claude_key', openai:'uc_openai_key', gemini:'uc_gemini_key',
-    elevenlabs:'uc_eleven_key', clova:'uc_clova_key',
-    pexels:'uc_pexels_key', pixabay:'uc_pixabay_key',
+    perplexity:'uc_perplexity_key',
+    elevenlabs:'uc_eleven_key', clova:'uc_clova_key', nijivoice:'uc_nijivoice_key',
+    google_tts:'uc_google_key', azure_tts:'uc_azure_key',
+    pexels:'uc_pexels_key', pixabay:'uc_pixabay_key', unsplash:'uc_unsplash_key',
     flux:'uc_flux_key', ideogram:'uc_ideogram_key', minimax:'uc_minimax_key',
+    sd:'uc_sd_key', gemini_imagen:'uc_gemini_key',
+    runway:'uc_runway_key', pika:'uc_pika_key', luma:'uc_luma_key',
+    minimax_video:'uc_minimax_key',
+    suno:'uc_suno_key', udio:'uc_udio_key',
+    facebook:'uc_facebook_key', naver_blog:'uc_naver_key', threads:'uc_threads_key',
   };
   var k = legacyMap[apiId];
   return k ? localStorage.getItem(k)||'' : '';
