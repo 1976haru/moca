@@ -156,57 +156,34 @@
      ════════════════════════════════════════════════ */
   function buildStockSearchQuery(sceneIdx, opts) {
     opts = opts || {};
-    var prefer = opts.prefer || 'image';
+    var prefer = opts.prefer || (opts.mediaType === 'video' ? 'video' : 'image');
     var debug = { sceneIdx: sceneIdx, prefer: prefer, sources: [] };
 
-    /* 새 helper 우선 — 모든 fallback 자동 처리 */
-    var src = '', raw = '';
-    if (typeof window.getScenePromptForStock === 'function') {
-      var ref = window.getScenePromptForStock(sceneIdx, prefer);
-      raw = ref.prompt || '';
-      src = ref.source || '';
-      debug.sources.push(src);
-    }
-
-    /* helper 결과가 비면 legacy 직접 조회 */
-    if (!raw) {
-      var proj = (window.STUDIO && window.STUDIO.project) || {};
-      var s3 = proj.s3 || {};
-      var s2 = proj.s2 || {};
-      var scenes = s3.scenes || [];
-      var scene = scenes[sceneIdx] || null;
-      var imgP = (s3.imagePrompts && s3.imagePrompts[sceneIdx])
-              || (s3.imagesV3 && s3.imagesV3[sceneIdx] && s3.imagesV3[sceneIdx].promptCompiled)
-              || '';
-      var vidP = (s3.videoPrompts && s3.videoPrompts[sceneIdx])
-              || (s3.imagesV3 && s3.imagesV3[sceneIdx] && s3.imagesV3[sceneIdx].videoPromptCompiled)
-              || '';
-      var sceneDesc = scene ? ((scene.lines && scene.lines.join(' ')) || scene.desc || scene.label || '') : '';
-      var script = (s2.scriptKo || s2.scriptJa) || proj.scriptText || '';
-      var scriptLead = script.split(/[.!?\n。]/).filter(Boolean).slice(0, 2).join(' ');
-      if (prefer === 'image' && imgP) { src = 'imagePrompt'; raw = imgP; }
-      else if (prefer === 'video' && vidP) { src = 'videoPrompt'; raw = vidP; }
-      else if (imgP) { src = 'imagePrompt'; raw = imgP; }
-      else if (vidP) { src = 'videoPrompt'; raw = vidP; }
-      else if (sceneDesc) { src = 'sceneDesc'; raw = sceneDesc; }
-      else if (scriptLead) { src = 'scriptFallback'; raw = scriptLead; }
-      debug.sources.push(src);
-    }
+    /* resolver(getScenePrompt) 만 사용 — 모든 fallback 통합 */
+    var ref = (typeof window.getScenePrompt === 'function')
+            ? window.getScenePrompt(sceneIdx, prefer)
+            : { prompt:'', source:'(resolver missing)' };
+    var raw = ref.prompt || '';
+    var src = ref.source || '';
+    debug.sources.push(src);
 
     if (!raw) {
-      try { console.debug('[stock-query] empty — no prompt for scene', sceneIdx + 1); } catch(_) {}
-      return { query: '', source: '', sceneIdx: sceneIdx, debug: debug };
+      try {
+        console.debug('[stock-query] sceneIndex:', sceneIdx);
+        console.debug('[stock-query] mediaType:', prefer);
+        console.debug('[stock-query] empty — no prompt found');
+      } catch(_) {}
+      return { query: '', source: src, sceneIdx: sceneIdx, debug: debug };
     }
     try {
       console.debug('[stock-query] sceneIndex:', sceneIdx);
       console.debug('[stock-query] mediaType:', prefer);
-      console.debug('[stock-query] source:', src);
+      console.debug('[stock-query] prompt source:', src);
       console.debug('[stock-query] original prompt length:', raw.length);
     } catch(_) {}
 
-    /* 영문이면 압축, 한글이면 매핑 */
-    var query = '';
     /* 한글이 30% 이상이면 한글 처리, 아니면 영문 압축 */
+    var query = '';
     var koCount = (raw.match(/[가-힣]/g) || []).length;
     var totalLen = raw.replace(/\s/g, '').length;
     var koRatio = totalLen > 0 ? koCount / totalLen : 0;
@@ -219,9 +196,9 @@
       debug.method = 'eng-compress';
     }
 
-    /* 공백/빈 결과 보정 — 최소한 영상 vs 이미지 표시어 */
+    /* 공백/빈 결과 보정 */
     if (!query.trim()) {
-      query = sceneDesc ? _korToEnglishQuery(sceneDesc) : 'lifestyle scene';
+      query = 'lifestyle scene';
       debug.fallback = true;
     }
 
@@ -238,102 +215,25 @@
   };
 
   /* ════════════════════════════════════════════════
-     getStudioScenesForStock — 씬 목록 6단계 fallback
-     반환: [{ sceneIndex, sceneNumber, title, role, narration,
-              visualDescription, imagePrompt, videoPrompt }]
+     getStudioScenesForStock — 단일 resolver(s3-scene-resolver.js)에 위임
      ════════════════════════════════════════════════ */
   window.getStudioScenesForStock = function() {
-    var proj = (window.STUDIO && window.STUDIO.project) || {};
-    var s1 = proj.s1 || {};
-    var s2 = proj.s2 || {};
-    var s3 = proj.s3 || {};
-
-    /* 1) s1.scenes */
-    var src = (s1.scenes && s1.scenes.length) ? s1.scenes : null;
-    /* 2) s1.sceneList */
-    if (!src && s1.sceneList && s1.sceneList.length) src = s1.sceneList;
-    /* 3) s3.scenes (compiler 결과) */
-    if (!src && s3.scenes && s3.scenes.length) src = s3.scenes;
-    /* 4) s3.scenePrompts 길이 기반 */
-    if (!src && s3.scenePrompts && s3.scenePrompts.length) {
-      src = s3.scenePrompts.map(function(_, i){ return { sceneNumber: i+1 }; });
-    }
-    /* 5) s3.imagePrompts 길이 기반 */
-    if (!src && s3.imagePrompts && s3.imagePrompts.length) {
-      src = s3.imagePrompts.map(function(_, i){ return { sceneNumber: i+1 }; });
-    }
-    /* 6) s3.imagesV3 키 기반 */
-    if (!src && s3.imagesV3 && Object.keys(s3.imagesV3).length) {
-      var keys = Object.keys(s3.imagesV3).map(Number).sort(function(a,b){return a-b;});
-      src = keys.map(function(k){ return { sceneNumber: k+1 }; });
-    }
-    /* 7) script 텍스트 scene marker 파싱 */
-    if (!src) {
-      var raw = s2.scriptKo || s2.scriptJa || proj.scriptText || proj.script || '';
-      if (raw) {
-        var marker = /(?:^|\n)\s*(?:씬|scene|SCENE|シーン)\s*\d+/g;
-        var m = raw.match(marker);
-        if (m && m.length >= 2) src = m.map(function(_, i){ return { sceneNumber: i+1 }; });
-      }
-    }
-    if (!src || !src.length) {
-      try { console.debug('[stock-scenes] no scenes found in any source'); } catch(_) {}
+    if (typeof window.resolveStudioScenes !== 'function') {
+      try { console.debug('[stock-scenes] resolver missing — empty list'); } catch(_) {}
       return [];
     }
-
-    /* normalize — 인덱스/제목/역할/대본/프롬프트 채우기 */
-    return src.map(function(sc, i){
-      var role = sc.role || sc.sceneRole || (s3.scenes && s3.scenes[i] && s3.scenes[i].role) || '';
-      var roleLabel = (window.S3SC_ROLE_RULES && window.S3SC_ROLE_RULES[role] || {}).label || role;
-      var narration = sc.narration || sc.narration_kr || sc.lines && (Array.isArray(sc.lines) ? sc.lines.join(' ') : sc.lines)
-                   || sc.desc || sc.description || '';
-      var visual = sc.visual_description || sc.visualDescription || sc.visual || '';
-      var imgP = (s3.imagePrompts && s3.imagePrompts[i])
-              || (s3.imagesV3 && s3.imagesV3[i] && s3.imagesV3[i].promptCompiled)
-              || sc.imagePrompt || '';
-      var vidP = (s3.videoPrompts && s3.videoPrompts[i])
-              || (s3.imagesV3 && s3.imagesV3[i] && s3.imagesV3[i].videoPromptCompiled)
-              || sc.videoPrompt || '';
-      return {
-        sceneIndex: i,
-        sceneNumber: i + 1,
-        title: sc.title || sc.label || ('씬 ' + (i+1)),
-        role: role,
-        roleLabel: roleLabel,
-        narration: String(narration || ''),
-        visualDescription: String(visual || ''),
-        imagePrompt: String(imgP || ''),
-        videoPrompt: String(vidP || ''),
-      };
-    });
+    return window.resolveStudioScenes();
   };
 
   /* ════════════════════════════════════════════════
-     getScenePromptForStock — 5단계 prompt 참조 fallback
+     getScenePromptForStock — getScenePrompt(resolver) 위임
      ════════════════════════════════════════════════ */
   window.getScenePromptForStock = function(sceneIndex, mediaType) {
-    var scenes = window.getStudioScenesForStock();
-    var sc = scenes[sceneIndex] || null;
-    if (!sc) {
-      try { console.debug('[stock-prompt] no scene at index', sceneIndex); } catch(_) {}
+    if (typeof window.getScenePrompt !== 'function') {
+      try { console.debug('[stock-prompt] resolver missing'); } catch(_) {}
       return { prompt:'', source:'' };
     }
-    var prefer = mediaType === 'video' ? 'video' : 'image';
-    /* 1) prefer 우선 */
-    if (prefer === 'image' && sc.imagePrompt) return { prompt: sc.imagePrompt, source: 'imagePrompt' };
-    if (prefer === 'video' && sc.videoPrompt) return { prompt: sc.videoPrompt, source: 'videoPrompt' };
-    /* 2) 다른 mediaType prompt */
-    if (sc.imagePrompt) return { prompt: sc.imagePrompt, source: 'imagePrompt' };
-    if (sc.videoPrompt) return { prompt: sc.videoPrompt, source: 'videoPrompt' };
-    /* 3) visual description */
-    if (sc.visualDescription) return { prompt: sc.visualDescription, source: 'visualDescription' };
-    /* 4) narration */
-    if (sc.narration) return { prompt: sc.narration, source: 'narration' };
-    /* 5) topic fallback */
-    var proj = (window.STUDIO && window.STUDIO.project) || {};
-    var topic = (proj.s1 && proj.s1.topic) || proj.topic || '';
-    if (topic) return { prompt: String(topic), source: 'topic' };
-    return { prompt: '', source: '' };
+    return window.getScenePrompt(sceneIndex, mediaType === 'video' ? 'video' : 'image');
   };
 
   /* ════════════════════════════════════════════════

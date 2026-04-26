@@ -19,7 +19,10 @@ function _studioS3Source(wrapId) {
   if (!wrap) return;
 
   const proj   = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
-  const scenes = proj.scenes || [];
+  /* 단일 resolver — 상단 씬별 소스 현황과 스톡 드롭다운 동기화 */
+  const scenes = (typeof window.resolveStudioScenes === 'function')
+    ? window.resolveStudioScenes()
+    : (proj.scenes || []);
 
   // sources 초기화
   if (!proj.sources) {
@@ -79,12 +82,32 @@ function _studioS3Source(wrapId) {
   _s3SrcRenderContent(wrapId);
 }
 
+/* ── 씬별 미디어 상태 (V3 슬롯 기준) ── */
+function _s3SceneMediaStatus(sceneIdx, proj) {
+  const s3 = (proj && proj.s3) || {};
+  const slot = s3.imagesV3 && s3.imagesV3[sceneIdx];
+  if (slot && slot.adopted) {
+    const ad = slot.candidates && slot.candidates.find(c => c.id === slot.adopted);
+    if (ad) return ad.type === 'video' ? 'vid' : 'img';
+  }
+  /* legacy — proj.scenes[idx].imageUrl/videoUrl */
+  const legacyScenes = proj && proj.scenes;
+  const ls = legacyScenes && legacyScenes[sceneIdx];
+  if (ls) {
+    if (ls.imageUrl || ls.img) return 'img';
+    if (ls.videoUrl) return 'vid';
+  }
+  return 'none';
+}
+
 /* ── 씬-소스 매핑 패널 ── */
 function _s3RenderSceneMap(scenes, proj) {
-  const hasAny      = scenes.some(s => s.imageUrl || s.videoUrl);
+  const hasAny      = scenes.some(function(s){ return _s3SceneMediaStatus(s.sceneIndex, proj) !== 'none'; });
   /* 이슈 2 — 자동 채워진 prompt 가 있는지 / 어떤 소스인지 표시 */
   const s3State     = (proj && proj.s3) || {};
-  const promptCount = (s3State.prompts || []).filter(function(p){ return p && String(p).trim(); }).length;
+  /* resolver 가 imagePrompt 를 채우므로 그걸 신뢰 */
+  const promptCount = scenes.filter(function(sc){ return sc.imagePrompt && String(sc.imagePrompt).trim(); }).length
+                  || (s3State.prompts || []).filter(function(p){ return p && String(p).trim(); }).length;
   const hydrateSrc  = s3State._hydrateSource;
 
   let statusBadge;
@@ -108,16 +131,14 @@ function _s3RenderSceneMap(scenes, proj) {
     </div>
     <div class="s3src-map-grid">
       ${scenes.map((s,i) => {
-        const hasImg = !!(s.imageUrl || s.img);
-        const hasVid = !!(s.videoUrl);
-        const status = hasImg ? 'img' : hasVid ? 'vid' : 'none';
+        const status = _s3SceneMediaStatus(s.sceneIndex != null ? s.sceneIndex : i, proj);
+        const ico = status === 'img' ? '🖼' : status === 'vid' ? '🎬' : '⬜';
+        const titleText = (s.label || s.title || s.desc || '').replace(/"/g, '&quot;');
         return `
         <div class="s3src-map-item ${status}"
-          title="씬${i+1}: ${s.label||s.desc||''}">
-          <span class="s3src-map-num">${i+1}</span>
-          <span class="s3src-map-ico">
-            ${hasImg ? '🖼' : hasVid ? '🎬' : '⬜'}
-          </span>
+          title="씬${(s.sceneNumber!=null?s.sceneNumber:i+1)}: ${titleText}">
+          <span class="s3src-map-num">${s.sceneNumber!=null?s.sceneNumber:i+1}</span>
+          <span class="s3src-map-ico">${ico}</span>
         </div>`;
       }).join('')}
     </div>
@@ -206,6 +227,10 @@ function _s3SrcRenderUpload(subTab) {
     /* 신규 — s3-stock-search-panel.js 의 cbRenderStockSearchPanel 사용 */
     if (typeof window.cbRenderStockSearchPanel === 'function') {
       try { console.debug('[stock] render target: #s3-stock-panel'); } catch(_) {}
+      /* 진입 시 자동 초기화 — scene/draft/query 동기화 */
+      if (typeof window.ensureStockSceneState === 'function') {
+        try { window.ensureStockSceneState(); } catch(_) {}
+      }
       inner.innerHTML = '<div id="s3-stock-panel">' + window.cbRenderStockSearchPanel() + '</div>';
     } else if (typeof renderS3Stock === 'function') {
       inner.innerHTML = '<div id="s3StockInner"></div>';

@@ -39,9 +39,10 @@
   window.cbRenderStockSearchPanel = function(opts) {
     opts = opts || {};
     _injectCSS();
-    /* 새 helper — 6단계 fallback 으로 씬 목록 확보 */
-    var scenes = (typeof window.getStudioScenesForStock === 'function')
-      ? window.getStudioScenesForStock() : [];
+    /* 단일 resolver — 상단 씬별 소스 현황과 동일한 씬 목록 */
+    var scenes = (typeof window.resolveStudioScenes === 'function')
+      ? window.resolveStudioScenes()
+      : (typeof window.getStudioScenesForStock === 'function' ? window.getStudioScenesForStock() : []);
 
     /* 초기 status 보장 — render 가 도중 'loading' 으로 남는 일 없음 */
     if (STATE.status === 'loading' && (!STATE.results || !STATE.results.length)) {
@@ -49,10 +50,12 @@
     }
 
     /* selectedSceneIndex 기본값 — 첫 씬 (0) */
-    if (STATE.sceneIdx === undefined || STATE.sceneIdx === null) STATE.sceneIdx = 0;
+    if (STATE.sceneIdx === undefined || STATE.sceneIdx === null) {
+      STATE.sceneIdx = scenes.length ? scenes[0].sceneIndex : 0;
+    }
 
-    /* 진입 시 자동 query 재생성 — 씬/타입 변경 반영 */
-    if (typeof window.buildStockSearchQuery === 'function' && scenes.length) {
+    /* 진입 시 자동 query 재생성 — 씬/타입 변경 반영 (전체 씬 모드 제외) */
+    if (STATE.sceneIdx !== 'all' && typeof window.buildStockSearchQuery === 'function' && scenes.length) {
       var qResult = window.buildStockSearchQuery(STATE.sceneIdx, { prefer: STATE.type });
       if (qResult && qResult.query) {
         STATE.query = qResult.query;
@@ -63,14 +66,13 @@
       }
     }
 
-    /* scene picker — getStudioScenesForStock 결과 사용 */
-    var sceneOptions = '<option value="all"' + (STATE.sceneIdx === 'all' ? ' selected' : '') + '>📋 전체 씬 (미리보기)</option>';
+    /* scene picker — resolveStudioScenes 결과 사용 (상단 씬별 소스 현황과 동일) */
+    var sceneOptions = '<option value="all"' + (STATE.sceneIdx === 'all' ? ' selected' : '') + '>📋 전체 씬 미리보기</option>';
     if (!scenes.length) {
-      sceneOptions += '<option value="" disabled>씬 정보가 없습니다 — 1단계 대본을 먼저 생성하세요</option>';
+      sceneOptions += '<option value="" disabled>대본 씬을 찾지 못했습니다 — 1단계 대본을 먼저 생성하세요</option>';
     } else {
       sceneOptions += scenes.map(function(sc){
-        var label = '씬 ' + sc.sceneNumber + (sc.roleLabel ? ' — ' + sc.roleLabel : '') +
-                    (sc.title && sc.title !== '씬 ' + sc.sceneNumber ? ' · ' + sc.title : '');
+        var label = sc.label || ('씬 ' + sc.sceneNumber);
         var on = (STATE.sceneIdx === sc.sceneIndex);
         return '<option value="'+sc.sceneIndex+'"' + (on?' selected':'') + '>' + _esc(label) + '</option>';
       }).join('');
@@ -102,9 +104,12 @@
     var statusHtml = '';
     if (STATE.status === 'loading') statusHtml = '<div class="s3ss-status s3ss-loading">🔍 스톡 검색 중...</div>';
     else if (STATE.status === 'no-results') statusHtml = '<div class="s3ss-status s3ss-empty">📭 검색 결과가 없습니다. 검색어를 수정하거나 다른 provider를 선택해주세요.</div>';
-    else if (STATE.status === 'error') statusHtml = '<div class="s3ss-status s3ss-err">❌ ' + _esc(STATE.errorMsg || '응답 처리 중 오류가 발생했습니다.') + '</div>';
+    else if (STATE.status === 'error') statusHtml = '<div class="s3ss-status s3ss-err">❌ 스톡 검색 중 오류가 발생했습니다. API 설정과 검색어를 확인해주세요. (' + _esc(STATE.errorMsg || '') + ')</div>';
     else if (STATE.status === 'ok') statusHtml = '<div class="s3ss-status s3ss-ok">✅ 검색 결과 ' + STATE.results.length + '건</div>';
-    else statusHtml = '<div class="s3ss-status s3ss-init">💡 검색어를 확인하고 "🔍 스톡 검색" 버튼을 누르세요. 자동 검색어는 현재 씬의 이미지/영상 프롬프트에서 생성됩니다.</div>';
+    else if (!scenes.length) statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 대본 씬을 찾지 못했습니다. 현재 저장된 s1/s3 데이터를 확인해주세요.</div>';
+    else if (STATE.sceneIdx === 'all') statusHtml = '<div class="s3ss-status s3ss-init">📋 전체 씬의 프롬프트를 미리보고, 원하는 씬을 선택해 스톡 검색할 수 있습니다.</div>';
+    else if (STATE.query) statusHtml = '<div class="s3ss-status s3ss-init">✅ 현재 씬 프롬프트로 검색어를 만들었습니다. "🔍 스톡 검색" 버튼을 누르세요.</div>';
+    else statusHtml = '<div class="s3ss-status s3ss-empty">⚠️ 검색어를 만들 수 없습니다. 이미지/영상 프롬프트를 먼저 컴파일해주세요.</div>';
 
     /* results grid */
     var resultsHtml = '';
@@ -284,14 +289,35 @@
     STATE.provider = p;
     _refresh();
   };
-  /* 다시 생성 — 직접 DOM 갱신 + STATE 동기화 (full re-render 도 함께) */
+  /* 다시 생성 — 현재 씬 프롬프트로 query 재생성 + input.value 즉시 반영 */
   window.s3SsRebuildQuery = function() {
-    _autoFillQuery();
+    /* 전체 씬이면 첫 씬으로 fallback */
+    var scenes = (typeof window.resolveStudioScenes === 'function') ? window.resolveStudioScenes() : [];
+    var idx = STATE.sceneIdx;
+    if (idx === 'all' || idx == null) {
+      idx = scenes.length ? scenes[0].sceneIndex : 0;
+      STATE.sceneIdx = idx;
+    }
+    if (typeof window.buildStockSearchQuery !== 'function') {
+      _toast('⚠️ stock query builder 미로드', 'warn'); return;
+    }
+    var q = window.buildStockSearchQuery(idx, { prefer: STATE.type, force: true });
+    var query = (q && q.query) || '';
+    STATE.query = query;
     /* DOM input 직접 업데이트 — 즉시 반영 보장 */
     var input = document.querySelector('#s3-stock-panel .s3ss-query, #s3ss-holder .s3ss-query');
     if (input) {
-      input.value = STATE.query;
-      try { console.debug('[stock] rebuild → input.value updated:', STATE.query); } catch(_) {}
+      input.value = query;
+      try { console.debug('[stock-query] built query:', query); } catch(_) {}
+    }
+    /* draft 저장 */
+    if (typeof window.ensureStockSearchDraft === 'function') {
+      window.ensureStockSearchDraft(idx, STATE.type, { force: true });
+    }
+    if (!query) {
+      _toast('⚠️ 검색어를 만들 수 없습니다. 이미지/영상 프롬프트를 먼저 컴파일해주세요.', 'warn');
+    } else {
+      _toast('✅ 현재 씬 프롬프트로 검색어를 다시 만들었습니다.', 'success');
     }
     _refresh();
   };
@@ -307,6 +333,33 @@
       }
     }
   }
+
+  /* ── 토스트 helper (없으면 console) ── */
+  function _toast(msg, kind) {
+    if (typeof window.ucShowToast === 'function') {
+      window.ucShowToast(msg, kind || 'info'); return;
+    }
+    try { console.debug('[stock-toast]', msg); } catch(_) {}
+  }
+
+  /* ════════════════════════════════════════════════
+     ensureStockSceneState — 탭 진입 시 1회 자동 초기화
+     ════════════════════════════════════════════════ */
+  window.ensureStockSceneState = function() {
+    var scenes = (typeof window.resolveStudioScenes === 'function') ? window.resolveStudioScenes() : [];
+    if (!scenes.length) {
+      try { console.debug('[scene-resolver] scenes count: 0'); } catch(_) {}
+      return { scenes: [], query: '' };
+    }
+    /* selectedSceneIndex 기본값 — 0 (전체 미리보기는 사용자가 선택했을 때만) */
+    if (STATE.sceneIdx == null) STATE.sceneIdx = scenes[0].sceneIndex;
+    /* draft 확인 — 없으면 자동 생성 */
+    if (STATE.sceneIdx !== 'all' && typeof window.ensureStockSearchDraft === 'function') {
+      var drafted = window.ensureStockSearchDraft(STATE.sceneIdx, STATE.type, { force: false });
+      if (drafted) STATE.query = drafted;
+    }
+    return { scenes: scenes, query: STATE.query };
+  };
 
   /* ════════════════════════════════════════════════
      검색 실행
