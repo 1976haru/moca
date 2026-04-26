@@ -114,6 +114,44 @@
   window.s3ExtractEntities = extractEntities;
 
   /* ════════════════════════════════════════════════
+     1-1) 현재 aspect 모드 → 프롬프트용 키워드 묶음
+        - shorts:    9:16 vertical, portrait composition, full vertical frame, subject centered
+        - longform:  16:9 horizontal, cinematic wide composition, subtitle-safe lower area
+        - thumbnail: 16:9 YouTube thumbnail composition, strong focal point, clean background
+        - cardnews:  square 1:1 composition, centered focal point, card news friendly layout
+        - cardnews45:4:5 vertical composition, card news friendly layout
+     ════════════════════════════════════════════════ */
+  function _resolveAspectMode(opts) {
+    if (opts && opts.aspectMode) return opts.aspectMode;
+    var proj = (window.STUDIO && window.STUDIO.project) || {};
+    var s3 = proj.s3 || {};
+    if (s3.aspectMode) return s3.aspectMode;
+    if (typeof window.s3DetectAspectMode === 'function') return window.s3DetectAspectMode(proj);
+    return 'shorts';
+  }
+  function _aspectKeywordsForImage(mode) {
+    switch (mode) {
+      case 'longform':   return '16:9 horizontal, cinematic wide composition, subtitle-safe lower area, no text overlay, high quality';
+      case 'thumbnail':  return '16:9 YouTube thumbnail composition, strong focal point, clean background, no text overlay unless explicitly requested, high quality';
+      case 'cardnews':   return 'square 1:1 composition, centered focal point, card news friendly layout, no text overlay, high quality';
+      case 'cardnews45': return '4:5 vertical composition, card news friendly layout, no text overlay, high quality';
+      case 'shorts':
+      default:           return '9:16 vertical, portrait composition, full vertical frame, subject centered, subtitle-safe composition, no text overlay, high quality';
+    }
+  }
+  function _aspectFormatForVideo(mode) {
+    switch (mode) {
+      case 'longform':   return 'horizontal 16:9, cinematic wide composition';
+      case 'thumbnail':  return 'horizontal 16:9, single-frame thumbnail (no real motion needed)';
+      case 'cardnews':   return 'square 1:1, social card composition';
+      case 'cardnews45': return 'vertical 4:5, social card composition';
+      case 'shorts':
+      default:           return 'vertical 9:16, portrait composition';
+    }
+  }
+  window._s3CompilerResolveAspectMode = _resolveAspectMode;
+
+  /* ════════════════════════════════════════════════
      2) 이미지 프롬프트 컴파일 — 9블록 구조
      ════════════════════════════════════════════════ */
   function compileImagePrompt(scene, opts) {
@@ -127,6 +165,10 @@
 
     var ent = extractEntities(scene, opts.scriptText || '', genre);
 
+    var aspectMode = _resolveAspectMode(opts);
+    var aspectKw   = _aspectKeywordsForImage(aspectMode);
+    var contextLen = (aspectMode === 'longform' || aspectMode === 'thumbnail') ? ' long-form' : ' short-form';
+
     var composition = roleH.composition || 'medium shot';
     var lighting    = (prof && prof.lighting) || 'soft natural light';
     var mood        = (prof && prof.mood)     || 'warm';
@@ -136,14 +178,14 @@
     /* 9블록 — 사람이 읽을 수 있는 라인별 출력 */
     var blocks = [
       '[Subject] '     + ent.subject,
-      '[Context] '     + (opts.context || (genre + ' short-form, ' + (scene && scene.label ? scene.label : '') + ', ' + (scene && scene.time ? scene.time : ''))).replace(/,\s*,/g,',').replace(/,\s*$/,''),
+      '[Context] '     + (opts.context || (genre + contextLen + ', ' + (scene && scene.label ? scene.label : '') + ', ' + (scene && scene.time ? scene.time : ''))).replace(/,\s*,/g,',').replace(/,\s*$/,''),
       '[Location] '    + ent.location,
       '[Action] '      + (roleH.action ? (roleH.action + ' — ' + ent.action) : ent.action),
       '[Emotion] '     + ent.emotion,
       '[Key Object] '  + ent.keyObject + (imgStrategy ? '; visual hint: ' + imgStrategy : ''),
       '[Composition] ' + composition,
       '[Lighting] '    + lighting + ', ' + mood + ' mood',
-      '[Style] '       + style + ', 9:16 vertical, portrait composition, full vertical frame, no text overlay, high quality',
+      '[Style] '       + style + ', ' + aspectKw,
     ];
     if (ent.metaphor) blocks.splice(6, 0, '[Metaphor] ' + ent.metaphor);
 
@@ -181,6 +223,9 @@
     var openFrame = 'opens with ' + ent.subject + ' at ' + ent.location + ', ' + ent.keyObject + ' visible in frame';
     var style     = (prof && prof.defaultStyle) || 'realistic cinematic';
 
+    var aspectMode = _resolveAspectMode(opts);
+    var formatLine = _aspectFormatForVideo(aspectMode);
+
     var blocks = [
       '[Duration] ~' + dur + ' seconds',
       '[Opening frame] ' + openFrame,
@@ -190,7 +235,7 @@
       '[Focus shift] ' + focusShft,
       '[Pacing] ' + pacing,
       '[Style] ' + style,
-      '[Format] vertical 9:16',
+      '[Format] ' + formatLine,
       '[Negative] no text overlay, no subtitles burned in, no watermark, no logo',
     ];
     return blocks.join('\n');
@@ -285,11 +330,15 @@
       workScenes = annotated;
     }
 
+    /* 비율 모드 — opts > s3.aspectMode > 자동 감지 */
+    var aspectMode = opts.aspectMode || s3.aspectMode
+      || (typeof window.s3DetectAspectMode === 'function' ? window.s3DetectAspectMode(proj) : 'shorts');
+
     var imagePrompts = workScenes.map(function(sc){
-      return compileImagePrompt(sc, { genre: genre, scriptText: scriptText });
+      return compileImagePrompt(sc, { genre: genre, scriptText: scriptText, aspectMode: aspectMode });
     });
     var videoPrompts = workScenes.map(function(sc){
-      return compileVideoPrompt(sc, { genre: genre, scriptText: scriptText });
+      return compileVideoPrompt(sc, { genre: genre, scriptText: scriptText, aspectMode: aspectMode });
     });
 
     return {
@@ -301,6 +350,7 @@
       videoPrompts: videoPrompts,
       scenes: workScenes,
       genre: genre,
+      aspectMode: aspectMode,
     };
   }
   window.s3CompileAllForProject = compileAllForProject;

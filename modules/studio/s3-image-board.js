@@ -105,12 +105,15 @@
     }
 
     var thumb = url
-      ? '<img src="'+_esc(url)+'" alt="씬 '+(idx+1)+'" loading="lazy">'
+      ? '<img class="s3b-thumb" data-scene="'+idx+'" src="'+_esc(url)+'" alt="씬 '+(idx+1)+'" '+
+        'loading="lazy" onload="window._s3OnGalleryImgLoaded(this,'+idx+')">'
       : '<div class="s3b-empty"><div style="font-size:24px">🖼</div><div>생성 전</div></div>';
 
-    return '<div class="s3b-card s3b-card-'+statusCls+(skipped?' s3b-skip':'')+'" onclick="window.s3OpenSceneDetail('+idx+')">' +
+    return '<div class="s3b-card s3b-card-'+statusCls+(skipped?' s3b-skip':'')+'" data-scene="'+idx+'" onclick="window.s3OpenSceneDetail('+idx+')">' +
       '<div class="s3b-thumb-wrap">' + thumb +
-        (ratioBadge ? '<span class="s3b-rb '+ratioBadgeCls+'" title="비율">'+ratioBadge+'</span>' : '') +
+        '<span class="s3b-rb-slot" data-scene="'+idx+'">' +
+          (ratioBadge ? '<span class="s3b-rb '+ratioBadgeCls+'" title="비율">'+ratioBadge+'</span>' : '') +
+        '</span>' +
         scoreChip +
       '</div>' +
       '<div class="s3b-meta">' +
@@ -372,6 +375,26 @@
       sel.width = img.naturalWidth; sel.height = img.naturalHeight;
       if (typeof window.studioSave === 'function') window.studioSave();
     }
+  };
+
+  /* ── 갤러리 썸네일 onload — W/H 백필 + 배지만 in-place 갱신 (rerender 없음) ── */
+  window._s3OnGalleryImgLoaded = function(img, sceneIdx){
+    if (!img || !img.naturalWidth || !img.naturalHeight) return;
+    var sel = (typeof window.s3GetSelectedCandidate === 'function') ? window.s3GetSelectedCandidate(sceneIdx) : null;
+    if (sel && (!sel.width || !sel.height)) {
+      sel.width  = img.naturalWidth;
+      sel.height = img.naturalHeight;
+      if (typeof window.studioSave === 'function') window.studioSave();
+    }
+    if (typeof window.s3EvaluateRatio !== 'function') return;
+    var mode = (_s3().aspectMode) || 'shorts';
+    var ev = window.s3EvaluateRatio(img.naturalWidth, img.naturalHeight, mode);
+    var label = ev.kind === 'ok' ? '✅' : ev.kind === 'wrong' ? '⚠!' : ev.kind === 'warn' ? '⚠' : '';
+    var cls   = ev.kind === 'ok' ? 's3b-rb-ok' : ev.kind === 'wrong' ? 's3b-rb-wrong' : 's3b-rb-warn';
+    var slot  = document.querySelector('.s3b-rb-slot[data-scene="'+sceneIdx+'"]');
+    if (!slot) return;
+    if (!label) { slot.innerHTML = ''; return; }
+    slot.innerHTML = '<span class="s3b-rb '+cls+'" title="'+(ev.label||'').replace(/"/g,'')+'">'+label+'</span>';
   };
 
   /* ── 보드 액션 ── */
