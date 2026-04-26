@@ -6,6 +6,86 @@
    ================================================ */
 
 /* ════════════════════════════════════════════════
+   ⭐ imageTransform helper — 2단계 보드 → 4단계 프리뷰 비파괴 적용
+   ════════════════════════════════════════════════ */
+function s4NormalizeImageTransform(t) {
+  t = t || {};
+  return {
+    fit:        t.fit || t.f || 'cover',
+    scale:      Number.isFinite(+t.scale)   ? +t.scale   : 1,
+    offsetX:    Number.isFinite(+t.offsetX) ? +t.offsetX : 0,
+    offsetY:    Number.isFinite(+t.offsetY) ? +t.offsetY : 0,
+    cropPreset: t.cropPreset || 'center',
+  };
+}
+window.s4NormalizeImageTransform = s4NormalizeImageTransform;
+
+/* sceneIndex(0-based) → 통합 우선순위로 transform 객체 반환 */
+function s4GetSceneTransform(sceneIndex) {
+  var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  var s3 = proj.s3 || {};
+  var ep = proj.editPlan || {};
+  var v3slot = (s3.imagesV3 || {})[sceneIndex];
+  var sel = null;
+  if (v3slot && v3slot.candidates) {
+    sel = v3slot.candidates.find(function(c){ return c.id === v3slot.selectedCandidateId; })
+       || v3slot.candidates[0] || null;
+  }
+  /* 우선순위: selectedCandidate.transform > slot.transform > editPlan.scenes[i].imageTransform */
+  if (sel && sel.transform)        return s4NormalizeImageTransform(sel.transform);
+  if (v3slot && v3slot.transform)  return s4NormalizeImageTransform(v3slot.transform);
+  if (ep.scenes && ep.scenes[sceneIndex] && ep.scenes[sceneIndex].imageTransform) {
+    return s4NormalizeImageTransform(ep.scenes[sceneIndex].imageTransform);
+  }
+  return s4NormalizeImageTransform({});
+}
+window.s4GetSceneTransform = s4GetSceneTransform;
+
+/* transform → CSS style 문자열 (object-fit + transform) */
+function s4StyleForTransform(t) {
+  var n = s4NormalizeImageTransform(t);
+  var fit = (n.fit === 'cover' || n.fit === 'safe-fit') ? 'cover' : 'contain';
+  var sx = Math.max(0.5, Math.min(2.5, n.scale));
+  var ox = Math.max(-50, Math.min(50, n.offsetX));
+  var oy = Math.max(-50, Math.min(50, n.offsetY));
+  return 'object-fit:' + fit + ';' +
+         'width:100%;height:100%;display:block;' +
+         'transform:translate(' + ox + '%, ' + oy + '%) scale(' + sx + ');' +
+         'transform-origin:center center;transition:transform .12s';
+}
+window.s4StyleForTransform = s4StyleForTransform;
+
+/* aspectMode → CSS aspect-ratio 문자열 */
+function s4AspectRatioCss(mode) {
+  var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  var m = mode || (proj.s3 && proj.s3.aspectMode) || 'shorts';
+  if (m === 'longform' || m === 'thumbnail') return '16 / 9';
+  if (m === 'cardnews')   return '1 / 1';
+  if (m === 'cardnews45') return '4 / 5';
+  return '9 / 16';
+}
+window.s4AspectRatioCss = s4AspectRatioCss;
+
+/* safe area overlay HTML (s3.safeArea 가 있으면 그 값) */
+function s4SafeAreaOverlayHtml(opts) {
+  opts = opts || {};
+  var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  var sa = (proj.s3 && proj.s3.safeArea) || (proj.s4 && proj.s4.captionSafeArea) || null;
+  if (!opts.show && !(sa && sa.show !== false)) {
+    /* opts.show 가 명시되지 않았고 sa.show 가 false 면 안 보임. */
+    if (opts.show === false) return '';
+    if (sa && sa.show === false) return '';
+  }
+  var top = (sa && +sa.topPercent)    || 12;
+  var bot = (sa && +sa.bottomPercent) || 22;
+  return '<div class="s4-safe-overlay" aria-hidden="true">' +
+    '<div class="s4-safe-band-top" style="height:' + top + '%"></div>' +
+    '<div class="s4-safe-band-bot" style="height:' + bot + '%"></div>' +
+  '</div>';
+}
+window.s4SafeAreaOverlayHtml = s4SafeAreaOverlayHtml;
+
+/* ════════════════════════════════════════════════
    TAB 3 — 썸네일 텍스트 오버레이
    ════════════════════════════════════════════════ */
 function _s4eT3Thumb(proj) {
@@ -30,11 +110,13 @@ function _s4eT3Thumb(proj) {
         `).join('')}
       </div>
 
-      <!-- 썸네일 미리보기 -->
-      <div class="s4e-thumb-preview">
+      <!-- 썸네일 미리보기 — 2단계 imageTransform 비파괴 적용 (aspect-ratio override) -->
+      <div class="s4e-thumb-preview" style="aspect-ratio:${s4AspectRatioCss()};height:auto;max-height:480px">
         ${imgUrl
-          ? `<img src="${imgUrl}" class="s4e-thumb-img" alt="썸네일">`
+          ? `<img src="${imgUrl}" class="s4e-thumb-img" alt="썸네일" style="${s4StyleForTransform(s4GetSceneTransform(0))}">`
           : `<div class="s4e-thumb-empty">🖼 썸네일 이미지 없음<br><small>STEP2 이미지 생성 후 표시</small></div>`}
+
+        ${imgUrl ? s4SafeAreaOverlayHtml() : ''}
 
         <!-- 텍스트 오버레이 -->
         ${th[_s4ThumbAlt]?.text ? `
@@ -110,6 +192,104 @@ function _s4eT3Thumb(proj) {
 }
 
 /* ════════════════════════════════════════════════
+   ⭐ 씬별 미리보기 블록 — TAB 4 상단
+   2단계 imagesV3.transform / editPlan.scenes[i].imageTransform 적용
+   ════════════════════════════════════════════════ */
+function _s4eScenePreviewBlock() {
+  _s4eEnsurePreviewCSS();
+  var proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  var s3 = proj.s3 || {};
+  var ep = proj.editPlan || {};
+  var scenes = (s3.scenes && s3.scenes.length)
+    ? s3.scenes
+    : (ep.scenes && ep.scenes.length ? ep.scenes : []);
+  if (!scenes.length) {
+    return '<div class="s4e-block">' +
+      '<div class="s4e-label">🎞 씬별 미리보기</div>' +
+      '<div class="s4e-no-scenes">아직 씬이 없습니다. STEP1 대본 → STEP2 이미지 후 표시됩니다.</div>' +
+    '</div>';
+  }
+  var ratio = s4AspectRatioCss();
+  var safeOn = !!_s4eSafeOverlayShow;
+  var cards = scenes.map(function(_, idx){
+    var slot = (s3.imagesV3 || {})[idx];
+    var sel  = null;
+    if (slot && slot.candidates) {
+      sel = slot.candidates.find(function(c){ return c.id === slot.selectedCandidateId; })
+         || slot.candidates[0] || null;
+    }
+    var url = (sel && sel.url) || (s3.images || [])[idx] || '';
+    var skipped = !!(slot && slot.skipped);
+    var tStyle = s4StyleForTransform(s4GetSceneTransform(idx));
+    return '<div class="s4e-sp-card' + (skipped ? ' s4e-sp-skip' : '') + '">' +
+      '<div class="s4e-sp-frame" style="aspect-ratio:' + ratio + '">' +
+        (url
+          ? '<img src="' + url + '" alt="씬 ' + (idx+1) + '" style="' + tStyle + '">'
+          : '<div class="s4e-sp-empty"><span>씬 ' + (idx+1) + '</span><small>이미지 없음</small></div>') +
+        (safeOn && url ? s4SafeAreaOverlayHtml({ show:true }) : '') +
+      '</div>' +
+      '<div class="s4e-sp-meta">씬 ' + (idx+1) + (skipped ? ' · 건너뜀' : '') + '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="s4e-block">' +
+    '<div class="s4e-label">🎞 씬별 미리보기 ' +
+      '<span class="s4e-label-sub">2단계에서 조정한 크기·위치가 그대로 반영됩니다</span>' +
+    '</div>' +
+    '<div class="s4e-sp-toolbar">' +
+      '<button class="s4e-sp-toggle' + (safeOn?' on':'') + '" onclick="_s4eToggleSafeOverlay()">'+
+        (safeOn ? '✅ 자막 안전영역 표시' : '⬜ 자막 안전영역 숨김') +
+      '</button>' +
+      '<span class="s4e-sp-info">총 ' + scenes.length + '개 씬 · ' +
+        (proj.s3 && proj.s3.aspectMode === 'longform' ? '롱폼 16:9' :
+         proj.s3 && proj.s3.aspectMode === 'thumbnail' ? '썸네일 16:9' :
+         proj.s3 && proj.s3.aspectMode === 'cardnews'  ? '카드뉴스 1:1' :
+         proj.s3 && proj.s3.aspectMode === 'cardnews45'? '카드뉴스 4:5' : '숏츠 9:16') +
+      '</span>' +
+    '</div>' +
+    '<div class="s4e-sp-grid">' + cards + '</div>' +
+  '</div>';
+}
+
+/* safe overlay 표시 토글 — 모듈 변수 */
+var _s4eSafeOverlayShow = true;
+window._s4eToggleSafeOverlay = function() {
+  _s4eSafeOverlayShow = !_s4eSafeOverlayShow;
+  if (typeof _studioS4Edit === 'function') _studioS4Edit('studioS4EditWrap');
+};
+
+function _s4eEnsurePreviewCSS() {
+  if (document.getElementById('s4e-preview-style')) return;
+  var st = document.createElement('style');
+  st.id = 's4e-preview-style';
+  st.textContent =
+    '.s4e-no-scenes{padding:16px;text-align:center;color:#999;background:#fafafe;border-radius:10px;font-size:12.5px}'+
+    '.s4e-sp-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}'+
+    '.s4e-sp-toggle{border:1.5px solid var(--line,#e9e4f3);background:#fff;color:#5a4a56;'+
+      'border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '.s4e-sp-toggle.on{border-color:#ef6fab;background:#fff5fa;color:#ef6fab}'+
+    '.s4e-sp-info{font-size:11.5px;color:#7b6080;margin-left:auto}'+
+    '.s4e-sp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}'+
+    '@media(max-width:1366px){.s4e-sp-grid{grid-template-columns:repeat(3,1fr)}}'+
+    '@media(max-width:900px){.s4e-sp-grid{grid-template-columns:repeat(2,1fr)}}'+
+    '@media(max-width:520px){.s4e-sp-grid{grid-template-columns:1fr}}'+
+    '.s4e-sp-card{display:flex;flex-direction:column;gap:4px}'+
+    '.s4e-sp-card.s4e-sp-skip{opacity:.5}'+
+    '.s4e-sp-frame{position:relative;width:100%;background:#1a1a2e;border-radius:12px;'+
+      'overflow:hidden;border:1.5px solid #f1dce7}'+
+    '.s4e-sp-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;'+
+      'justify-content:center;color:#bbb;text-align:center;gap:4px;font-size:11px}'+
+    '.s4e-sp-empty span{font-size:13px;font-weight:800}'+
+    '.s4e-sp-meta{font-size:11px;color:#7b6080;text-align:center;font-weight:700}'+
+    /* safe overlay (s4SafeAreaOverlayHtml 가 만든 div 들) */
+    '.s4-safe-overlay{position:absolute;inset:0;pointer-events:none}'+
+    '.s4-safe-band-top,.s4-safe-band-bot{position:absolute;left:0;right:0;'+
+      'background:rgba(255,107,160,.18);border:1px dashed rgba(255,107,160,.55)}'+
+    '.s4-safe-band-top{top:0}.s4-safe-band-bot{bottom:0}';
+  document.head.appendChild(st);
+}
+
+/* ════════════════════════════════════════════════
    TAB 4 — 영상 구성 (이슈 3·4·5 — 카드 그리드 통일 + STUDIO.project.s4 동기화)
    ════════════════════════════════════════════════ */
 function _s4eT4Compose() {
@@ -119,6 +299,9 @@ function _s4eT4Compose() {
 
   return `
   <div class="s4e-section">
+
+    <!-- ⭐ 0. 씬별 미리보기 (2단계 imageTransform 비파괴 적용) -->
+    ${_s4eScenePreviewBlock()}
 
     <!-- 1. 영상 템플릿 -->
     <div class="s4e-block">
@@ -484,7 +667,30 @@ function _s4eDownloadThumb() {
   if (imgUrl) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); draw(); };
+    img.onload = () => {
+      /* 2단계 imageTransform 을 canvas drawImage 매트릭스로 반영 */
+      const tf = s4GetSceneTransform(0);
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      ctx.save();
+      ctx.translate(cx + (tf.offsetX/100) * canvas.width,
+                    cy + (tf.offsetY/100) * canvas.height);
+      ctx.scale(tf.scale, tf.scale);
+      ctx.translate(-cx, -cy);
+      /* fit:contain 이면 letterbox, cover 면 꽉 채우기 (기본은 cover) */
+      if (tf.fit === 'contain') {
+        const ir = img.width / img.height, cr = canvas.width / canvas.height;
+        let dw = canvas.width, dh = canvas.height, dx = 0, dy = 0;
+        if (ir > cr) { dh = canvas.width / ir; dy = (canvas.height - dh) / 2; }
+        else         { dw = canvas.height * ir; dx = (canvas.width - dw) / 2; }
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, dx, dy, dw, dh);
+      } else {
+        /* cover/safe-fit: 꽉 채우기 */
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+      ctx.restore();
+      draw();
+    };
     img.onerror = draw;
     img.src = imgUrl;
   } else {
