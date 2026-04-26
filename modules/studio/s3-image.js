@@ -96,31 +96,7 @@ function _studioS3(){
   var stockBarHtml = studioS3StockBar();
 
   const scenesHtml = scenes.map(function(sc, idx){
-    var img     = (s3.images  || [])[idx];
-    var adopted = (s3.adopted || [])[idx];
-    return '<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
-        '<div style="font-size:13px;font-weight:800">씬 '+(idx+1)+' — '+sc.label+'</div>' +
-        '<div style="font-size:11px;color:var(--sub)">'+sc.time+'</div>' +
-      '</div>' +
-      '<textarea id="s3-prompt-'+idx+'" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:8px;font-size:11px;resize:vertical;min-height:48px;font-family:inherit" placeholder="AI 프롬프트 (영어 자동생성 → 수정 가능)">'+(s3.prompts&&s3.prompts[idx]?s3.prompts[idx]:sc.prompt||'')+'</textarea>' +
-      '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' +
-        '<button onclick="studioS3GenScene('+idx+')" class="studio-btn ghost" style="font-size:12px">🎨 AI생성</button>' +
-        '<button onclick="studioS3RegenScene('+idx+')" class="studio-btn ghost" style="font-size:12px">🔄 재생성</button>' +
-        '<button onclick="studioS3AutoPrompt('+idx+')" class="studio-btn ghost" style="font-size:12px">🤖 프롬프트 AI생성</button>' +
-        '<label style="cursor:pointer"><span class="studio-btn ghost" style="font-size:12px;padding:6px 12px">📁 내 사진 사용</span><input type="file" accept="image/*" style="display:none" onchange="studioS3UploadScene('+idx+', this)"></label>' +
-      '</div>' +
-      (img ?
-        '<div style="margin-top:10px">' +
-          '<img src="'+img+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;border:1px solid var(--line)">' +
-          '<div style="display:flex;gap:6px;margin-top:6px">' +
-            '<button onclick="studioS3Adopt('+idx+',true)" style="flex:1;border:none;border-radius:999px;padding:7px;font-size:12px;font-weight:800;cursor:pointer;background:'+(adopted?'#27ae60':'#eee')+';color:'+(adopted?'#fff':'#666')+'">'+(adopted?'✅ 채택됨':'✅ 채택')+'</button>' +
-            '<button onclick="studioS3Adopt('+idx+',false)" style="flex:1;border:none;border-radius:999px;padding:7px;font-size:12px;font-weight:800;cursor:pointer;background:#eee;color:#666">⬜ 건너뜀</button>' +
-            '<button onclick="studioS3SaveLib('+idx+')" style="flex:1;border:none;border-radius:999px;padding:7px;font-size:12px;font-weight:800;cursor:pointer;background:#eee;color:#666">📁 라이브러리</button>' +
-          '</div>' +
-        '</div>'
-      : '<div style="margin-top:8px;background:#f8f8f8;border-radius:10px;height:80px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#bbb">이미지 생성 전</div>') +
-    '</div>';
+    return _s3SceneCardHtml(sc, idx, s3);
   }).join('');
 
   return '<div class="studio-panel">' + tabsHtml +
@@ -283,12 +259,237 @@ function _studioS3ParseScenes(script){
 
 function _studioBindS3(){
   _s3InjectSourceTabCSS();
+  _s3InjectPreviewCSS();
   if(_s3SourceTab !== 'image' && typeof _studioS3Video === 'function'){
     _studioS3Video('studioS3VideoWrap');
     if(_s3SourceTab === 'upload' && typeof _s3vSetTab === 'function'){
       _s3vSetTab('c', 'studioS3VideoWrap');
     }
   }
+}
+
+/* ═════════════ 씬 카드 — 9:16 세로 프레임 미리보기 ═════════════ */
+function _s3SceneCardHtml(sc, idx, s3){
+  /* 기존 단일 URL 구조와 신규 candidates 구조 모두 호환 */
+  var v2       = (s3.imagesV2 && s3.imagesV2[idx]) || null;
+  var legacy   = (s3.images   || [])[idx];
+  var imgUrl   = (v2 && v2.selectedUrl) || legacy || '';
+  var cands    = (v2 && v2.candidates) || [];
+  var skipped  = (v2 && v2.skipped) === true;
+  var adopted  = (s3.adopted || [])[idx];
+  var promptText = (s3.prompts && s3.prompts[idx]) ? s3.prompts[idx] : (sc.prompt || '');
+  var statusText = skipped ? '⏭ 건너뜀' : adopted ? '✅ 채택됨' : imgUrl ? '🎨 생성 완료' : '⬜ 생성 전';
+  var statusClass= skipped ? 's3-chip-skip' : adopted ? 's3-chip-adopt' : imgUrl ? 's3-chip-done' : 's3-chip-empty';
+  var safeUrl   = imgUrl ? String(imgUrl).replace(/'/g, '&#39;') : '';
+  var safeLabel = String(sc.label || '').replace(/'/g, '&#39;');
+
+  /* 후보 썸네일 스트립 (있을 때만) */
+  var candStrip = '';
+  if (cands.length > 1) {
+    candStrip = '<div class="s3-cand-strip">' +
+      cands.map(function(c, ci){
+        var on = (c.url === imgUrl);
+        return '<button class="s3-cand-thumb'+(on?' on':'')+'" '+
+          'onclick="_s3PickCandidate('+idx+','+ci+')" title="후보 '+(ci+1)+'">' +
+          '<img src="'+String(c.url).replace(/"/g,'&quot;')+'" alt=""></button>';
+      }).join('') + '</div>';
+  }
+
+  var previewHtml;
+  if (imgUrl) {
+    previewHtml =
+      '<div class="s3-portrait-preview">' +
+        '<img src="'+safeUrl+'" alt="씬 '+(idx+1)+' 미리보기" '+
+          'data-scene-idx="'+idx+'" '+
+          'onload="_s3OnImgLoaded(this,'+idx+')" '+
+          'onerror="this.parentNode.classList.add(\'s3-preview-err\')">' +
+      '</div>' +
+      candStrip +
+      '<div class="s3-ratio-hint" id="s3-ratio-'+idx+'"></div>';
+  } else {
+    previewHtml =
+      '<div class="s3-preview-empty">'+
+        '<div style="text-align:center"><div style="font-size:28px">🖼</div>'+
+        '<div style="font-size:12px;color:#999;margin-top:6px">9:16 세로 이미지 영역</div>'+
+        '<div style="font-size:11px;color:#bbb;margin-top:2px">생성 전</div></div>'+
+      '</div>';
+  }
+
+  /* 우측 상태/액션 패널 */
+  var sideHtml =
+    '<div class="s3-preview-side">' +
+      '<span class="s3-status-chip '+statusClass+'">'+statusText+'</span>' +
+      '<div class="s3-pill-row">' +
+        '<button class="s3-pill s3-pill-adopt'+(adopted?' on':'')+'" onclick="studioS3Adopt('+idx+',true)">'+
+          (adopted?'✅ 채택됨':'✅ 채택')+'</button>' +
+        '<button class="s3-pill" onclick="studioS3Adopt('+idx+',false)">⏭ 건너뜀</button>' +
+        '<button class="s3-pill" onclick="studioS3SaveLib('+idx+')">📁 라이브러리</button>' +
+      '</div>' +
+      (imgUrl ?
+        '<div class="s3-pill-row">' +
+          '<button class="s3-pill s3-pill-zoom" onclick="s3OpenImagePreview(\''+safeUrl+'\',\'씬 '+(idx+1)+' — '+safeLabel+'\')">🔍 확대 보기</button>' +
+          '<button class="s3-pill s3-pill-orig" onclick="s3OpenOriginal(\''+safeUrl+'\')">🖼 원본 보기</button>' +
+        '</div>'
+      : '') +
+    '</div>';
+
+  return '<div class="s3-scene-card">' +
+    '<div class="s3-scene-hd">' +
+      '<div class="s3-scene-title">씬 '+(idx+1)+' — '+(sc.label||'')+'</div>' +
+      '<div class="s3-scene-time">'+(sc.time||'')+'</div>' +
+    '</div>' +
+    '<textarea id="s3-prompt-'+idx+'" class="s3-prompt-ta" '+
+      'placeholder="AI 프롬프트 (영어 자동생성 → 수정 가능)">'+promptText+'</textarea>' +
+    '<div class="s3-action-row">' +
+      '<button onclick="studioS3GenScene('+idx+')" class="studio-btn ghost s3-act-btn">🎨 AI생성</button>' +
+      '<button onclick="studioS3RegenScene('+idx+')" class="studio-btn ghost s3-act-btn">🔄 재생성</button>' +
+      '<button onclick="studioS3AutoPrompt('+idx+')" class="studio-btn ghost s3-act-btn">🤖 프롬프트 AI생성</button>' +
+      '<label class="s3-upload-lbl"><span class="studio-btn ghost s3-act-btn">📁 내 사진 사용</span>'+
+        '<input type="file" accept="image/*" style="display:none" onchange="studioS3UploadScene('+idx+', this)"></label>' +
+    '</div>' +
+    '<div class="s3-scene-preview-wrap">' +
+      '<div>' + previewHtml + '</div>' +
+      sideHtml +
+    '</div>' +
+  '</div>';
+}
+
+/* 후보 선택 — v2 구조 (있을 때만 동작) */
+window._s3PickCandidate = function(idx, candIdx){
+  var s3 = STUDIO.project.s3 = STUDIO.project.s3 || {};
+  var v2 = s3.imagesV2 && s3.imagesV2[idx];
+  if (!v2 || !v2.candidates || !v2.candidates[candIdx]) return;
+  v2.selectedUrl = v2.candidates[candIdx].url;
+  s3.images = s3.images || [];
+  s3.images[idx] = v2.selectedUrl;
+  studioSave(); renderStudio();
+};
+
+/* 이미지 onload — 비율 감지 */
+window._s3OnImgLoaded = function(img, idx){
+  if (!img || !img.naturalWidth || !img.naturalHeight) return;
+  var hint = document.getElementById('s3-ratio-'+idx);
+  if (!hint) return;
+  var r = img.naturalWidth / img.naturalHeight;
+  var msg = '', cls = '';
+  if (r > 1.2) {
+    msg = '⚠️ 가로 이미지입니다. 숏츠용 9:16 비율로 다시 생성하는 것을 권장합니다.';
+    cls = 's3-ratio-warn';
+  } else if (r > 0.85 && r < 1.18) {
+    msg = '⚠️ 정사각형 이미지입니다. 숏츠용 세로 9:16 비율로 재생성하는 것을 권장합니다.';
+    cls = 's3-ratio-warn';
+  } else if (r >= 0.5 && r <= 0.7) {
+    msg = '✅ 9:16 세로 이미지 (' + img.naturalWidth + '×' + img.naturalHeight + ')';
+    cls = 's3-ratio-ok';
+  } else {
+    msg = 'ℹ️ 이미지 비율: ' + img.naturalWidth + '×' + img.naturalHeight;
+    cls = 's3-ratio-info';
+  }
+  hint.className = 's3-ratio-hint ' + cls;
+  hint.textContent = msg;
+};
+
+/* 라이트박스 — 확대 보기 */
+window.s3OpenImagePreview = function(src, title){
+  var ex = document.getElementById('s3-lightbox');
+  if (ex) ex.remove();
+  var box = document.createElement('div');
+  box.id = 's3-lightbox';
+  box.className = 's3-lightbox';
+  box.innerHTML =
+    '<button class="s3-lightbox-close" aria-label="닫기">✕</button>' +
+    (title ? '<div class="s3-lightbox-title">'+String(title).replace(/[<>]/g,'')+'</div>' : '') +
+    '<img src="'+String(src).replace(/"/g,'&quot;')+'" alt="원본 미리보기">';
+  box.addEventListener('click', function(e){
+    if (e.target === box || e.target.classList.contains('s3-lightbox-close')) {
+      _s3CloseLightbox();
+    }
+  });
+  document.body.appendChild(box);
+  document.addEventListener('keydown', _s3LightboxEsc);
+};
+function _s3CloseLightbox(){
+  var ex = document.getElementById('s3-lightbox');
+  if (ex) ex.remove();
+  document.removeEventListener('keydown', _s3LightboxEsc);
+}
+function _s3LightboxEsc(e){
+  if (e.key === 'Escape') _s3CloseLightbox();
+}
+
+/* 원본 보기 — 새 탭 */
+window.s3OpenOriginal = function(src){
+  if (!src) return;
+  /* data: URL 도 새 탭에서 열기 */
+  try {
+    var w = window.open('', '_blank');
+    if (w) {
+      w.document.write('<title>원본 이미지</title>'+
+        '<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh">'+
+        '<img src="'+String(src).replace(/"/g,'&quot;')+'" style="max-width:100%;max-height:100vh">'+
+        '</body>');
+      w.document.close();
+    } else {
+      window.open(src, '_blank');
+    }
+  } catch(_) { window.open(src, '_blank'); }
+};
+
+/* 미리보기 / 라이트박스 / 칩 / pill CSS */
+function _s3InjectPreviewCSS(){
+  if (document.getElementById('s3-preview-style')) return;
+  var st = document.createElement('style');
+  st.id = 's3-preview-style';
+  st.textContent =
+    '.s3-scene-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}' +
+    '.s3-scene-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}' +
+    '.s3-scene-title{font-size:13px;font-weight:800}' +
+    '.s3-scene-time{font-size:11px;color:var(--sub)}' +
+    '.s3-prompt-ta{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:8px;font-size:11px;resize:vertical;min-height:48px;font-family:inherit;box-sizing:border-box}' +
+    '.s3-action-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}' +
+    '.s3-act-btn{font-size:12px}' +
+    '.s3-upload-lbl{cursor:pointer;display:inline-flex}' +
+    '.s3-upload-lbl .s3-act-btn{padding:6px 12px}' +
+    /* 미리보기 그리드 */
+    '.s3-scene-preview-wrap{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:16px;align-items:start;margin-top:12px}' +
+    '.s3-portrait-preview{width:min(320px,100%);aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#f5f5f7;border:1px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center}' +
+    '.s3-portrait-preview img{width:100%;height:100%;object-fit:contain;display:block;background:#eee}' +
+    '.s3-portrait-preview.s3-preview-err{background:#fff1f1}' +
+    '.s3-preview-empty{width:min(320px,100%);aspect-ratio:9/16;border-radius:18px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;color:#999;border:1px dashed #ddd}' +
+    '.s3-preview-side{display:flex;flex-direction:column;gap:10px}' +
+    '.s3-status-chip{display:inline-block;align-self:flex-start;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800}' +
+    '.s3-chip-empty{background:#eee;color:#777}' +
+    '.s3-chip-done{background:#eef5ff;color:#2b66c4}' +
+    '.s3-chip-adopt{background:#effbf7;color:#1a7a5a}' +
+    '.s3-chip-skip{background:#fff1f1;color:#c0392b}' +
+    '.s3-pill-row{display:flex;gap:6px;flex-wrap:wrap}' +
+    '.s3-pill{flex:1 1 auto;min-width:80px;border:1.5px solid var(--line);background:#fff;color:#555;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s;white-space:nowrap}' +
+    '.s3-pill:hover{border-color:#9181ff;color:#9181ff}' +
+    '.s3-pill-adopt.on{background:#27ae60;border-color:#27ae60;color:#fff}' +
+    '.s3-pill-zoom:hover{background:#9181ff;color:#fff;border-color:#9181ff}' +
+    '.s3-pill-orig:hover{background:#ef6fab;color:#fff;border-color:#ef6fab}' +
+    /* 후보 썸네일 */
+    '.s3-cand-strip{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}' +
+    '.s3-cand-thumb{width:54px;height:96px;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#fff;padding:0;cursor:pointer}' +
+    '.s3-cand-thumb.on{border-color:#ef6fab}' +
+    '.s3-cand-thumb img{width:100%;height:100%;object-fit:cover;display:block}' +
+    /* 비율 안내 */
+    '.s3-ratio-hint{margin-top:6px;font-size:11px;line-height:1.4;padding:4px 8px;border-radius:6px;display:none}' +
+    '.s3-ratio-hint.s3-ratio-ok{display:block;background:#effbf7;color:#1a7a5a}' +
+    '.s3-ratio-hint.s3-ratio-warn{display:block;background:#fff7e6;color:#a05a00}' +
+    '.s3-ratio-hint.s3-ratio-info{display:block;background:#f4f4f7;color:#555}' +
+    /* 라이트박스 */
+    '.s3-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10001;display:flex;align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:12px}' +
+    '.s3-lightbox img{max-width:92vw;max-height:84vh;object-fit:contain;border-radius:16px;background:#111;box-shadow:0 8px 40px rgba(0,0,0,.5)}' +
+    '.s3-lightbox-close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:999px;border:none;background:rgba(255,255,255,.9);font-size:18px;font-weight:900;cursor:pointer;z-index:1}' +
+    '.s3-lightbox-title{color:#fff;font-size:14px;font-weight:800;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:999px}' +
+    /* 모바일 */
+    '@media(max-width:760px){' +
+      '.s3-scene-preview-wrap{grid-template-columns:1fr}' +
+      '.s3-portrait-preview,.s3-preview-empty{width:min(280px,100%);margin:0 auto}' +
+      '.s3-pill{flex:1 1 calc(50% - 4px);min-width:0}' +
+    '}';
+  document.head.appendChild(st);
 }
 
 function studioS3SetApi(api){
@@ -381,8 +582,8 @@ async function studioS3AutoPrompt(idx){
   var scenes = s3.scenes || [];
   var sc = scenes[idx]; if(!sc) return;
   var script = STUDIO.project.s2?.scriptKo || STUDIO.project.s2?.scriptJa || '';
-  var sys = 'Stable Diffusion image prompt expert. Answer in English only.';
-  var user = 'Scene: '+sc.label+' ('+sc.time+')\nScript: '+script.slice(0,200)+'\nArt style: '+(s3.artStyle||'ghibli')+'\nWrite image prompt in 50 words or less.';
+  var sys = 'Stable Diffusion image prompt expert. Answer in English only. Always include "9:16 vertical, portrait composition, full vertical frame, no text overlay, high quality" at the end.';
+  var user = 'Scene: '+sc.label+' ('+sc.time+')\nScript: '+script.slice(0,200)+'\nArt style: '+(s3.artStyle||'ghibli')+'\nWrite image prompt in 50 words or less. MUST end with: 9:16 vertical, portrait composition, full vertical frame, no text overlay, high quality.';
 
   /* IntentSystem 의도 반영 (있을 때만, 실패해도 기존 동작 유지) */
   if (typeof IntentSystem !== 'undefined' && IntentSystem.buildSystemPrompt) {
@@ -399,13 +600,27 @@ async function studioS3AutoPrompt(idx){
 
   try {
     var res = await APIAdapter.callWithFallback(sys, user, {maxTokens:150});
+    var out = _s3EnsurePortraitKeywords(res.trim());
     s3.prompts = s3.prompts || [];
-    s3.prompts[idx] = res.trim();
+    s3.prompts[idx] = out;
     STUDIO.project.s3 = s3; studioSave();
     var el = document.getElementById('s3-prompt-'+idx);
-    if(el) el.value = res.trim();
+    if(el) el.value = out;
     if(typeof ucShowToast==='function') ucShowToast('✅ 프롬프트 생성됨','success');
   } catch(e){ alert('오류: '+e.message); }
+}
+
+/* 9:16 강제 키워드 — AI 생성 결과에 누락되어 있으면 보강 */
+function _s3EnsurePortraitKeywords(prompt){
+  var p = String(prompt || '').trim();
+  var need = [];
+  if (!/9:16|9\s*x\s*16/i.test(p))           need.push('9:16 vertical');
+  if (!/portrait composition/i.test(p))      need.push('portrait composition');
+  if (!/full vertical frame/i.test(p))       need.push('full vertical frame');
+  if (!/no text overlay/i.test(p))           need.push('no text overlay');
+  if (!/high quality|hi[- ]?res/i.test(p))   need.push('high quality');
+  if (!need.length) return p;
+  return (p ? p + ', ' : '') + need.join(', ');
 }
 
 async function studioS3AutoAllPrompts(){
