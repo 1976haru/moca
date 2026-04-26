@@ -146,9 +146,15 @@
       { path:'ls.s3.scenePrompts',           data: lsS3.scenePrompts },
       { path:'ls.project.scenes',            data: lsProj && lsProj.scenes },
     ];
-    /* 길이/존재 dump */
+    /* 길이/존재 dump (+ scriptText 길이도 함께 — parse fallback 의 source) */
     var lengths = {};
     candidates.forEach(function(c){ lengths[c.path] = _len(c.data); });
+    var scriptLen = ((proj.scriptText||'').length) ||
+                    ((s2.scriptKo||'').length) ||
+                    ((s2.scriptJa||'').length) ||
+                    ((proj.scriptKo||'').length) ||
+                    ((proj.scriptJa||'').length) || 0;
+    lengths['scriptText (chars)'] = scriptLen;
     try { console.debug('[scene-resolver] all candidate lengths:', lengths); } catch(_) {}
 
     /* 우선순위 우선 필터 — 정확한 scene array 우선 */
@@ -171,18 +177,74 @@
       var sorted = candidates.slice().sort(function(a,b){ return _len(b.data) - _len(a.data); });
       if (sorted.length && _len(sorted[0].data) > 0) chosen = sorted[0];
     }
-    /* 그래도 없으면 script marker 파싱 시도 */
+    /* 그래도 없으면 script 텍스트 파싱 (markers 우선, 없으면 문단 분할) */
     if (!chosen) {
-      var scriptRaw = s2.scriptKo || s2.scriptJa || proj.scriptText || proj.script || '';
+      var scriptRaw = proj.scriptText || s2.scriptKo || s2.scriptJa || proj.scriptKo || proj.scriptJa || proj.script || '';
       if (scriptRaw) {
-        var marker = /(?:^|\n)\s*(?:씬|scene|SCENE|シーン)\s*\d+/g;
-        var m = scriptRaw.match(marker);
-        if (m && m.length >= 2) {
-          chosen = { path:'script.markers', data: m.map(function(_, i){ return { sceneNumber:i+1 }; }) };
+        var parsedScenes = _parseSceneFromScript(scriptRaw, proj);
+        if (parsedScenes && parsedScenes.length) {
+          chosen = { path:'script.parsed', data: parsedScenes };
         }
       }
     }
     return chosen; /* { path, data } | null */
+  }
+
+  /* ── scriptText → scene 배열 파싱 ── */
+  function _parseSceneFromScript(rawText, proj) {
+    var raw = String(rawText || '').trim();
+    if (!raw) return null;
+    /* 1) marker 분할 — "씬1:", "씬 1:", "## 씬1", "장면 1", "Scene 1", "シーン1" 패턴 */
+    var markerRe = /(?:^|\n)[\s#>*-]*(?:씬|장면|scene|SCENE|シーン)\s*(\d+)\s*[:.\-)\]]?[ \t]*/g;
+    var matches = []; var m;
+    while ((m = markerRe.exec(raw)) !== null) {
+      matches.push({ idx: m.index + m[0].length - (m[0].endsWith('\n') ? 1 : 0), num: parseInt(m[1], 10), markerEnd: markerRe.lastIndex });
+    }
+    if (matches.length >= 2) {
+      var arr = [];
+      for (var i = 0; i < matches.length; i++) {
+        var start = matches[i].markerEnd;
+        var end   = (i+1 < matches.length) ? matches[i+1].idx : raw.length;
+        var body  = raw.slice(start, end).trim();
+        if (body) arr.push({ sceneNumber: matches[i].num || (i+1), narration: body });
+      }
+      if (arr.length >= 2) return arr;
+    }
+    /* 2) marker 없음 — target sceneCount 추정 후 문단 분할 */
+    var s3 = (proj && proj.s3) || {};
+    var s1 = (proj && proj.s1) || {};
+    var target = (s3.imagePrompts && s3.imagePrompts.length)
+              || (s3.scenePrompts && s3.scenePrompts.length)
+              || (s3.prompts && s3.prompts.length)
+              || (s1.imagePrompts && s1.imagePrompts.length)
+              || _estimateSceneCount(proj);
+    if (target < 2) target = 5;
+    /* 빈 줄 / 마침표 단위로 문단화 */
+    var paras = raw.split(/\n{2,}|(?<=[.!?。])\s*\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if (paras.length === 0) return null;
+    /* 문단 수가 target 보다 많으면 균등 묶기 */
+    if (paras.length > target) {
+      var grouped = [];
+      var per = Math.ceil(paras.length / target);
+      for (var g = 0; g < target; g++) {
+        var chunk = paras.slice(g*per, (g+1)*per).join(' ').trim();
+        if (chunk) grouped.push({ sceneNumber: g+1, narration: chunk });
+      }
+      return grouped.length >= 2 ? grouped : null;
+    }
+    /* 문단 수가 target 보다 적으면 그대로 */
+    return paras.map(function(p, i){ return { sceneNumber: i+1, narration: p }; });
+  }
+
+  /* lengthSec 또는 휴리스틱으로 scene 개수 추정 */
+  function _estimateSceneCount(proj) {
+    var len = (proj && (proj.lengthSec || proj.length)) || 60;
+    if (len <= 30) return 3;
+    if (len <= 60) return 5;
+    if (len <= 90) return 6;
+    if (len <= 180) return 8;
+    if (len <= 300) return 10;
+    return 12;
   }
 
   /* ── 역할 추정 ── */
@@ -354,6 +416,73 @@
     var sc = getSceneByIndex(idx);
     return sc ? sc.roleLabel : '';
   }
+
+  /* ════════════════════════════════════════════════
+     ensureStudioProjectHydrated(reason) — 빈 프로젝트면 localStorage 최근 복원
+     * URL 직접 진입(?step=2) 또는 새로고침 시 STUDIO.project=null 인 채로
+       renderStudio() 가 빈 프로젝트를 만들어버리는 케이스 대응.
+     * uc_studio_projects 리스트에서 가장 최근 의미있는 프로젝트 1개 복원.
+     ════════════════════════════════════════════════ */
+  function _isMeaningful(p) {
+    if (!p) return false;
+    if (p.topic && String(p.topic).trim()) return true;
+    if (p.scriptText || p.scriptKo || p.scriptJa) return true;
+    if (Array.isArray(p.scenes) && p.scenes.length) return true;
+    if (p.s1 && (p.s1.topic || p.s1.scriptText || (p.s1.scenes && p.s1.scenes.length))) return true;
+    if (p.s3 && ((p.s3.imagePrompts && p.s3.imagePrompts.length) ||
+                 (p.s3.prompts && p.s3.prompts.length) ||
+                 (p.s3.scenePrompts && p.s3.scenePrompts.length))) return true;
+    return false;
+  }
+  function _isEmptyProject(p) {
+    return !_isMeaningful(p);
+  }
+
+  function ensureStudioProjectHydrated(reason) {
+    if (typeof window.STUDIO === 'undefined') return false;
+    var current = window.STUDIO.project;
+    if (current && _isMeaningful(current)) {
+      return false; /* 이미 의미있는 프로젝트가 있음 */
+    }
+    var isEmpty = _isEmptyProject(current);
+    try { console.debug('[studio-hydrate] reason:', reason || '-', 'current empty:', isEmpty); } catch(_) {}
+
+    /* uc_studio_projects 리스트에서 가장 최근 항목 ID 찾기 */
+    var listKey = 'uc_studio_projects';
+    var oneKey  = 'uc_studio_project_';
+    var list = [];
+    try {
+      var raw = localStorage.getItem(listKey);
+      list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) list = [];
+    } catch(_) { list = []; }
+    /* 의미있는 항목만 + updatedAt 내림차순 */
+    list = list.filter(function(x){ return x && x.id; })
+               .sort(function(a,b){ return (b.updatedAt||0) - (a.updatedAt||0); });
+    var loaded = null;
+    for (var i = 0; i < list.length; i++) {
+      try {
+        var raw2 = localStorage.getItem(oneKey + list[i].id);
+        if (!raw2) continue;
+        var proj = JSON.parse(raw2);
+        if (proj && _isMeaningful(proj)) { loaded = proj; break; }
+      } catch(_) {}
+    }
+    try {
+      console.debug('[studio-hydrate] loaded recent project:', !!loaded);
+      if (loaded) {
+        console.debug('[studio-hydrate] loaded scenes:', (loaded.scenes && loaded.scenes.length) || 0);
+        console.debug('[studio-hydrate] loaded has scriptText:', !!(loaded.scriptText || loaded.scriptKo || loaded.scriptJa));
+      }
+    } catch(_) {}
+    if (!loaded) return false;
+    /* 안전 복원 — 기존 빈 프로젝트의 step 보존 */
+    var keepStep = (current && typeof current.step === 'number') ? current.step : loaded.step;
+    window.STUDIO.project = loaded;
+    if (typeof keepStep === 'number') window.STUDIO.project.step = keepStep;
+    return true;
+  }
+  window.ensureStudioProjectHydrated = ensureStudioProjectHydrated;
 
   /* 전역 노출 */
   window.resolveStudioScenes = resolveStudioScenes;

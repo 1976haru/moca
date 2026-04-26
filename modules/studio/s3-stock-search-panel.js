@@ -394,35 +394,55 @@
      ════════════════════════════════════════════════ */
   function _renderEmptyDiagnostic() {
     var proj = (window.STUDIO && window.STUDIO.project) || {};
-    var s1 = proj.s1 || {}, s3 = proj.s3 || {};
+    var s1 = proj.s1 || {}, s2 = proj.s2 || {}, s3 = proj.s3 || {};
     function _len(v) {
       if (Array.isArray(v)) return v.length;
       if (v && typeof v === 'object') return Object.keys(v).length;
+      if (typeof v === 'string') return v.length;
       return 0;
     }
     var rows = [
+      ['project.scriptText',  _len(proj.scriptText) + (proj.scriptText?' chars':'')],
+      ['project.scriptKo',    _len(proj.scriptKo)   + (proj.scriptKo  ?' chars':'')],
+      ['project.scriptJa',    _len(proj.scriptJa)   + (proj.scriptJa  ?' chars':'')],
+      ['project.scenes',      _len(proj.scenes)],
+      ['project.topic',       proj.topic ? '"'+String(proj.topic).slice(0,30)+'"' : 0],
       ['s1.scenes',           _len(s1.scenes)],
       ['s1.sceneList',        _len(s1.sceneList)],
       ['s1.imagePrompts',     _len(s1.imagePrompts)],
+      ['s2.scriptKo',         _len(s2.scriptKo) + (s2.scriptKo?' chars':'')],
+      ['s2.scriptJa',         _len(s2.scriptJa) + (s2.scriptJa?' chars':'')],
       ['s3.scenes',           _len(s3.scenes)],
       ['s3.scenePrompts',     _len(s3.scenePrompts)],
       ['s3.imagePrompts',     _len(s3.imagePrompts)],
       ['s3.prompts',          _len(s3.prompts)],
       ['s3.imagesV3',         _len(s3.imagesV3)],
-      ['project.scenes',      _len(proj.scenes)],
-      ['project.imagePrompts',_len(proj.imagePrompts)],
     ];
+    /* localStorage 최근 프로젝트 후보 (uc_studio_projects) */
+    var lsCount = 0, lsPreview = '';
+    try {
+      var raw = localStorage.getItem('uc_studio_projects');
+      var arr = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(arr)) {
+        lsCount = arr.length;
+        lsPreview = arr.slice(0, 3).map(function(x){ return x && x.name ? x.name : '(no name)'; }).join(' / ');
+      }
+    } catch(_) {}
     /* boot 함수 존재 여부 */
     var fnState = [
-      ['resolveStudioScenes',   typeof window.resolveStudioScenes],
-      ['buildStockSearchQuery', typeof window.buildStockSearchQuery],
-      ['getScenePrompt',        typeof window.getScenePrompt],
+      ['resolveStudioScenes',         typeof window.resolveStudioScenes],
+      ['buildStockSearchQuery',       typeof window.buildStockSearchQuery],
+      ['ensureStudioProjectHydrated', typeof window.ensureStudioProjectHydrated],
     ];
+    var canHydrate = lsCount > 0;
+    var headlineMsg = canHydrate
+      ? '⚠️ 현재 프로젝트가 비어 있습니다. localStorage 에 ' + lsCount + '개의 최근 프로젝트가 있습니다.'
+      : '⚠️ 현재 프로젝트와 최근 저장 프로젝트에서도 대본 씬을 찾지 못했습니다. 1단계에서 대본을 생성한 뒤 다시 시도해주세요.';
     var html = '<div class="s3ss-status s3ss-empty s3ss-empty-diag">' +
-      '<div style="font-weight:800;margin-bottom:6px">⚠️ 현재 저장된 s1/s3 데이터에서 씬을 찾지 못했습니다.</div>' +
-      '<div style="font-size:11px;color:#7b6080;margin-bottom:8px">아래 모든 경로가 비어 있습니다. 1단계에서 대본을 생성하고 2단계 이미지 탭에서 프롬프트를 컴파일하면 자동으로 인식됩니다.</div>' +
+      '<div style="font-weight:800;margin-bottom:6px">'+headlineMsg+'</div>' +
+      (lsPreview ? '<div style="font-size:11px;color:#5b1a4a;margin-bottom:6px">최근 프로젝트: '+_esc(lsPreview)+'</div>' : '') +
       '<table class="s3ss-diag-table">' +
-        '<thead><tr><th>경로</th><th>길이</th></tr></thead>' +
+        '<thead><tr><th>경로</th><th>값</th></tr></thead>' +
         '<tbody>' +
           rows.map(function(r){
             return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';
@@ -436,6 +456,7 @@
         }).join(' · ') +
       '</div>' +
       '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">' +
+        (canHydrate ? '<button class="s3ss-btn pri" onclick="_s3SsHydrateAndRefresh()">📂 최근 프로젝트 복원</button>' : '') +
         '<button class="s3ss-btn" onclick="window._s3SsRefresh && window._s3SsRefresh()">↻ 다시 확인</button>' +
         '<button class="s3ss-btn" onclick="if(typeof studioGoto===\'function\')studioGoto(1)">① 대본 생성으로 이동</button>' +
       '</div>' +
@@ -443,12 +464,30 @@
     return html;
   }
 
+  /* 최근 프로젝트 복원 + refresh */
+  window._s3SsHydrateAndRefresh = function() {
+    if (typeof window.ensureStudioProjectHydrated === 'function') {
+      var ok = window.ensureStudioProjectHydrated('stock-panel-manual-restore');
+      if (ok) {
+        _toast('✅ 최근 프로젝트에서 대본 씬을 복원했습니다.', 'success');
+        if (typeof window.studioSave === 'function') window.studioSave();
+      } else {
+        _toast('⚠️ 복원할 최근 프로젝트가 없습니다. 1단계에서 새로 생성해주세요.', 'warn');
+      }
+    }
+    _refresh();
+  };
+
   /* ════════════════════════════════════════════════
      ensureStockSceneState — 탭 진입 시 자동 초기화
      * 모든 씬의 query draft 를 미리 생성 → 드롭다운 변경 즉시 query 표시
      * legacy s3-stock.js studioS3StockSearch 도 활용 — s3._stockActiveScene 동기화
      ════════════════════════════════════════════════ */
   window.ensureStockSceneState = function() {
+    /* 빈 프로젝트면 localStorage 의 최근 프로젝트 복원 */
+    if (typeof window.ensureStudioProjectHydrated === 'function') {
+      try { window.ensureStudioProjectHydrated('stock-panel-entry'); } catch(_) {}
+    }
     var scenes = (typeof window.resolveStudioScenes === 'function') ? window.resolveStudioScenes() : [];
     try { console.debug('[stock-scenes] count:', scenes.length); } catch(_) {}
     if (!scenes.length) return { scenes: [], query: '' };

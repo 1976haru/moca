@@ -18,6 +18,10 @@ function _studioS3Source(wrapId) {
   const wrap = document.getElementById(wrapId || 'studioS3SourceWrap');
   if (!wrap) return;
 
+  /* 빈 프로젝트면 localStorage 의 최근 프로젝트로 hydrate (URL 직접 진입/새로고침 대응) */
+  if (typeof window.ensureStudioProjectHydrated === 'function') {
+    try { window.ensureStudioProjectHydrated('step2-source-entry'); } catch(_) {}
+  }
   const proj   = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
   /* 단일 resolver — 상단 씬별 소스 현황과 스톡 드롭다운 동기화 */
   const scenes = (typeof window.resolveStudioScenes === 'function')
