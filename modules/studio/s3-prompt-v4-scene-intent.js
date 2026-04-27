@@ -257,10 +257,10 @@
       return 'a friendly small animal character';
     }
     if (projectProfile && projectProfile.visualWorldType === '3d_character') {
-      return 'a stylized 3D character relevant to the topic';
+      return 'stylized 3D character of the topic subject';
     }
     if (projectProfile && projectProfile.visualWorldType === 'emoji') {
-      return 'iconic flat-vector subject relevant to the topic';
+      return 'iconic flat-vector subject of the topic subject';
     }
 
     /* 관계가 명시된 경우 */
@@ -276,14 +276,13 @@
     if (/할아버지|おじい/.test(combined)) return ethnicityHint + 'elderly man in his 70s';
     if (/시니어|어르신|高齢|シニア/.test(combined)) return ethnicityHint + 'senior in their 60s or 70s';
     if (subjectCount === 2 && /부부|夫婦/.test(combined)) return ethnicityHint + 'married senior couple';
-    if (subjectCount === 2)                  return ethnicityHint + 'two adults relevant to the topic';
     if (/사장|점주|owner|店長/.test(combined)) return ethnicityHint + 'small business owner';
     if (/학생|아이|kid|child|学生/.test(combined)) return ethnicityHint + 'parent and child';
     if (/직장인|salarymen|サラリーマン/.test(combined)) return ethnicityHint + 'office worker';
 
-    /* 마지막 폴백 — generic 표현은 가급적 피하되, 없을 땐 ethnicityHint 라도 부여 */
-    if (ethnicityHint) return ethnicityHint + 'adult relevant to the script context';
-    return 'a specific adult character grounded in the script context';
+    /* 마지막 폴백 — 빈 값 반환. 컴파일러가 topic+role 기반 phrase 로 보강한다.
+       generic placeholder ('an adult relevant to the topic' 등) 는 절대 사용하지 않는다. */
+    return '';
   }
 
   /* ════════════════════════════════════════════════

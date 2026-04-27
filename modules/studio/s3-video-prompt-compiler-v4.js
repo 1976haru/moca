@@ -89,24 +89,57 @@
     var subjMo  = _subjectMotion(intent, grammar);
     var light   = _lightingHint(profile, grammar);
 
-    var subjectBit = '';
-    if (intent.subjectCount === 2 && intent.relationship) subjectBit = intent.relationship;
-    else if (intent.subject) subjectBit = intent.subject;
+    /* subject — empty 일 때 topic+role 기반 phrase 로 보강 (generic fallback 금지) */
+    var subjBase = '';
+    if (intent.subjectCount === 2 && intent.relationship) subjBase = intent.relationship;
+    else if (intent.subject)                              subjBase = intent.subject;
+    if (!subjBase) {
+      var topic = (profile && profile.topic) ? profile.topic.replace(/[ㄱ-ㆎ가-힣]+/g,'').replace(/\s{2,}/g,' ').trim() : '';
+      var role  = intent.role || 'core';
+      var roleLbl = ({hook:'hook', setup:'setup', conflict_or_core:'core', reveal_or_solution:'resolution', cta:'CTA'})[role] || role;
+      subjBase = topic
+        ? ('character whose action drives the ' + roleLbl + ' beat of "' + topic + '"')
+        : ('character whose action drives the ' + roleLbl + ' beat of this scene');
+    }
+    var subjectBit = subjBase;
     if (intent.age) subjectBit += ', ' + intent.age;
     if (intent.wardrobe) subjectBit += ', wearing ' + intent.wardrobe;
 
-    var actionBit = (intent.mustShowActions && intent.mustShowActions[0]) || (intent.visualGoal || 'a clear practical scene grounded in script');
+    /* action — generic fallback 제거. visualGoal 폴백 까지만, 이후 role 별 강제 보강 */
+    var rawAction = (intent.mustShowActions && intent.mustShowActions[0]) || intent.visualGoal || '';
+    var actionBit;
+    if (intent.role === 'cta') {
+      var hasHand = /hand|reach|extend|product|tap|press|button|extending|pointing/i.test(rawAction);
+      if (!hasHand) {
+        var obj = (intent.mustShowObjects && intent.mustShowObjects[0]) || 'the actionable surface';
+        actionBit = 'a hand reaching toward ' + obj + ' (CTA action)' + (rawAction ? ', ' + rawAction : '');
+      } else { actionBit = rawAction; }
+    } else if (intent.role === 'hook') {
+      var hasTension = /tight close-up|tension|focal|attention shift|focal point/i.test(rawAction);
+      actionBit = hasTension ? rawAction : ('tight close-up creating immediate curiosity' + (rawAction ? ', ' + rawAction : ''));
+    } else if (intent.role === 'reveal_or_solution') {
+      var hasResolve = /resolution|payoff|push-in|rise-and-reveal|resolve|unmistakable|improvement|solution/i.test(rawAction);
+      actionBit = hasResolve ? rawAction : ((rawAction ? rawAction + ', ' : '') + 'with unmistakable resolving action body language');
+    } else {
+      actionBit = rawAction;
+    }
     var locBit  = intent.location ? (', ' + intent.location) : '';
     var emoBit  = (intent.mustShowEmotion && intent.mustShowEmotion[0]) ? (', ' + intent.mustShowEmotion[0]) : '';
     var propsBit = (intent.mustShowObjects && intent.mustShowObjects.length)
       ? (', show: ' + intent.mustShowObjects.slice(0, 3).join(', '))
       : '';
+    var roleTag = '[' + (({
+      hook:'OPENING HOOK SHOT', setup:'ESTABLISHING SETUP SHOT',
+      conflict_or_core:'CORE EVIDENCE SHOT', reveal_or_solution:'RESOLUTION ACTION SHOT',
+      cta:'CTA ACTION SHOT'
+    })[intent.role || ''] || 'SCENE SHOT') + ']';
 
     var prompt = [
+      roleTag,
       'duration: ' + dur + 's',
       (profile.aspectRatio || '9:16') + ' vertical short-form video',
-      subjectBit || 'a specific subject grounded in script',
-      actionBit + locBit + emoBit + propsBit,
+      subjectBit,
+      actionBit ? (actionBit + locBit + emoBit + propsBit) : (locBit + emoBit + propsBit).replace(/^,\s*/, ''),
       'subject motion: ' + subjMo,
       'camera motion: ' + camMo,
       'framing: ' + (grammar.framingRules || 'subject clearly readable'),

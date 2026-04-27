@@ -144,14 +144,19 @@
 
   /* ════════════════════════════════════════════════
      5) drawer 품질 배지 v4 inject — s3RefreshDetail 후 보강
-     기존 v3.1 배지 옆에 v4 배지 추가 (기존 v3.1 배지는 유지)
+     기존 v3.1 배지 옆에 v4 배지 추가 (기존 v3.1 배지는 유지).
+     동일 render-tick 내 중복 호출 방지 (microtask flag).
      ════════════════════════════════════════════════ */
   var _origRefresh = window.s3RefreshDetail;
+  var _v4InjectInProgress = false; /* 같은 호출 stack 안에서 재진입 차단 */
   window.s3RefreshDetail = function(sceneIdx){
     if (typeof _origRefresh === 'function') {
       try { _origRefresh(sceneIdx); } catch(_){}
     }
-    _injectV4BadgeIntoDrawer(sceneIdx);
+    if (_v4InjectInProgress) return;
+    _v4InjectInProgress = true;
+    try { _injectV4BadgeIntoDrawer(sceneIdx); }
+    finally { _v4InjectInProgress = false; }
   };
 
   function _injectV4BadgeIntoDrawer(sceneIdx){
@@ -160,6 +165,8 @@
     if (!drawer) return;
     var inner = drawer.querySelector('.s3-detail-inner');
     if (!inner) return;
+    /* 현재 drawer 가 의도한 sceneIdx 와 일치하는지 — 다른 씬 drawer 위에 inject 방지 */
+    if (typeof window._s3OpenSceneIdx === 'number' && window._s3OpenSceneIdx !== sceneIdx) return;
     var s3 = _s3();
     var imgPrompt = (s3.imagePrompts || [])[sceneIdx] || '';
     var vidPrompt = (s3.videoPrompts || [])[sceneIdx] || '';
@@ -185,9 +192,14 @@
     var provWarn = (typeof window.s3GetProviderQualityWarningV4 === 'function')
       ? window.s3GetProviderQualityWarningV4(providerId, 'image') : null;
 
-    /* 기존 v4 배지 제거 후 재삽입 */
-    var prev = inner.querySelector('[data-v4-quality-badge]');
-    if (prev) prev.remove();
+    /* 기존 v4 배지 모두 제거 후 재삽입 (querySelectorAll 로 누적된 중복 정리) */
+    var prevs = inner.querySelectorAll('[data-v4-quality-badge]');
+    for (var pi = 0; pi < prevs.length; pi++) prevs[pi].parentNode && prevs[pi].parentNode.removeChild(prevs[pi]);
+    /* drawer 외부 (document level) 에 누락 inject 가 있을 가능성도 청소 */
+    var strayPrev = drawer.querySelectorAll('[data-v4-quality-badge]');
+    for (var si = 0; si < strayPrev.length; si++) {
+      if (!inner.contains(strayPrev[si])) strayPrev[si].parentNode && strayPrev[si].parentNode.removeChild(strayPrev[si]);
+    }
 
     var html = '<div data-v4-quality-badge class="s3v4-badge-block">';
     html += '<div class="s3v4-hdline">🆕 <b>v4 품질</b> — 결정적 컴파일러 + 180점 만점 평가 (150 통과)</div>';

@@ -47,16 +47,23 @@
     var max = 40;
     var s = String(prompt || '').toLowerCase();
     var key = String((intent && (intent.keyMessage || intent.summary)) || '').toLowerCase();
-    if (!key) return { score: max * 0.5, max: max, note:'대본 요약 부재 — 기본 점수' };
+    if (!key) return { score: Math.round(max * 0.4), max: max, note:'대본 요약 부재 — 기본 점수' };
     var tokens = key.replace(/[ㄱ-ㆎ가-힣぀-ヿ]+/g, ' ')
                     .replace(/[^a-z0-9\s]/g, ' ')
                     .split(/\s+/).filter(function(w){ return w.length >= 4; });
     if (!tokens.length) {
-      /* 한국어/일본어만 — narrativeGoal 영어 fallback */
-      var narrEn = String((intent && intent.narrativeGoal) || '').toLowerCase();
+      /* 한국어/일본어만 — narrativeGoal 영어 fallback. 그래도 narrativeGoal 은
+         role 별 공통 문구이므로 점수 cap 을 0.5*max 로 제한해 generic pass 방지. */
+      var narrEn = String((intent && intent.narrativeGoal) || intent && intent.visualGoal || '').toLowerCase();
       if (narrEn) tokens = narrEn.split(/\s+/).filter(function(w){ return w.length >= 4; });
+      if (tokens.length) {
+        var hits0 = tokens.filter(function(t){ return s.indexOf(t) >= 0; }).length;
+        var ratio0 = hits0 / Math.min(tokens.length, 6);
+        var sc0 = Math.round(_clamp(ratio0, 0, 1) * max * 0.5);
+        return { score: sc0, max: max, note:'영어 토큰 부족 — narrativeGoal 기준 (cap 50%)' };
+      }
+      return { score: Math.round(max * 0.4), max: max, note:'영어 토큰 부족 — 보수적 점수' };
     }
-    if (!tokens.length) return { score: max * 0.6, max: max, note:'영어 토큰 부족 — 보수적 점수' };
     var hits = tokens.filter(function(t){ return s.indexOf(t) >= 0; }).length;
     var ratio = hits / Math.min(tokens.length, 6);
     var sc = Math.round(_clamp(ratio, 0, 1) * max);
@@ -68,35 +75,54 @@
      role 별 framing/composition 키워드 매칭
      ════════════════════════════════════════════════ */
   var ROLE_KEYWORDS = {
-    hook:               [/strong focal|tight close-up|tension|curiosity|focal point|attention shift/i],
-    setup:              [/establishing|wide-medium|relationship.*place|relationship and place|context/i],
-    conflict_or_core:   [/insert close-up|must show|clear action|core problem|evidence/i],
-    reveal_or_solution: [/resolving action|push-in|rise-and-reveal|payoff|unmistakable/i],
-    cta:                [/hand reaching|hand extends|action surface|call to action|invite/i],
+    hook:               [/strong focal|tight close-up|tension|curiosity|focal point|attention shift/i, /\[opening hook shot\]/i],
+    setup:              [/establishing|wide-medium|relationship.*place|relationship and place|context/i, /\[establishing setup shot\]/i],
+    conflict_or_core:   [/insert close-up|must show|clear action|core problem|evidence/i, /\[core evidence shot\]/i],
+    reveal_or_solution: [/resolving action|push-in|rise-and-reveal|payoff|unmistakable|resolution/i, /\[resolution action shot\]/i],
+    cta:                [/hand reaching|hand extends|hand reach|action surface|call to action|invite|CTA action/i, /\[cta action shot\]/i],
   };
+  /* CTA 는 hand/product action 이 없으면 강한 감점 (실제 행동 컷 강제) */
   function _scoreRoleAccuracy(prompt, intent){
     var max = 20;
     var role = (intent && intent.role) || '';
     var checks = ROLE_KEYWORDS[role];
-    if (!checks) return { score: max * 0.6, max: max, note:'role 미설정 — 기본 점수' };
+    if (!checks) return { score: Math.round(max * 0.6), max: max, note:'role 미설정 — 기본 점수' };
     var hits = checks.filter(function(re){ return re.test(prompt); }).length;
-    var sc = hits >= 1 ? max : Math.round(max * 0.4);
-    return { score: sc, max: max, note: hits + ' role 키워드 매칭 (' + role + ')' };
+    var sc = hits >= 2 ? max : (hits >= 1 ? Math.round(max * 0.75) : Math.round(max * 0.3));
+    /* CTA 강제 — hand/reach/extend/product 없으면 -8 */
+    if (role === 'cta' && !/hand|reach|extend|product|tap|press|button|extending|pointing/i.test(prompt)) {
+      sc -= 8;
+    }
+    /* hook 강제 — tight close-up/tension/focal 없으면 -4 */
+    if (role === 'hook' && !/tight close-up|tension|focal|attention shift|focal point|curiosity/i.test(prompt)) {
+      sc -= 4;
+    }
+    /* reveal — resolving / payoff / unmistakable 없으면 -4 */
+    if (role === 'reveal_or_solution' && !/resolving|payoff|unmistakable|resolution|push-in|rise-and-reveal/i.test(prompt)) {
+      sc -= 4;
+    }
+    return { score: _clamp(sc, 0, max), max: max, note: hits + ' role 키워드 매칭 (' + role + ')' };
   }
 
   /* ════════════════════════════════════════════════
      3. visual specificity (0~25)
      who/what/where/how 가 prompt 안에 언급되었는가
      ════════════════════════════════════════════════ */
+  /* generic placeholder phrase 들 — v4 prompt 에 들어오면 안 되는 문구.
+     매칭 시 specificity / evidence 감점. */
+  var GENERIC_PHRASES = /(an? adult relevant to the topic|a specific adult character grounded|middle-aged adult|adult relevant to the script context|a clear practical scene grounded|a clear practical scene relevant|a specific subject grounded|meaningful object that evokes|family memory|warm dining table|old book|stock[- ]photo styled|generic\s+(senior|elderly|adult)\s+portrait|generic portrait)/i;
+
   function _scoreSpecificity(prompt, intent){
     var max = 25;
     var s = String(prompt || '').toLowerCase();
     var sc = 0; var notes = [];
-    /* who */
-    if (intent && intent.subject && s.indexOf(intent.subject.toLowerCase().split(',')[0]) >= 0) {
-      sc += 7; notes.push('who: ✓');
+    /* who — intent.subject 의 첫 토큰이 prompt 에 들어오면 full 점수.
+       'person|adult|senior' 같은 일반어만 매칭되면 부분 점수 (5 → 2 로 강화). */
+    var subjFirst = intent && intent.subject ? intent.subject.toLowerCase().split(/[, ]/)[0] : '';
+    if (subjFirst && subjFirst.length >= 3 && s.indexOf(subjFirst) >= 0 && !/person|adult|character/.test(subjFirst)) {
+      sc += 7; notes.push('who: ✓ (' + subjFirst + ')');
     } else if (/person|adult|senior|elder|customer|owner|child|citizen|couple|parent|character|animal/i.test(s)) {
-      sc += 5; notes.push('who: 일반화');
+      sc += 2; notes.push('who: 일반화 — 약한 매칭');
     } else { notes.push('who: ✗'); }
     /* what (action) */
     var actionVerbs = /(holding|sitting|extending|standing|walking|stepping|reaching|inspecting|placing|pressing|filling|reading|making|looking|pointing|nodding|smiling|breathing|wiping|arranging|greeting|navigating|drinking|demonstrating|tapping|climbing|lifting|measuring|hugging|writing|bouncing|tilting)/i;
@@ -113,6 +139,10 @@
     } else if (/close-up|medium shot|lighting/i.test(s)) {
       sc += 3; notes.push('how: 부분');
     } else { notes.push('how: ✗'); }
+    /* GENERIC 표현 강한 감점 — middle-aged adult / old book / warm dining table 등 */
+    if (GENERIC_PHRASES.test(s)) {
+      sc -= 12; notes.push('generic placeholder 감점');
+    }
     return { score: _clamp(sc, 0, max), max: max, note: notes.join(', ') };
   }
 
@@ -128,15 +158,22 @@
       (intent && intent.mustShowEmotion)     || [],
       (intent && intent.mustShowEnvironment) || []
     );
-    if (!all.length) return { score: max * 0.4, max: max, note:'대본에서 must-show 추출 0개' };
     var s = String(prompt || '').toLowerCase();
+    /* must-show 가 0 개일 때 최저 baseline (max*0.2). generic 표현 있으면 더 감점. */
+    if (!all.length) {
+      var base = Math.round(max * 0.2);
+      if (GENERIC_PHRASES.test(s)) base = Math.max(0, base - 4);
+      return { score: base, max: max, note:'대본에서 must-show 추출 0개 — baseline' };
+    }
     var hits = all.filter(function(x){
       var token = x.toLowerCase().split(' ')[0];
       return token && s.indexOf(token) >= 0;
     }).length;
     var ratio = hits / Math.min(all.length, 6);
     var sc = Math.round(_clamp(ratio, 0, 1) * max);
-    return { score: sc, max: max, note: hits + '/' + Math.min(all.length,6) + ' must-show 반영' };
+    /* generic placeholder 가 prompt 에 있으면 evidence 도 -4 (must-show 가 있어도 generic 으로 희석되면 감점) */
+    if (GENERIC_PHRASES.test(s)) sc = _clamp(sc - 4, 0, max);
+    return { score: sc, max: max, note: hits + '/' + Math.min(all.length,6) + ' must-show 반영' + (GENERIC_PHRASES.test(s) ? ' (generic 감점)' : '') };
   }
 
   /* ════════════════════════════════════════════════
@@ -156,23 +193,26 @@
     } else {
       sc += 6; notes.push('unique hints 없음 — 보수 점수');
     }
-    /* generic 표현 페널티 */
-    if (/generic\s+(senior|elderly|adult)\s+portrait|stock photo|ordinary scene|generic portrait|adult relevant to the topic/i.test(s)) {
-      sc -= 8; notes.push('generic portrait 표현 감점');
+    /* generic 표현 페널티 — 강화. 정확한 BAD 예시 phrase 도 매칭 */
+    if (GENERIC_PHRASES.test(s)) {
+      sc -= 10; notes.push('generic placeholder 감점');
     } else {
       sc += 4; notes.push('generic 표현 회피 ✓');
     }
-    /* 다른 씬과 동일한 prompt 방지 (options.allPrompts 와 비교) */
+    /* role 라벨 prefix 가 있으면 differentiation +2 — 씬간 시각적 구분 강화 */
+    if (/^\[(opening hook shot|establishing setup shot|core evidence shot|resolution action shot|cta action shot|scene shot)\]/i.test(s)) {
+      sc += 2; notes.push('role 라벨 prefix ✓');
+    }
+    /* 다른 씬과 동일한 prompt 방지 (options.allPrompts 와 비교) — 첫 80자 + 첫 120자 두 단계 비교 */
     if (options && Array.isArray(options.allPrompts)) {
       var others = options.allPrompts.filter(function(p, i){ return i !== (intent && intent.sceneIndex); });
       var verySimilar = others.some(function(p){
         if (!p || !s) return false;
         var p2 = p.toLowerCase();
         if (p2.length < 40 || s.length < 40) return false;
-        /* 첫 80자 일치 시 동일 */
-        return p2.slice(0, 80) === s.slice(0, 80);
+        return p2.slice(0, 80) === s.slice(0, 80) || p2.slice(0, 120) === s.slice(0, 120);
       });
-      if (verySimilar) { sc -= 6; notes.push('인접 씬과 매우 유사 감점'); }
+      if (verySimilar) { sc -= 8; notes.push('인접 씬과 매우 유사 감점'); }
       else             { sc += 4; notes.push('씬간 차별화 ✓'); }
     }
     return { score: _clamp(sc, 0, max), max: max, note: notes.join(', ') };
@@ -284,8 +324,12 @@
     var f8 = _scoreContinuity(prompt, profile, intent);
 
     var total = f1.score + f2.score + f3.score + f4.score + f5.score + f6.score + f7.score + f8.score;
-    /* provider 페널티 (DALL-E 2 은 v4 권장 아님) */
-    if (providerId === 'dalle2') total = Math.max(0, total - 8);
+    /* provider 페널티 (DALL-E 2 은 v4 권장 아님 — fallback 전용) */
+    if (providerId === 'dalle2') total = Math.max(0, total - 12);
+    /* 전역 generic placeholder hard guard — prompt 본문에 generic 표현이 있으면
+       150 통과 직전에서 막을 수 있도록 추가 -10. 컴파일러가 이미 막아야 하지만
+       legacy fallback 으로 떨어진 경우의 안전망. */
+    if (GENERIC_PHRASES.test(String(prompt || ''))) total = Math.max(0, total - 10);
 
     var pass = total >= 150;
     var tier = _tierFor(total);

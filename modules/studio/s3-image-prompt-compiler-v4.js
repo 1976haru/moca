@@ -65,15 +65,28 @@
     return parts.join('; ');
   }
 
-  /* subject 직렬화 — count/age/gender/relationship/wardrobe/continuityAnchor 통합 */
-  function _serializeSubject(intent){
+  /* subject 직렬화 — count/age/gender/relationship/wardrobe/continuityAnchor 통합.
+     intent.subject 가 비어 있으면 topic+role 기반 phrase 로 보강.
+     ⚠️ 절대로 'an adult relevant to the topic' / 'a specific adult character' 같은
+     generic placeholder 는 만들지 않는다. */
+  function _serializeSubject(intent, profile){
     var bits = [];
+    var subj = intent.subject || '';
+    if (!subj) {
+      /* topic+role 기반 보강 — 적어도 어떤 beat 인지, 어떤 주제의 캐릭터인지 명시 */
+      var topic = (profile && profile.topic) ? profile.topic.replace(/[ㄱ-ㆎ가-힣]+/g,'').replace(/\s{2,}/g,' ').trim() : '';
+      var role  = intent.role || 'core';
+      var roleLbl = ({hook:'hook', setup:'setup', conflict_or_core:'core', reveal_or_solution:'resolution', cta:'CTA'})[role] || role;
+      subj = topic
+        ? ('character whose action drives the ' + roleLbl + ' beat of "' + topic + '"')
+        : ('character whose action drives the ' + roleLbl + ' beat of this scene');
+    }
     if (intent.subjectCount === 2 && intent.relationship) {
       bits.push(intent.relationship);
     } else if (intent.subjectCount >= 2) {
-      bits.push(intent.subjectCount + ' people: ' + intent.subject);
+      bits.push(intent.subjectCount + ' people, ' + subj);
     } else {
-      bits.push(intent.subject);
+      bits.push(subj);
     }
     if (intent.age)            bits.push(intent.age);
     if (intent.wardrobe)       bits.push('wearing ' + intent.wardrobe);
@@ -81,6 +94,41 @@
       bits.push('(continuity anchor: ' + intent.continuityAnchor + ')');
     }
     return bits.join(', ');
+  }
+
+  /* role 라벨 prefix — 씬마다 시각적으로 구분되도록 prompt 머리에 부착 */
+  function _roleLabel(role){
+    return ({
+      hook:               'OPENING HOOK SHOT',
+      setup:              'ESTABLISHING SETUP SHOT',
+      conflict_or_core:   'CORE EVIDENCE SHOT',
+      reveal_or_solution: 'RESOLUTION ACTION SHOT',
+      cta:                'CTA ACTION SHOT'
+    })[role] || 'SCENE SHOT';
+  }
+
+  /* role 별 강제 보강 — 특히 CTA 는 hand/product action 컷 강제 */
+  function _enforceRoleAction(role, action, intent){
+    if (role === 'cta') {
+      var hasHand = /hand|reach|extend|product|tap|press|button|extending|pointing/i.test(action);
+      if (!hasHand) {
+        var obj = (intent.mustShowObjects && intent.mustShowObjects[0]) || 'the actionable surface';
+        return 'a hand reaching toward ' + obj + ' (CTA action)' + (action ? ', ' + action : '');
+      }
+    }
+    if (role === 'hook') {
+      var hasTension = /tight close-up|tension|focal|attention shift|focal point/i.test(action);
+      if (!hasTension) {
+        return 'tight close-up creating immediate curiosity, ' + (action || 'attention lands on the focal point in 1 second');
+      }
+    }
+    if (role === 'reveal_or_solution') {
+      var hasResolve = /resolution|payoff|push-in|rise-and-reveal|resolve|unmistakable|improvement|solution/i.test(action);
+      if (!hasResolve) {
+        return (action ? action + ', ' : '') + 'with unmistakable resolving action body language';
+      }
+    }
+    return action;
   }
 
   /* avoidList 직렬화 (프롬프트 본문 내 negative-style hint) */
@@ -175,16 +223,20 @@
 
     /* 6) compose */
     var asp = _aspectStrings(profile);
-    var subject = _serializeSubject(intent);
-    var actionPhrase = (intent.mustShowActions && intent.mustShowActions[0]) || (intent.visualGoal || 'a clear practical scene grounded in script');
+    var subject = _serializeSubject(intent, profile);
+    /* action: mustShowActions[0] → visualGoal → empty (generic fallback 금지).
+       그 후 role-별 강제 보강(_enforceRoleAction)으로 CTA hand action 등 보장. */
+    var rawAction = (intent.mustShowActions && intent.mustShowActions[0]) || intent.visualGoal || '';
+    var actionPhrase = _enforceRoleAction(intent.role || '', rawAction, intent);
     var evidence = _serializeEvidence(intent);
     var avoidStr = _serializeAvoid(intent);
 
     var parts = [];
+    parts.push('[' + _roleLabel(intent.role || '') + ']');
     parts.push(_providerPrefix(providerId, grammar));
     parts.push(grammar.styleHints.join(', '));
     if (subject) parts.push(subject);
-    parts.push(actionPhrase);
+    if (actionPhrase) parts.push(actionPhrase);
     if (evidence) parts.push(evidence);
     if (intent.location)  parts.push('location: ' + intent.location);
     if (intent.timeOfDay) parts.push(intent.timeOfDay);
