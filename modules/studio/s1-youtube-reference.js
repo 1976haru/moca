@@ -22,11 +22,35 @@
     url:'', title:'', description:'', transcript:'',
     notes:'', avoid:'', newTopic:'',
     targetStyle:'info', adaptationStrength:'medium',
+    /* 사용자 명시 체크박스 — 참고하고 싶은 / 피하고 싶은 부분 */
+    benchmarkPoints: { hook:true, pacing:true, captionStyle:true, narrationTone:false, twist:false, cta:true, structure:true, character:false, rhythm:false },
+    avoidPoints:     { copyOriginalSentences:true, copyOriginalCharacters:true, copyOriginalVisual:true, exaggeration:false, brandLogoExposure:true },
     /* 결과 */
     analysis: null,
     scenes:   [],
+    copySafety: null,
   };
   window.YR_STATE = YR_STATE;
+
+  /* 체크박스 라벨 — 사용자 명세 */
+  var BENCH_OPTIONS = [
+    { id:'hook',           label:'훅 구조' },
+    { id:'pacing',         label:'컷 전환 속도' },
+    { id:'captionStyle',   label:'자막 스타일' },
+    { id:'narrationTone',  label:'말투/진행 방식' },
+    { id:'twist',          label:'반전 포인트' },
+    { id:'cta',            label:'CTA 방식' },
+    { id:'structure',      label:'전체 구성' },
+    { id:'character',      label:'캐릭터 유형' },
+    { id:'rhythm',         label:'화면 리듬' },
+  ];
+  var AVOID_OPTIONS = [
+    { id:'copyOriginalSentences',  label:'원본과 너무 비슷한 문장' },
+    { id:'copyOriginalCharacters', label:'원본 캐릭터 따라 하기' },
+    { id:'copyOriginalVisual',     label:'원본 화면 복제' },
+    { id:'exaggeration',           label:'과장된 표현' },
+    { id:'brandLogoExposure',      label:'특정 브랜드/로고/인물 노출' },
+  ];
 
   var STYLES = [
     { id:'comic',       label:'코믹' },
@@ -86,15 +110,38 @@
         }).join('') +
       '</div></div>'+
 
+      /* 참고하고 싶은 부분 — 체크박스 */
+      '<div class="yr-row yr-checks"><span class="yr-row-label">참고할 부분</span><div class="yr-chk-grid">'+
+        BENCH_OPTIONS.map(function(o){
+          var on = !!YR_STATE.benchmarkPoints[o.id];
+          return '<label class="yr-chk'+(on?' on':'')+'">'+
+            '<input type="checkbox" '+(on?'checked':'')+' onchange="yrToggleBench(\''+o.id+'\')">'+
+            '<span>'+o.label+'</span>'+
+          '</label>';
+        }).join('') +
+      '</div></div>'+
+      /* 피하고 싶은 부분 — 체크박스 */
+      '<div class="yr-row yr-checks"><span class="yr-row-label">피할 부분</span><div class="yr-chk-grid">'+
+        AVOID_OPTIONS.map(function(o){
+          var on = !!YR_STATE.avoidPoints[o.id];
+          return '<label class="yr-chk'+(on?' on':'')+'">'+
+            '<input type="checkbox" '+(on?'checked':'')+' onchange="yrToggleAvoid(\''+o.id+'\')">'+
+            '<span>'+o.label+'</span>'+
+          '</label>';
+        }).join('') +
+      '</div></div>'+
+
       /* 액션 */
       '<div class="yr-actions">'+
         '<button type="button" class="yr-btn" '+(YR_STATE.busy?'disabled':'')+' onclick="yrAnalyze()">🔍 레퍼런스 분석하기</button>'+
         '<button type="button" class="yr-btn pri" '+(YR_STATE.busy||!YR_STATE.analysis||!YR_STATE.newTopic?'disabled':'')+' onclick="yrAdapt()">🪄 내 주제로 각색하기</button>'+
+        '<button type="button" class="yr-btn" '+(!YR_STATE.scenes.length?'disabled':'')+' onclick="yrCopySafetyCheck()">🛡 원본 유사도 검사</button>'+
         '<button type="button" class="yr-btn" '+(!YR_STATE.scenes.length?'disabled':'')+' onclick="yrSendToStep2()">→ Step 2 로 보내기</button>'+
       '</div>'+
       _yrRenderStatus()+
       _yrRenderAnalysis()+
       _yrRenderScenes()+
+      _yrRenderCopySafety()+
     '</div>';
   };
 
@@ -115,14 +162,34 @@
   function _yrPersistInputs() {
     var proj = (window.STUDIO && window.STUDIO.project) || {};
     proj.s1 = proj.s1 || {};
-    proj.s1.youtubeReference = {
+    /* 사용자 명세 schema — 체크박스를 list 로도 export */
+    var benchmarkPointsList = Object.keys(YR_STATE.benchmarkPoints).filter(function(k){ return YR_STATE.benchmarkPoints[k]; });
+    var avoidPointsList     = Object.keys(YR_STATE.avoidPoints).filter(function(k){ return YR_STATE.avoidPoints[k]; });
+    proj.s1.youtubeReference = Object.assign({}, proj.s1.youtubeReference || {}, {
       url: YR_STATE.url, title: YR_STATE.title, description: YR_STATE.description,
       transcript: YR_STATE.transcript, notes: YR_STATE.notes, avoid: YR_STATE.avoid,
       newTopic: YR_STATE.newTopic, targetStyle: YR_STATE.targetStyle,
+      targetGenre: YR_STATE.targetStyle,
       adaptationStrength: YR_STATE.adaptationStrength,
-    };
+      benchmarkPoints: benchmarkPointsList,
+      avoidPoints: avoidPointsList,
+      avoidCopying: !!YR_STATE.avoidPoints.copyOriginalSentences,
+      updatedAt: Date.now(),
+    });
+    if (!proj.s1.youtubeReference.createdAt) proj.s1.youtubeReference.createdAt = Date.now();
+    proj.s1.mode = 'youtube_reference_adapt';
     if (typeof window.studioSave === 'function') window.studioSave();
   }
+
+  /* 체크박스 토글 */
+  window.yrToggleBench = function(id) {
+    YR_STATE.benchmarkPoints[id] = !YR_STATE.benchmarkPoints[id];
+    _yrPersistInputs(); _yrRefresh();
+  };
+  window.yrToggleAvoid = function(id) {
+    YR_STATE.avoidPoints[id] = !YR_STATE.avoidPoints[id];
+    _yrPersistInputs(); _yrRefresh();
+  };
 
   /* ════════════════════════════════════════════════
      레퍼런스 분석 — APIAdapter 우선, 휴리스틱 fallback
@@ -254,7 +321,7 @@
     if (!m) throw new Error('AI 응답에서 JSON 배열을 찾지 못했습니다.');
     var arr = JSON.parse(m[0]);
     if (!Array.isArray(arr) || !arr.length) throw new Error('빈 scene 배열');
-    return arr.map(function(sc, i){ return _normalizeScene(sc, i); });
+    return arr.map(function(sc, i){ return _normalizeScene(sc, i, arr.length); });
   }
 
   function _yrAdaptHeuristic() {
@@ -276,22 +343,45 @@
         editNote:  '레퍼런스 ' + role + ' 위치 참고',
         motionStyle: ref.motionStyle || '컷 위주',
         soundCue:    i === 0 ? 'whoosh' : (i === n-1 ? 'ding' : ''),
-      }, i));
+      }, i, n));
     }
     return out;
   }
 
-  function _normalizeScene(sc, i) {
+  /* role 정규화 — v4 _resolveRole 이 인식하는 영어 코드로.
+     한국어 role 라벨은 displayRole 로 별도 보존하여 UI 표시 유지. */
+  function _roleToCode(rawRole, idx, total){
+    var r = String(rawRole || '').toLowerCase().trim();
+    if (/hook|훅/.test(r))                              return 'hook';
+    if (/setup|intro|도입|설명/.test(r))                 return 'setup';
+    if (/conflict|core|main|핵심|develop|전개/.test(r))  return 'conflict_or_core';
+    if (/reveal|solution|resolve|반전|해결|payoff/.test(r))  return 'reveal_or_solution';
+    if (/cta|outro|마무리|conclusion/.test(r))           return 'cta';
+    /* fallback — index 기반 */
+    if (idx === 0)             return 'hook';
+    if (idx === (total||5)-1)  return 'cta';
+    if (idx === 1)             return 'setup';
+    if (idx === (total||5)-2)  return 'reveal_or_solution';
+    return 'conflict_or_core';
+  }
+  function _roleToDisplay(code){
+    return ({hook:'훅', setup:'도입', conflict_or_core:'핵심', reveal_or_solution:'반전/해결', cta:'CTA'})[code] || code;
+  }
+
+  function _normalizeScene(sc, i, total) {
     sc = sc || {};
     var sceneIndex = i;
     var sceneNumber = sc.sceneNumber || (i + 1);
     var narration = String(sc.narration || sc.text || sc.script || '').trim();
     var caption   = String(sc.caption || sc.subtitle || '').trim();
     var visual    = String(sc.visualDescription || sc.visual || sc.scene || '').trim();
+    var roleCode  = _roleToCode(sc.role, i, total);
     return {
       sceneIndex:        sceneIndex,
       sceneNumber:       sceneNumber,
-      role:              sc.role || (i === 0 ? '훅' : '전개'),
+      /* role 은 v4 호환 영어 코드, displayRole 은 한국어 (UI 표시) */
+      role:              roleCode,
+      displayRole:       _roleToDisplay(roleCode),
       narration:         narration,
       caption:           caption,
       visualDescription: visual,
@@ -306,6 +396,7 @@
       imagePrompt:       _buildImagePrompt(sc, narration, visual),
       videoPrompt:       _buildVideoPrompt(sc, narration, visual),
       promptCompiled:    _buildImagePrompt(sc, narration, visual),
+      adaptedFromSourceSceneIndex: sc.adaptedFromSourceSceneIndex != null ? sc.adaptedFromSourceSceneIndex : i,
     };
   }
 
@@ -326,12 +417,17 @@
     return seed + ' — ' + motion + ', short clip 3~5s, 9:16 vertical, smooth motion, no text';
   }
 
-  /* 통합 schema 로 STUDIO.project 저장 */
+  /* 통합 schema 로 STUDIO.project 저장
+     ⭐ v4 prompt compiler 가 로드되어 있으면 hand-built prompt 대신 v4 결과를
+     사용한다 (사용자 요구: 'v4 prompt compiler 를 우선 사용. legacy generic
+     fallback 으로 내려가지 않도록 할 것'). */
   function _yrPersistAdaptation(scenes) {
     var proj = (window.STUDIO && window.STUDIO.project) || {};
     proj.s1 = proj.s1 || {};
     proj.s3 = proj.s3 || {};
-    /* s1.scenes + project.scenes — Step 2 resolver 가 1순위로 읽음 */
+    /* s1.scenes + project.scenes — Step 2 resolver 가 1순위로 읽음.
+       각 scene 에 narration/caption/visualDescription/role 모두 포함되어
+       v4 analyzeSceneIntentV4 가 evidence 추출 가능. */
     proj.s1.scenes = scenes.slice();
     proj.scenes    = scenes.slice();
     /* scriptText / scriptKo — 미리보기/검색용 결합 */
@@ -343,7 +439,8 @@
     }).join('\n\n');
     proj.scriptText  = scriptText;
     proj.s1.scriptKo = scriptText;
-    /* Step 2 prompt 호환 */
+
+    /* Step 2 prompt 호환 — 일단 hand-built prompt 로 채워놓고, v4 가 있으면 즉시 덮어씀 */
     proj.s3.imagePrompts  = scenes.map(function(sc){ return sc.imagePrompt; });
     proj.s3.videoPrompts  = scenes.map(function(sc){ return sc.videoPrompt; });
     proj.s3.scenePrompts  = scenes.map(function(sc){
@@ -358,16 +455,152 @@
         motionStyle:      sc.motionStyle,
         soundCue:         sc.soundCue,
         source:           'youtube_reference_adapt',
+        adaptedFromSourceSceneIndex: sc.adaptedFromSourceSceneIndex != null ? sc.adaptedFromSourceSceneIndex : sc.sceneIndex,
       };
     });
     proj.s3.prompts = scenes.map(function(sc){ return sc.imagePrompt; });
-    /* 호환 — _hydrateSource 표시 */
     proj.s3._hydrateSource = 'script-imagePrompts';
     if (typeof window.studioSave === 'function') window.studioSave();
+
+    /* ⭐ v4 prompt compiler 자동 호출 — 로드되어 있으면 hand-built prompt 를
+       v4 결과로 즉시 덮음. v4 미가용 시에만 hand-built fallback 유지. */
+    var v4ImageOk = false, v4VideoOk = false;
+    if (typeof window.compileImagePromptsV4All === 'function') {
+      try {
+        var ri = window.compileImagePromptsV4All(proj);
+        v4ImageOk = !!(ri && ri.count);
+      } catch(e) { try { console.debug('[yt-ref] v4 image compile failed:', e && e.message); } catch(_){} }
+    }
+    if (typeof window.compileVideoPromptsV4All === 'function') {
+      try {
+        var rv = window.compileVideoPromptsV4All(proj);
+        v4VideoOk = !!(rv && rv.count);
+      } catch(e) { try { console.debug('[yt-ref] v4 video compile failed:', e && e.message); } catch(_){} }
+    }
+    /* 점수도 계산해서 STUDIO.project.s3.promptQualityV4 에 적재 */
+    if ((v4ImageOk || v4VideoOk) && typeof window.s3ScoreAllAndStoreV4 === 'function') {
+      try { window.s3ScoreAllAndStoreV4(); } catch(_){}
+    }
+    if (typeof window.studioSave === 'function') window.studioSave();
     try {
-      console.debug('[yt-ref] adapted scenes:', scenes.length);
+      console.debug('[yt-ref] adapted scenes:', scenes.length, '· v4 image:', v4ImageOk, '· v4 video:', v4VideoOk);
       console.debug('[yt-ref] persisted: s1.scenes / project.scenes / s3.imagePrompts/videoPrompts/scenePrompts');
     } catch(_) {}
+  }
+
+  /* ════════════════════════════════════════════════
+     원본 유사도 검사 (copy safety)
+     - 원본 transcript / title / description 과 각색 결과의 narration / caption /
+       visualDescription 사이의 n-gram 겹침으로 risk 측정.
+     - AI 호출 없이 결정적으로 동작.
+     ════════════════════════════════════════════════ */
+  function _normForCmp(s){
+    return String(s||'').toLowerCase().replace(/[^a-z0-9가-힣\s]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function _ngramSet(s, n){
+    var t = _normForCmp(s);
+    var tokens = t.split(' ').filter(function(w){ return w.length >= 2; });
+    var set = {};
+    for (var i = 0; i + n <= tokens.length; i++) {
+      set[tokens.slice(i, i+n).join(' ')] = true;
+    }
+    return set;
+  }
+  function _overlapRatio(targetText, sourceSet){
+    var tgt = _ngramSet(targetText, 3);
+    var keys = Object.keys(tgt);
+    if (!keys.length) return 0;
+    var hits = 0;
+    keys.forEach(function(k){ if (sourceSet[k]) hits++; });
+    return hits / keys.length;
+  }
+
+  window.yrCopySafetyCheck = function(){
+    if (!YR_STATE.scenes.length) { _yrToast('⚠️ 먼저 각색을 실행해주세요.', 'warn'); return null; }
+    var src = (YR_STATE.transcript || '') + '\n' + (YR_STATE.description || '') + '\n' + (YR_STATE.title || '');
+    var srcSet3 = _ngramSet(src, 3);
+    var srcSet5 = _ngramSet(src, 5);
+
+    var sentenceWarnings = [];
+    var visualWarnings   = [];
+    YR_STATE.scenes.forEach(function(sc, i){
+      var narr = sc.narration || '';
+      var cap  = sc.caption || '';
+      var vis  = sc.visualDescription || '';
+      var rNarr = _overlapRatio(narr + ' ' + cap, srcSet3);
+      var rVis  = _overlapRatio(vis, srcSet3);
+      var hasLong5 = false;
+      var t = _normForCmp(narr + ' ' + cap).split(' ');
+      for (var j = 0; j + 5 <= t.length; j++) {
+        if (srcSet5[t.slice(j, j+5).join(' ')]) { hasLong5 = true; break; }
+      }
+      if (hasLong5 || rNarr >= 0.35) {
+        sentenceWarnings.push('씬 ' + (i+1) + ': 원본과 유사한 표현 (' + Math.round(rNarr*100) + '%)' + (hasLong5 ? ' — 5단어 연속 일치' : ''));
+      }
+      if (rVis >= 0.30) {
+        visualWarnings.push('씬 ' + (i+1) + ': 원본 화면 묘사와 유사 (' + Math.round(rVis*100) + '%)');
+      }
+    });
+
+    var titleSrc = _normForCmp(YR_STATE.title || '');
+    var titleNew = _normForCmp((YR_STATE.newTopic || '') + ' ' + (YR_STATE.scenes[0] && YR_STATE.scenes[0].caption || ''));
+    var titleSimilarity = 0;
+    if (titleSrc && titleNew) {
+      var t1 = titleSrc.split(' ').filter(function(w){return w.length>=2;});
+      var t2 = titleNew.split(' ').filter(function(w){return w.length>=2;});
+      var common = t1.filter(function(w){ return t2.indexOf(w) >= 0; }).length;
+      titleSimilarity = common / Math.max(1, Math.min(t1.length, t2.length));
+    }
+    var titleWarning = titleSimilarity >= 0.5 ? ('새 제목/훅이 원본 제목과 유사 (' + Math.round(titleSimilarity*100) + '%)') : '';
+
+    var totalIssues = sentenceWarnings.length + visualWarnings.length + (titleWarning ? 1 : 0);
+    var overallRisk = totalIssues === 0 ? 'low' : totalIssues <= 2 ? 'medium' : 'high';
+
+    var fixes = [];
+    if (sentenceWarnings.length) fixes.push('위험한 씬은 "이 씬만 다시 각색" 으로 재작성하세요.');
+    if (visualWarnings.length)   fixes.push('화면 설명을 새 주제 맥락에 맞춰 더 구체적으로 다시 쓰세요.');
+    if (titleWarning)            fixes.push('새 주제를 더 차별화된 표현으로 바꿔보세요.');
+    if (overallRisk === 'high')  fixes.push('전체 다시 각색 — 구조만 유지하고 표현을 새로 쓰는 것을 권장합니다.');
+
+    var result = {
+      overallRisk: overallRisk,
+      sentenceSimilarityWarnings: sentenceWarnings,
+      visualSimilarityWarnings:   visualWarnings,
+      titleSimilarityWarning:     titleWarning,
+      recommendedFixes:           fixes,
+      checkedAt: Date.now(),
+    };
+    YR_STATE.copySafety = result;
+
+    var proj = (window.STUDIO && window.STUDIO.project) || {};
+    proj.s1 = proj.s1 || {};
+    proj.s1.youtubeReference = proj.s1.youtubeReference || {};
+    proj.s1.youtubeReference.copySafety = result;
+    if (typeof window.studioSave === 'function') window.studioSave();
+
+    var toastKind = overallRisk === 'low' ? 'success' : overallRisk === 'medium' ? 'warn' : 'error';
+    var toastMsg  = overallRisk === 'low'    ? '🛡 원본 유사도 낮음 — 사용 가능' :
+                    overallRisk === 'medium' ? '⚠️ 일부 표현 수정 권장' :
+                                               '❌ 원본과 너무 유사 — 다시 각색 권장';
+    _yrToast(toastMsg, toastKind);
+    _yrRefresh();
+    return result;
+  };
+
+  function _yrRenderCopySafety() {
+    var c = YR_STATE.copySafety;
+    if (!c) return '';
+    var cls = c.overallRisk === 'low' ? 'yr-cs-low' : c.overallRisk === 'medium' ? 'yr-cs-mid' : 'yr-cs-high';
+    var label = c.overallRisk === 'low' ? '낮음 — 사용 가능' :
+                c.overallRisk === 'medium' ? '보통 — 일부 표현 수정 권장' :
+                                             '높음 — 다시 각색 권장';
+    var items = [].concat(c.sentenceSimilarityWarnings || [], c.visualSimilarityWarnings || []);
+    if (c.titleSimilarityWarning) items.push(c.titleSimilarityWarning);
+    return '<div class="yr-cs-card '+cls+'">'+
+      '<div class="yr-cs-hd">🛡 원본 유사도: '+_esc(label)+'</div>'+
+      (items.length ? '<ul class="yr-cs-list">'+items.map(function(x){ return '<li>'+_esc(x)+'</li>'; }).join('')+'</ul>' : '<div>유사도 위반 항목이 없습니다.</div>')+
+      ((c.recommendedFixes||[]).length ? '<ul class="yr-cs-list">'+c.recommendedFixes.map(function(x){ return '<li>'+_esc(x)+'</li>'; }).join('')+'</ul>' : '')+
+    '</div>';
   }
 
   /* ════════════════════════════════════════════════
@@ -449,7 +682,7 @@
           return '<div class="yr-scene-card">'+
             '<div class="yr-scene-hd">'+
               '<span class="yr-scene-no">씬 '+sc.sceneNumber+'</span>'+
-              '<span class="yr-scene-role">'+_esc(sc.role||'')+'</span>'+
+              '<span class="yr-scene-role">'+_esc(sc.displayRole || sc.role||'')+'</span>'+
               (sc.referenceRole ? '<span class="yr-scene-ref">← '+_esc(sc.referenceRole)+'</span>' : '')+
             '</div>'+
             '<div class="yr-scene-narr">'+_esc(sc.narration || '(빈 대사)')+'</div>'+
@@ -539,6 +772,17 @@
 '.yr-mini-btn{flex:1;padding:4px 8px;border:1px solid #f1dce7;background:#fff;border-radius:6px;font-size:10.5px;font-weight:700;color:#5a4a56;cursor:pointer;font-family:inherit}'+
 '.yr-mini-btn:hover{border-color:#9181ff;color:#9181ff}'+
 '.yr-scenes-actions{display:flex;gap:6px;flex-wrap:wrap}'+
+'.yr-checks{align-items:flex-start}'+
+'.yr-chk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px;flex:1}'+
+'.yr-chk{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#fff;border:1px solid #f1dce7;border-radius:8px;font-size:11px;cursor:pointer;color:#5a4a56}'+
+'.yr-chk input{margin:0;accent-color:#9181ff}'+
+'.yr-chk.on{background:#f5f0ff;border-color:#9181ff;color:#5a4a8a;font-weight:700}'+
+'.yr-cs-card{margin-top:6px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.55}'+
+'.yr-cs-low{background:#dcfce7;color:#166534;border:1px solid #86efac}'+
+'.yr-cs-mid{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}'+
+'.yr-cs-high{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}'+
+'.yr-cs-hd{font-weight:800;margin-bottom:4px}'+
+'.yr-cs-list{margin:4px 0 0 16px;padding:0;font-size:11px}'+
 '';
     document.head.appendChild(st);
   }

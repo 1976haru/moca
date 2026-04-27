@@ -26,9 +26,10 @@ const DASH_TOPICS = {
 };
 
 const DASH_MODES = [
-  { id:'stepper', ico:'📋', label:'단계별 제작', desc:'대본→이미지→음성→편집 순서대로' },
-  { id:'oneclick', ico:'⚡', label:'딸깍 모드',  desc:'주제 입력 → AI가 전부 자동 완성' },
-  { id:'batch',   ico:'📦', label:'대량 생산',   desc:'여러 편을 한 번에 제작' },
+  { id:'stepper',       ico:'📋', label:'단계별 제작',          desc:'대본→이미지→음성→편집 순서대로' },
+  { id:'oneclick',      ico:'⚡', label:'딸깍 모드',             desc:'주제 입력 → AI가 전부 자동 완성' },
+  { id:'batch',         ico:'📦', label:'대량 생산',             desc:'여러 편을 한 번에 제작' },
+  { id:'ytRefAdapt',    ico:'🎬', label:'조회수 영상 따라 만들기', desc:'잘 된 영상의 구조만 참고해 내 주제로 새 숏츠를 만듭니다' },
 ];
 
 /* ── 전역 상태 ── */
@@ -100,6 +101,7 @@ function _studioDashboard(wrapId) {
         onclick="_dashStartNew('${wrapId||'studio-body'}')">
         ${_dashMode==='oneclick'?'⚡ 지금 바로 시작':
           _dashMode==='batch'?'📦 배치 생성 시작':
+          _dashMode==='ytRefAdapt'?'🎬 유튜브 레퍼런스 각색 시작':
           '📋 단계별로 시작하기'} →
       </button>
     </div>
@@ -271,7 +273,15 @@ window._dashStartNew = function(wid) {
     const proj = studioNewProjectObj();
     proj.mode  = _dashMode;
     proj.lang  = _dashLang;
+    /* ytRefAdapt 모드 — Step 1 의 youtube_reference_adapt 모드로 진입.
+       s1.mode 를 미리 설정해 _s1RenderModeBlock 이 youtube reference 블록을
+       바로 렌더링하도록 한다. */
+    if (_dashMode === 'ytRefAdapt') {
+      proj.s1 = proj.s1 || {};
+      proj.s1.mode = 'youtube_reference_adapt';
+    }
     if (typeof STUDIO !== 'undefined') STUDIO.project = proj;
+    if (typeof studioSave === 'function') { try { studioSave(); } catch(_){} }
   }
   if (_dashMode === 'oneclick') {
     // 주제 입력 받고 바로 대본 생성
@@ -343,7 +353,8 @@ function _dashInjectCSS() {
 .dash-lang-btn.on{background:#9181ff;color:#fff;border-color:#9181ff}
 
 /* 모드 */
-.dash-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.dash-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+@media(min-width:720px){.dash-modes{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:500px){.dash-modes{grid-template-columns:1fr}}
 .dash-mode-card{padding:12px 8px;border:2px solid #f1dce7;border-radius:14px;
   background:#fff;cursor:pointer;text-align:center;transition:.14s}

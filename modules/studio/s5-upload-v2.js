@@ -164,8 +164,31 @@ function _s5vT1() {
   const doneCount = items.filter(i=>i.ok).length;
   const pct       = Math.round(doneCount / items.length * 100);
 
+  /* ⭐ 유튜브 레퍼런스 각색 모드 — 원본 유사도 경고 표시.
+     copySafety.overallRisk 가 'medium' 이상이면 검수 화면 상단에 노출. */
+  const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+  const yr   = (proj.s1 && proj.s1.youtubeReference) || null;
+  const cs   = yr && yr.copySafety;
+  let copyWarnHtml = '';
+  if (cs && cs.overallRisk && cs.overallRisk !== 'low') {
+    const cls = cs.overallRisk === 'high' ? 'high' : 'mid';
+    const label = cs.overallRisk === 'high' ? '높음 — 다시 각색 권장' : '보통 — 일부 표현 수정 권장';
+    const items = [].concat(cs.sentenceSimilarityWarnings || [], cs.visualSimilarityWarnings || []);
+    if (cs.titleSimilarityWarning) items.push(cs.titleSimilarityWarning);
+    copyWarnHtml = `
+    <div class="s5v-yr-warn s5v-yr-warn-${cls}">
+      <div class="s5v-yr-warn-hd">🛡 유튜브 레퍼런스 — 원본 유사도: ${label}</div>
+      ${items.length ? '<ul class="s5v-yr-warn-list">' + items.map(x=>`<li>${String(x).replace(/[<>&]/g,'')}</li>`).join('') + '</ul>' : ''}
+      <div class="s5v-yr-warn-act">
+        <button onclick="typeof studioGoto==='function'&&studioGoto(1)">→ Step 1 로 가서 다시 각색</button>
+      </div>
+    </div>`;
+  }
+
   return `
   <div class="s5v-section">
+
+    ${copyWarnHtml}
 
     <!-- 통합 품질 대시보드 (studio-quality.js 가 있을 때만 채워짐) -->
     <div id="s5v-quality-dashboard" style="margin-bottom:14px"></div>
@@ -814,6 +837,12 @@ function _s5vInjectCSS() {
 .s5v-warn-box{background:#fff8f0;border-radius:10px;padding:10px;font-size:12px;color:#d97706}
 .s5v-ok-box{background:#f0fdf4;border-radius:10px;padding:10px;font-size:12px;color:#16a34a}
 .s5v-info-box{background:#f0f9ff;border-radius:10px;padding:10px;font-size:12px;color:#0369a1}
+.s5v-yr-warn{margin-bottom:14px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.55}
+.s5v-yr-warn-mid{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.s5v-yr-warn-high{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.s5v-yr-warn-hd{font-weight:800;margin-bottom:4px}
+.s5v-yr-warn-list{margin:4px 0 6px 16px;padding:0;font-size:11px}
+.s5v-yr-warn-act button{padding:4px 10px;border:1.5px solid currentColor;background:#fff;color:inherit;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer}
 
 /* 메타데이터 */
 .s5v-meta-block{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #f8f0f5}
