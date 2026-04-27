@@ -33,22 +33,23 @@
     dalle3: {
       label:'DALL-E 3', adapter:'openai_image', model:'dall-e-3',
       storeId:'openai_img', altStoreId:'dalle3', legacyKey:'uc_openai_key',
-      image:true, video:false, priceKRW:40, badge:'고품질'
+      image:true, video:false, priceKRW:40, badge:'고품질', qualityTier:'premium', sortOrder:10
     },
     dalle2: {
       label:'DALL-E 2', adapter:'openai_image', model:'dall-e-2',
       storeId:'openai_img', altStoreId:'dalle2', legacyKey:'uc_openai_key',
-      image:true, video:false, priceKRW:8, badge:'저렴'
+      image:true, video:false, priceKRW:8, badge:'저비용 fallback', qualityTier:'legacy_fallback', sortOrder:90,
+      note:'v4 권장 아님 — 저비용 테스트나 fallback 용도로만 사용하세요. 9:16 정사각 변환·세부 표현은 최신 모델이 우수합니다.'
     },
     flux: {
       label:'Flux', adapter:'flux',
       storeId:'flux', legacyKey:'uc_flux_key',
-      image:true, video:false, priceKRW:15, badge:'시드고정'
+      image:true, video:false, priceKRW:15, badge:'시드고정', qualityTier:'premium', sortOrder:20
     },
     sd: {
       label:'Stable Diffusion', adapter:'stability',
       storeId:'sd', legacyKey:'uc_sd_key',
-      image:true, video:false, priceKRW:3, badge:'최저가'
+      image:true, video:false, priceKRW:3, badge:'최저가', qualityTier:'standard', sortOrder:40
     },
     stable: {
       label:'Stable Diffusion', adapter:'stability',
@@ -63,7 +64,7 @@
     gemini: {
       label:'Gemini Imagen', adapter:'gemini_imagen',
       storeId:'gemini_imagen', altStoreId:'gemini', legacyKey:'uc_gemini_key',
-      image:true, video:false, priceKRW:0, badge:'Gemini키'
+      image:true, video:false, priceKRW:0, badge:'Gemini키', qualityTier:'premium', sortOrder:30
     },
     geminiImg: {
       label:'Gemini Imagen', adapter:'gemini_imagen',
@@ -78,13 +79,13 @@
     minimax: {
       label:'MiniMax', adapter:'minimax_image_unsupported',
       storeId:'minimax', legacyKey:'uc_minimax_key',
-      image:false, video:true, priceKRW:10, badge:'영상특화',
+      image:false, video:true, priceKRW:10, badge:'영상특화', qualityTier:'video_only', sortOrder:80,
       note:'MiniMax 이미지 adapter 미구현 — 영상 생성 전용 provider 입니다.'
     },
     ideogram: {
       label:'Ideogram', adapter:'ideogram',
       storeId:'ideogram', legacyKey:'uc_ideogram_key',
-      image:true, video:false, priceKRW:20, badge:'텍스트↑'
+      image:true, video:false, priceKRW:20, badge:'텍스트↑', qualityTier:'premium', sortOrder:25
     }
   };
   window.S3_IMAGE_PROVIDER_REGISTRY = REGISTRY;
@@ -106,7 +107,8 @@
   }
   window.s3GetImageProviderPriceKRW = _imagePriceKRW;
 
-  /* ── 이미지 생성 가능한 (별칭 제외) provider 카드 목록 — UI 빌더용 ── */
+  /* ── 이미지 생성 가능한 (별칭 제외) provider 카드 목록 — UI 빌더용 ──
+     sortOrder 오름차순. premium 먼저, legacy_fallback (DALL-E 2) 마지막 */
   function _listImageProviders(){
     return Object.keys(REGISTRY).filter(function(id){
       var cfg = REGISTRY[id];
@@ -120,11 +122,29 @@
         priceLabel: price === 0 ? '무료' : ('₩' + price + '/장'),
         badge: cfg.badge || '',
         note:  cfg.note  || '',
+        qualityTier: cfg.qualityTier || 'standard',
+        sortOrder:   cfg.sortOrder != null ? cfg.sortOrder : 50,
         legacyKey: cfg.legacyKey || ''
       };
-    });
+    }).sort(function(a, b){ return a.sortOrder - b.sortOrder; });
   }
   window.s3ListImageProviders = _listImageProviders;
+
+  /* DALL-E 2 가 default 로 선택되어 있고 키가 있으면 dalle3 로 자동 승격하는 헬퍼.
+     사용자가 명시적으로 dalle2 선택한 경우는 변경하지 않음 — 호출부 책임. */
+  function _suggestUpgradeFromDalle2(){
+    var s3 = (window.STUDIO && window.STUDIO.project && window.STUDIO.project.s3) || {};
+    if (s3.api !== 'dalle2') return null;
+    /* dalle3 또는 flux 등 키 존재시 권장 */
+    var alts = ['dalle3','flux','geminiImagen','ideogram'];
+    for (var i = 0; i < alts.length; i++) {
+      try {
+        if (typeof window.s3HasImageProviderKey === 'function' && window.s3HasImageProviderKey(alts[i])) return alts[i];
+      } catch(_) {}
+    }
+    return null;
+  }
+  window.s3SuggestUpgradeFromDalle2 = _suggestUpgradeFromDalle2;
 
   function _resolveCfg(providerId){
     if (!providerId) return null;
