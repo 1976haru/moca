@@ -140,7 +140,7 @@
     var subjFull  = intent && intent.subject ? intent.subject.toLowerCase() : '';
     var hasEthnicity = /\b(korean|japanese|chinese|asian)\b/i.test(s);
     var hasAge       = /\bin (their|his|her) [2-9]0s\b/i.test(s);
-    var hasRelation  = /\b(couple|mother|father|grandmother|grandfather|grandparent|grandchild|son|daughter|parent and child|owner|nurse|doctor|patient|neighbor|friends?)\b/i.test(s);
+    var hasRelation  = /\b(couple|mother|father|grandmother|grandfather|grandparent|grandchild|son|daughter|parent and child|owner|nurse|doctor|patient|neighbor|friends?|two friends|two subjects|two people|two diners|both subjects)\b/i.test(s);
 
     /* prompt 본문에 'person interacting with X' 가 직접 들어있는지도 검사 —
        intent.subject 가 빈 값이지만 _serializeSubject 가 phrase 를 만들었을 때 대응 */
@@ -203,11 +203,15 @@
       (intent && intent.mustShowEnvironment) || []
     );
     var s = String(prompt || '').toLowerCase();
-    /* must-show 가 0 개일 때 최저 baseline (max*0.2). generic 표현 있으면 더 감점. */
+    /* must-show 가 0 개일 때 baseline. video prompt 에 명시적 motion arc
+       (reaction beat / alternating / hand gesture / punchline) 가 있으면
+       baseline 을 max*0.2 → max*0.45 로 상향 (코믹/티키타카처럼 narration
+       이 짧고 evidence 추출이 어려운 시나리오 보호). */
     if (!all.length) {
-      var base = Math.round(max * 0.2);
+      var hasArc = /reaction beat|alternating|quick cut|back-and-forth|hand gesture|hand reaching|expression flips|punchline|payoff/i.test(s);
+      var base = Math.round(max * (hasArc ? 0.45 : 0.2));
       if (GENERIC_PHRASES.test(s)) base = Math.max(0, base - 4);
-      return { score: base, max: max, note:'대본에서 must-show 추출 0개 — baseline' };
+      return { score: base, max: max, note:'대본에서 must-show 추출 0개' + (hasArc ? ' — motion arc 보강 baseline' : ' — baseline') };
     }
     var hits = all.filter(function(x){
       var token = x.toLowerCase().split(' ')[0];
@@ -228,14 +232,18 @@
     var max = 20;
     var s = String(prompt || '').toLowerCase();
     var sc = 0; var notes = [];
-    /* unique hints 점수 */
+    /* unique hints 점수 — motion arc 가 있으면 인접 씬과 구분되는 timing 신호로 인정 */
     var hints = (intent && intent.differentiationHints) || [];
+    var hasArcD = /reaction beat|alternating|quick cut|back-and-forth|hand gesture|expression flips|punchline|payoff/i.test(s);
     if (hints.length) {
       var matched = hints.filter(function(h){ return s.indexOf(h.toLowerCase().split(' ')[0]) >= 0; }).length;
-      sc += Math.round((matched / hints.length) * 12);
-      notes.push('unique evidence: ' + matched + '/' + hints.length);
+      var pts = Math.round((matched / hints.length) * 12);
+      if (hasArcD) pts = Math.max(pts, 8);
+      sc += pts;
+      notes.push('unique evidence: ' + matched + '/' + hints.length + (hasArcD ? ' (+motion arc)' : ''));
     } else {
-      sc += 6; notes.push('unique hints 없음 — 보수 점수');
+      sc += hasArcD ? 10 : 6;
+      notes.push('unique hints 없음 — ' + (hasArcD ? 'motion arc 인정' : '보수 점수'));
     }
     /* generic 표현 페널티 — 강화. 정확한 BAD 예시 phrase 도 매칭 */
     if (GENERIC_PHRASES.test(s)) {
@@ -322,6 +330,16 @@
       var hasStaticBad = /(?<!no\s)(static (?:shot|talking)|fade (?:in|out)|warm smile)/i.test(s);
       if (hasStaticBad) { sc -= 4; notes.push('static/fade 반복 감점'); }
       else              { sc += 3; notes.push('정적 표현 회피'); }
+      /* 코믹/티키타카/동물애니 video timing 보정 — reaction beat / alternating /
+         quick cut / hand gesture / expression flip 같은 영상 timing 키워드가
+         있으면 video 문법이 더 풍부하다고 판정. cap 은 +2 (max 안 넘김). */
+      var timingHits = 0;
+      if (/reaction beat/i.test(s))        timingHits++;
+      if (/alternating|quick cut|back-and-forth/i.test(s))   timingHits++;
+      if (/hand gesture|hands meet|hand reaching/i.test(s))  timingHits++;
+      if (/expression flips|expression flip/i.test(s))       timingHits++;
+      if (/punchline|payoff/i.test(s))     timingHits++;
+      if (timingHits >= 3) { sc = Math.min(max, sc + 2); notes.push('video timing arc ✓ ('+timingHits+' 키워드)'); }
     } else {
       if (_has(/9:16|portrait composition|cinematic wide|centered focal point|card-news/i, s)) { sc += 5; notes.push('framing ✓'); } else { notes.push('framing ✗'); }
       if (_has(/safe area|caption safe|safe-area/i, s)) { sc += 5; notes.push('safe area ✓'); } else { notes.push('safe area ✗'); }

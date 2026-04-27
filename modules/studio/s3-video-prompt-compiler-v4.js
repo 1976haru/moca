@@ -81,25 +81,47 @@
 
     var startPose, actionBeat, reactionChange, cameraMove, propMotion, payoff;
 
+    /* 음식 비교 컨텍스트 detect — 양쪽 음식 동시·번갈 표시 명시 */
+    var props = (intent.mustShowObjects || []).join(' ').toLowerCase();
+    var hasFoodPair = /kimchi|stew|ramen|sushi|udon|noodle|bowl|banchan|korean.*japanese|japanese.*korean/.test(props)
+                   || /김치|kimchi|라면|ramen|sushi|うどん/.test(String(intent.evidenceText||'').toLowerCase());
+
     if (genre === 'comic') {
-      startPose      = anchor ? (anchor + ' standing in neutral pose, deadpan expression') : 'subject in neutral standing pose, deadpan expression';
-      actionBeat     = act ? (act + ' deliberately') : (prop ? ('reaching for ' + prop + ' deliberately') : 'making a confident exaggerated gesture');
-      reactionChange = emo ? ('expression flips to ' + emo) : 'expression flips from neutral to wide-eyed astonishment';
-      cameraMove     = (role === 'hook') ? 'quick whip-pan landing on the punchline'
-                     : (role === 'cta')  ? 'pull-out revealing both subjects mid-laugh'
-                     :                     'snappy push-in onto the reaction face';
-      propMotion     = prop ? (prop + ' lifts or shifts visibly with the beat') : 'a single comedic prop tilts or wobbles with the beat';
-      payoff         = (role === 'cta') ? 'final freeze on a comedic peak frame, hand framing the punchline'
-                     :                    'snap freeze on the comedic payoff frame';
+      startPose      = anchor ? (anchor + ' standing in neutral pose, deadpan expression, hands relaxed at sides')
+                              : 'two subjects in neutral standing pose, deadpan expressions, hands relaxed at sides';
+      actionBeat     = act ? (act + ' deliberately with a clear hand gesture')
+                           : (prop ? ('reaching for ' + prop + ' deliberately, hand extending into frame')
+                                   : 'making a confident exaggerated hand gesture');
+      reactionChange = 'reaction beat: expression flips ' + (emo ? ('to ' + emo)
+                                                                  : 'from neutral to wide-eyed astonishment')
+                     + ', shoulders lift, hands react visibly';
+      cameraMove     = (role === 'hook') ? 'alternating quick close-up cuts between face and prop, ending on a slight push-in'
+                     : (role === 'cta')  ? 'pull-out revealing both subjects mid-laugh, then slight push-in to the call to action'
+                     : (role === 'setup')? 'slight push-in establishing both subjects, then quick cut to the prop'
+                     : (role === 'reveal_or_solution') ? 'fast back-and-forth cuts between both faces ending on a held mutual look'
+                     :                     'alternating close-up between subject face and the comedic prop, snappy quick cuts';
+      propMotion     = prop ? (prop + ' lifts and tilts visibly with the beat, hand grip clearly visible')
+                            : 'a single comedic prop tilts or wobbles with the beat, hand grip clearly visible';
+      payoff         = (role === 'cta') ? 'punchline payoff: hands meet around the prop, freeze on the comedic peak with hand framing the call to action'
+                     : (role === 'reveal_or_solution') ? 'punchline payoff: synchronized reaction beat then snap freeze on the resolved frame'
+                     :                    'punchline payoff: snap freeze on the comedic payoff frame after the reaction beat';
     } else if (genre === 'tikitaka') {
-      startPose      = 'two subjects clearly framed on opposite sides, alert and engaged';
-      actionBeat     = act ? ('subject A initiates: ' + act) : 'subject A initiates with a strong claim gesture';
-      reactionChange = emo ? ('subject B counters with ' + emo + ' reaction') : 'subject B counters with a smug raised eyebrow';
-      cameraMove     = 'over-shoulder reverse cut between A and B, then split-frame two-shot';
-      propMotion     = prop ? (prop + ' moves between A and B with the rhythm') : 'a representative prop passes between A and B with the rhythm';
-      payoff         = (role === 'cta') ? 'both subjects laugh together, shoulders touching, hand reaching toward camera'
-                     : (role === 'reveal_or_solution') ? 'both subjects pause, then nod in unison toward the resolution'
-                     : 'rapid alternating reactions ending on a held mutual look';
+      /* 티키타카는 항상 2명 이상 강제 */
+      startPose      = 'two subjects clearly framed on opposite sides of frame, alert and engaged, hands raised slightly toward props';
+      actionBeat     = (act ? ('subject A initiates: ' + act) : 'subject A initiates with a strong claim gesture')
+                     + (hasFoodPair ? ', proudly lifting the food bowl into view' : ', hand pushing forward into B side');
+      reactionChange = 'reaction beat: subject B '
+                     + (emo ? ('reacts with ' + emo) : 'reacts with exaggerated surprise, leaning back, both hands raised')
+                     + ', expression flips visibly';
+      cameraMove     = 'alternating close-up quick cuts between subject A and subject B faces, with a slight push-in landing on the prop, then split-frame two-shot';
+      propMotion     = hasFoodPair
+                     ? 'both food items visible at once or alternating between the two bowls, steam or color contrast emphasized'
+                     : (prop ? (prop + ' passes between A and B with the rhythm, hands tracking the motion')
+                              : 'a representative prop passes between A and B with the rhythm');
+      payoff         = (role === 'cta') ? 'punchline payoff: two hands meet around the same item, freeze on synchronized smiles, hand reaching toward camera'
+                     : (role === 'reveal_or_solution') ? 'punchline payoff: both subjects pause, then nod in unison and laugh together at the same moment'
+                     : (role === 'hook') ? 'punchline payoff: rapid back-and-forth timing ending on a comedic freeze of both reaction faces'
+                     : 'punchline payoff: rapid alternating reactions ending on a held mutual look — fast back-and-forth comedic timing';
     } else { /* animal_anime */
       startPose      = 'animal character relaxed in starting pose, ears soft, body still';
       actionBeat     = act ? (act + ' with bouncy timing') : (prop ? ('engaging with ' + prop + ' with bouncy timing') : 'small bounce forward toward the camera');

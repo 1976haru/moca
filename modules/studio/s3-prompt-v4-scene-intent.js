@@ -112,6 +112,13 @@
     { re:/매장|가게|상점|お店/i,                         show:'small neighborhood shop interior' },
     { re:/제품|상품|商品/i,                             show:'the featured product' },
 
+    /* ── 그릇/식기 (코믹·티키타카에서 양쪽 음식 비교에 자주 등장) ── */
+    { re:/그릇|serving bowl|お椀|碗/i,                   show:'serving bowl held in hand' },
+    { re:/두 ?그릇|two bowls|二つの?碗/i,                show:'two bowls side by side' },
+    { re:/(?:두|양) ?손|both hands|両手/i,               show:'two hands meeting in frame' },
+    { re:/두 ?사람|two people|二人/i,                    show:'two people facing each other' },
+    { re:/마주|face to face|向かい合/i,                  show:'two subjects face to face across the table' },
+
     /* ── 음식 비교 (한국 vs 일본 등) ── */
     { re:/김치찌개|kimchi stew/i,                        show:'bubbling kimchi stew pot' },
     { re:/된장찌개|doenjang/i,                            show:'doenjang stew' },
@@ -233,6 +240,12 @@
     { re:/저장(?:을|을 )?(?:누|하)|tap save/i,                   show:'tapping the save button' },
 
     /* ── 코믹/티키타카 동작 ── */
+    { re:/함께 ?웃|laughing together|一緒に笑/i,                  show:'two subjects laughing together' },
+    { re:/동시에|in unison|同時に/i,                              show:'in-unison synchronized motion' },
+    { re:/번갈|alternating|交互/i,                                show:'alternating back-and-forth motion' },
+    { re:/서로 ?향|facing each other/i,                           show:'facing each other directly' },
+    { re:/모으|gather toward center/i,                            show:'gathering items toward the center' },
+    { re:/가운데로|to the center/i,                               show:'moving to the center of frame' },
     { re:/티격태격|bickering|揉め/i,                              show:'lively back-and-forth bickering' },
     { re:/우기|insisting|主張/i,                                  show:'insisting with confidence' },
     { re:/반박|countering|反論/i,                                 show:'countering the argument' },
@@ -401,8 +414,11 @@
   function _detectSubjectCount(text){
     var t = String(text || '');
     if (/세 ?사람|three people|3 ?인|3人/i.test(t))                   return 3;
-    if (/네 ?사람|four people|4 ?인|4人/i.test(t))                   return 4;
+    if (/네 ?사람|four people|4 ?in|4人/i.test(t))                    return 4;
     if (/두 ?사람|두명|2명|two people|couple|부부|夫婦/i.test(t))      return 2;
+    if (/(?:두|양) ?손|both hands|두 ?그릇|two bowls/i.test(t))         return 2;
+    if (/둘 ?다|both of them|마주|face to face|向かい合|함께 ?웃/i.test(t)) return 2;
+    if (/A[와과] ?B|A vs ?B|A vs B/.test(t))                           return 2;
     if (/혼자|alone|ひとり|독신/i.test(t))                            return 1;
     if (/(^|\n)\s*[AB][:：]/.test(t))                                  return 2;
     return 0;
@@ -472,6 +488,15 @@
     if (/할아버지|おじい/.test(combined)) return ethnicityHint + 'elderly man in his 70s';
     if (/시니어|어르신|高齢|シニア/.test(combined)) return ethnicityHint + 'senior in their 60s or 70s';
     if (subjectCount === 2 && /부부|夫婦/.test(combined)) return ethnicityHint + 'married senior couple';
+    /* 코믹/티키타카/음식 비교 — 2 인물 강제. 음식 컨텍스트가 있으면 'two friends comparing food' */
+    if (subjectCount >= 2) {
+      var hasFood = /김치|kimchi|찌개|stew|라면|ramen|국|면|밥|sushi|udon|음식|food|dish|요리|cuisine/.test(combined);
+      var hasDialogA = /(^|\n)\s*[AB][:：]|티격태격|한일|한국 ?vs ?일본|korean.*japanese/i.test(combined);
+      if (hasFood && hasDialogA)        return ethnicityHint + 'two friends comparing Korean and Japanese food';
+      if (hasFood)                       return ethnicityHint + 'two friends comparing food at a table';
+      if (hasDialogA)                    return ethnicityHint + 'two friends in lively conversation';
+      if (subjectCount >= 2)             return ethnicityHint + 'two friends side by side';
+    }
     if (/사장|점주|owner|店長/.test(combined)) return ethnicityHint + 'small business owner';
     if (/학생|아이|kid|child|学生/.test(combined)) return ethnicityHint + 'parent and child';
     if (/직장인|salarymen|サラリーマン/.test(combined)) return ethnicityHint + 'office worker';
