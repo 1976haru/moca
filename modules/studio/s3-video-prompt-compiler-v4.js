@@ -89,17 +89,36 @@
     var subjMo  = _subjectMotion(intent, grammar);
     var light   = _lightingHint(profile, grammar);
 
-    /* subject — empty 일 때 topic+role 기반 phrase 로 보강 (generic fallback 금지) */
+    /* subject — empty 일 때 보강 우선순위:
+       1) continuityCharacters / continuityAnchor
+       2) mustShow 기반 의미 phrase
+       3) 의미있는 topic fragment 가 있으면 topic+role
+       (generic placeholder 금지) */
     var subjBase = '';
     if (intent.subjectCount === 2 && intent.relationship) subjBase = intent.relationship;
     else if (intent.subject)                              subjBase = intent.subject;
     if (!subjBase) {
-      var topic = (profile && profile.topic) ? profile.topic.replace(/[ㄱ-ㆎ가-힣]+/g,'').replace(/\s{2,}/g,' ').trim() : '';
+      subjBase = (profile && profile.continuityCharacters && profile.continuityCharacters[0]) || intent.continuityAnchor || '';
+    }
+    if (!subjBase) {
+      var obj = (intent.mustShowObjects   || [])[0] || '';
+      var emo = (intent.mustShowEmotion   || [])[0] || '';
+      var act = (intent.mustShowActions   || [])[0] || '';
+      var env = (intent.mustShowEnvironment || [])[0] || '';
+      if (obj)        subjBase = 'person interacting with ' + obj + (emo ? ' (' + emo + ')' : '');
+      else if (act)   subjBase = 'person ' + act + (env ? ' in ' + env : '');
+      else if (env)   subjBase = 'person within ' + env;
+    }
+    if (!subjBase) {
+      var topicRaw = (profile && profile.topic) ? String(profile.topic) : '';
+      var stripped = topicRaw.replace(/[ㄱ-ㆎ가-힣぀-ヿ]+/g,'').replace(/[^a-zA-Z0-9 ]+/g,' ').replace(/\s{2,}/g,' ').trim();
+      var hasWord = stripped && stripped.split(/\s+/).some(function(w){ return w.length >= 4; });
+      var topic = (hasWord || stripped.length >= 6) ? stripped : '';
       var role  = intent.role || 'core';
       var roleLbl = ({hook:'hook', setup:'setup', conflict_or_core:'core', reveal_or_solution:'resolution', cta:'CTA'})[role] || role;
       subjBase = topic
-        ? ('character whose action drives the ' + roleLbl + ' beat of "' + topic + '"')
-        : ('character whose action drives the ' + roleLbl + ' beat of this scene');
+        ? ('person whose action drives the ' + roleLbl + ' beat of "' + topic + '"')
+        : ('person whose action drives the ' + roleLbl + ' beat');
     }
     var subjectBit = subjBase;
     if (intent.age) subjectBit += ', ' + intent.age;
@@ -126,7 +145,7 @@
     var locBit  = intent.location ? (', ' + intent.location) : '';
     var emoBit  = (intent.mustShowEmotion && intent.mustShowEmotion[0]) ? (', ' + intent.mustShowEmotion[0]) : '';
     var propsBit = (intent.mustShowObjects && intent.mustShowObjects.length)
-      ? (', show: ' + intent.mustShowObjects.slice(0, 3).join(', '))
+      ? (', must show: ' + intent.mustShowObjects.slice(0, 3).join(', '))
       : '';
     var roleTag = '[' + (({
       hook:'OPENING HOOK SHOT', setup:'ESTABLISHING SETUP SHOT',
@@ -134,18 +153,26 @@
       cta:'CTA ACTION SHOT'
     })[intent.role || ''] || 'SCENE SHOT') + ']';
 
+    /* genre style hints — image compiler 와 동일하게 video 에도 포함시켜
+       genreFidelity 점수 누락 방지 + 영상 톤이 장르에 맞도록 */
+    var styleHintsStr = (grammar && grammar.styleHints && grammar.styleHints.length)
+      ? grammar.styleHints.slice(0, 3).join(', ') : '';
+
     var prompt = [
       roleTag,
       'duration: ' + dur + 's',
       (profile.aspectRatio || '9:16') + ' vertical short-form video',
+      styleHintsStr,
       subjectBit,
       actionBit ? (actionBit + locBit + emoBit + propsBit) : (locBit + emoBit + propsBit).replace(/^,\s*/, ''),
       'subject motion: ' + subjMo,
       'camera motion: ' + camMo,
       'framing: ' + (grammar.framingRules || 'subject clearly readable'),
       'lighting: ' + light,
+      'composition: ' + (grammar.composition || 'subject clearly readable'),
       'expression: ' + (grammar.expressionRange || 'authentic and grounded'),
       'continuous shot, no jump cuts, no fade, no static talking-head',
+      'subtitle safe area: top ' + ((profile && profile.subtitleSafeTopPct) || 15) + '% and bottom ' + ((profile && profile.subtitleSafeBottomPct) || 25) + '% kept clear',
       'no text overlay, no watermark, no celebrity likeness',
       'realistic natural performance, high quality'
     ].filter(Boolean).join(', ');

@@ -52,17 +52,32 @@
                     .replace(/[^a-z0-9\s]/g, ' ')
                     .split(/\s+/).filter(function(w){ return w.length >= 4; });
     if (!tokens.length) {
-      /* 한국어/일본어만 — narrativeGoal 영어 fallback. 그래도 narrativeGoal 은
-         role 별 공통 문구이므로 점수 cap 을 0.5*max 로 제한해 generic pass 방지. */
+      /* 한국어/일본어 대본 — 영어 token 매칭이 본질적으로 불가능하므로 다음 신호로
+         의도 반영을 측정. cap 없음 (대본 의도가 evidence 로 prompt 에 충분히
+         반영되면 영어 대본과 동일 max 가능). 단 GENERIC_PHRASES 안전망은
+         scorePromptQualityV4 에서 -10 페널티로 별도 적용. */
+      var evidenceAll = [].concat(
+        (intent && intent.mustShowObjects)     || [],
+        (intent && intent.mustShowActions)     || [],
+        (intent && intent.mustShowEmotion)     || [],
+        (intent && intent.mustShowEnvironment) || []
+      );
+      var evidenceHits = evidenceAll.filter(function(x){
+        var t = x.toLowerCase().split(' ')[0];
+        return t && s.indexOf(t) >= 0;
+      }).length;
+      var evidenceRatio = evidenceAll.length ? (evidenceHits / Math.min(evidenceAll.length, 6)) : 0;
+
       var narrEn = String((intent && intent.narrativeGoal) || intent && intent.visualGoal || '').toLowerCase();
-      if (narrEn) tokens = narrEn.split(/\s+/).filter(function(w){ return w.length >= 4; });
-      if (tokens.length) {
-        var hits0 = tokens.filter(function(t){ return s.indexOf(t) >= 0; }).length;
-        var ratio0 = hits0 / Math.min(tokens.length, 6);
-        var sc0 = Math.round(_clamp(ratio0, 0, 1) * max * 0.5);
-        return { score: sc0, max: max, note:'영어 토큰 부족 — narrativeGoal 기준 (cap 50%)' };
-      }
-      return { score: Math.round(max * 0.4), max: max, note:'영어 토큰 부족 — 보수적 점수' };
+      var narrTokens = narrEn ? narrEn.split(/\s+/).filter(function(w){ return w.length >= 4; }) : [];
+      var narrHits = narrTokens.filter(function(t){ return s.indexOf(t) >= 0; }).length;
+      var narrRatio = narrTokens.length ? (narrHits / Math.min(narrTokens.length, 6)) : 0;
+
+      /* 가중 평균: evidence 70% + narrativeGoal 30%. baseline 30% (대본 미파싱
+         케이스 보호). evidence 가 절반 이상이면 비례적으로 max 까지 도달. */
+      var combined = evidenceRatio * 0.7 + narrRatio * 0.3;
+      var sc0 = Math.round(_clamp(0.3 + combined * 0.7, 0, 1) * max);
+      return { score: sc0, max: max, note:'한국어/일본어 대본 — evidence ' + evidenceHits + '/' + evidenceAll.length + ' + narrativeGoal 결합' };
     }
     var hits = tokens.filter(function(t){ return s.indexOf(t) >= 0; }).length;
     var ratio = hits / Math.min(tokens.length, 6);
@@ -117,16 +132,35 @@
     var s = String(prompt || '').toLowerCase();
     var sc = 0; var notes = [];
     /* who — intent.subject 의 첫 토큰이 prompt 에 들어오면 full 점수.
-       'person|adult|senior' 같은 일반어만 매칭되면 부분 점수 (5 → 2 로 강화). */
+       특별 케이스: 'person interacting with X' 처럼 mustShow 기반 phrase 면 X 가
+       prompt 에 있어야 의미 있는 매칭. 'person|adult|character' 일반어만 단독 매칭되면
+       부분 점수. 단, ethnicity (Korean/Japanese) 또는 age/relationship 이 함께
+       prompt 에 있으면 가산. */
     var subjFirst = intent && intent.subject ? intent.subject.toLowerCase().split(/[, ]/)[0] : '';
+    var subjFull  = intent && intent.subject ? intent.subject.toLowerCase() : '';
+    var hasEthnicity = /\b(korean|japanese|chinese|asian)\b/i.test(s);
+    var hasAge       = /\bin (their|his|her) [2-9]0s\b/i.test(s);
+    var hasRelation  = /\b(couple|mother|father|grandmother|grandfather|grandparent|grandchild|son|daughter|parent and child|owner|nurse|doctor|patient|neighbor|friends?)\b/i.test(s);
+
     if (subjFirst && subjFirst.length >= 3 && s.indexOf(subjFirst) >= 0 && !/person|adult|character/.test(subjFirst)) {
       sc += 7; notes.push('who: ✓ (' + subjFirst + ')');
+    } else if (subjFull && /^person interacting with /.test(subjFull)) {
+      /* mustShow 기반 phrase — 매칭 대상은 object 명사. */
+      var objWord = subjFull.replace('person interacting with ','').split(/[ ,(]/)[0];
+      if (objWord && s.indexOf(objWord) >= 0) { sc += 6; notes.push('who: mustShow 기반 ✓'); }
+      else                                     { sc += 3; notes.push('who: mustShow phrase 약함'); }
+    } else if (hasEthnicity || hasAge || hasRelation) {
+      /* 명시적 ethnicity / age / relationship 가 있으면 일반어 매칭이라도 4pts */
+      sc += 4; notes.push('who: ethnicity/age/relationship ✓');
     } else if (/person|adult|senior|elder|customer|owner|child|citizen|couple|parent|character|animal/i.test(s)) {
       sc += 2; notes.push('who: 일반화 — 약한 매칭');
     } else { notes.push('who: ✗'); }
-    /* what (action) */
-    var actionVerbs = /(holding|sitting|extending|standing|walking|stepping|reaching|inspecting|placing|pressing|filling|reading|making|looking|pointing|nodding|smiling|breathing|wiping|arranging|greeting|navigating|drinking|demonstrating|tapping|climbing|lifting|measuring|hugging|writing|bouncing|tilting)/i;
-    if (actionVerbs.test(s)) { sc += 7; notes.push('what: ✓'); } else { notes.push('what: ✗'); }
+    /* what (action) — action verb 또는 'show: ' / 'clear action: ' / 'must show: ' 같은
+       evidence phrase 가 있으면 'what' 충족 */
+    var actionVerbs = /(holding|sitting|extending|standing|walking|stepping|reaching|inspecting|placing|pressing|filling|reading|making|looking|pointing|nodding|smiling|breathing|wiping|arranging|greeting|navigating|drinking|demonstrating|tapping|climbing|lifting|measuring|hugging|writing|bouncing|tilting|interacting|crying|waving|answering)/i;
+    var evidencePhrase = /(must show:|clear action:|show:\s)/i;
+    if (actionVerbs.test(s) || evidencePhrase.test(s)) { sc += 7; notes.push('what: ✓'); }
+    else { notes.push('what: ✗'); }
     /* where */
     if ((intent && intent.location && s.indexOf(intent.location.toLowerCase().split(' ')[0]) >= 0) ||
         /home|hospital|park|street|office|shop|cafe|market|kitchen|staircase|tatami|veranda/i.test(s)) {

@@ -66,20 +66,52 @@
   }
 
   /* subject 직렬화 — count/age/gender/relationship/wardrobe/continuityAnchor 통합.
-     intent.subject 가 비어 있으면 topic+role 기반 phrase 로 보강.
-     ⚠️ 절대로 'an adult relevant to the topic' / 'a specific adult character' 같은
+     intent.subject 가 비어 있으면 우선순위:
+       1) projectProfile.continuityCharacters[0]   (대본 전체에서 추출된 인물)
+       2) mustShowObjects/Actions 기반 의미 phrase
+       3) topic 영어 fragment 가 의미있을 때 사용
+     ⚠️ 절대로 'an adult relevant to the topic' / 'middle-aged adult' 같은
      generic placeholder 는 만들지 않는다. */
+  function _meaningfulTopic(profile){
+    var topic = (profile && profile.topic) ? String(profile.topic) : '';
+    /* 한글/일본어 strip 후 영어 fragment 만 남는 경우 — 의미 없는 짧은 fragment 는 버림 */
+    var stripped = topic.replace(/[ㄱ-ㆎ가-힣぀-ヿ]+/g,'').replace(/[^a-zA-Z0-9 ]+/g,' ').replace(/\s{2,}/g,' ').trim();
+    /* 의미 단어 1개라도 길이 ≥ 4 또는 전체 길이 ≥ 6 자여야 사용 */
+    if (!stripped) return '';
+    var hasWord = stripped.split(/\s+/).some(function(w){ return w.length >= 4; });
+    if (!hasWord && stripped.length < 6) return '';
+    return stripped;
+  }
   function _serializeSubject(intent, profile){
     var bits = [];
     var subj = intent.subject || '';
     if (!subj) {
-      /* topic+role 기반 보강 — 적어도 어떤 beat 인지, 어떤 주제의 캐릭터인지 명시 */
-      var topic = (profile && profile.topic) ? profile.topic.replace(/[ㄱ-ㆎ가-힣]+/g,'').replace(/\s{2,}/g,' ').trim() : '';
+      /* 1) continuityCharacters 우선 (대본 전체에서 추출된 인물) */
+      var anchor = (profile && profile.continuityCharacters && profile.continuityCharacters[0]) || intent.continuityAnchor || '';
+      if (anchor) { subj = anchor; }
+    }
+    if (!subj) {
+      /* 2) mustShow 기반 의미 phrase — must-show object 와 emotion 을 결합 */
+      var obj = (intent.mustShowObjects   || [])[0] || '';
+      var emo = (intent.mustShowEmotion   || [])[0] || '';
+      var act = (intent.mustShowActions   || [])[0] || '';
+      var env = (intent.mustShowEnvironment || [])[0] || '';
+      if (obj) {
+        subj = 'person interacting with ' + obj + (emo ? ' (' + emo + ')' : '');
+      } else if (act) {
+        subj = 'person ' + act + (env ? ' in ' + env : '');
+      } else if (env) {
+        subj = 'person within ' + env;
+      }
+    }
+    if (!subj) {
+      /* 3) topic + role — 의미 있는 영어 fragment 가 있을 때만 */
+      var topic = _meaningfulTopic(profile);
       var role  = intent.role || 'core';
       var roleLbl = ({hook:'hook', setup:'setup', conflict_or_core:'core', reveal_or_solution:'resolution', cta:'CTA'})[role] || role;
       subj = topic
-        ? ('character whose action drives the ' + roleLbl + ' beat of "' + topic + '"')
-        : ('character whose action drives the ' + roleLbl + ' beat of this scene');
+        ? ('person whose action drives the ' + roleLbl + ' beat of "' + topic + '"')
+        : ('person whose action drives the ' + roleLbl + ' beat');
     }
     if (intent.subjectCount === 2 && intent.relationship) {
       bits.push(intent.relationship);

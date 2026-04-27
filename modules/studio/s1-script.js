@@ -80,7 +80,15 @@ function studioSave(){
     });
     localStorage.setItem(LS_STUDIO_LIST, JSON.stringify(cleaned.slice(0,50)));
     const s = document.getElementById('studio-savestate'); if(s) s.innerHTML = '자동저장 ✅';
-  }catch(e){ console.warn('[studio save]', e); }
+  }catch(e){
+    console.warn('[studio save]', e);
+    /* silent fail 방지 — 저장 실패는 사용자에게 보여야 함 (저장공간 가득참 / 시크릿 모드 등) */
+    var s2 = document.getElementById('studio-savestate');
+    if (s2) { s2.innerHTML = '⚠️ 자동저장 실패 — ' + (e && e.message ? e.message.slice(0,80) : ''); s2.classList.add('show'); }
+    if (typeof window.ucShowToast === 'function') {
+      try { window.ucShowToast('⚠️ 자동저장 실패: ' + (e && e.message ? e.message : '알 수 없는 오류'), 'error'); } catch(_){}
+    }
+  }
 }
 function openStudio(step){
   /* 스튜디오 진입점 — in-progress 프로젝트는 마지막 step 유지 (5 초과만 클램프) */
