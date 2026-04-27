@@ -49,19 +49,18 @@ function _studioS3(){
   const api      = s3.api      || 'dalle3';
   const genMode  = s3.genMode  || 'balance';
   const sceneCount = scenes.length || 5;
-  const costMap  = { dalle3:40, dalle2:8, flux:15, sd:3, gemini:0, minimax:10, ideogram:20 };
+  /* provider 메타데이터 — s3-image-generation-router.js REGISTRY 가 단일 출처.
+     UI 가격·뱃지·키 보유 여부 모두 메타데이터에서 도출. */
+  const apiList = (typeof window.s3ListImageProviders === 'function')
+    ? window.s3ListImageProviders().map(function(p){ return { id:p.id, name:p.label, price:p.priceLabel, badge:p.badge, priceKRW:p.priceKRW }; })
+    : [{ id:'dalle3', name:'DALL-E 3', price:'₩40/장', badge:'고품질', priceKRW:40 }];
+  function _costForApi(id){
+    if (typeof window.s3GetImageProviderPriceKRW === 'function') return window.s3GetImageProviderPriceKRW(id);
+    var found = apiList.find(function(a){ return a.id === id; });
+    return found ? (found.priceKRW || 0) : 0;
+  }
   const perScene = { save:1, balance:2, full:4, bg:1 }[genMode] || 2;
-  const totalCost = (sceneCount * perScene + 3) * (costMap[api] || 40);
-
-  const apiList = [
-    { id:'dalle3',   name:'DALL-E 3',     price:'₩40/장', badge:'고품질'   },
-    { id:'dalle2',   name:'DALL-E 2',     price:'₩8/장',  badge:'저렴'     },
-    { id:'flux',     name:'Flux',         price:'₩15/장', badge:'시드고정' },
-    { id:'sd',       name:'Stable Diff',  price:'₩3/장',  badge:'최저가'   },
-    { id:'gemini',   name:'Gemini Imagen',price:'무료',   badge:'Gemini키' },
-    { id:'minimax',  name:'MiniMax',      price:'₩10/장', badge:'영상특화' },
-    { id:'ideogram', name:'Ideogram',     price:'₩20/장', badge:'텍스트↑'  },
-  ];
+  const totalCost = (sceneCount * perScene + 3) * (_costForApi(api) || 40);
 
   const artStyles = [
     ['ghibli','🌿 지브리'],['dslr','📷 실사'],['watercolor','🎨 수채화'],
@@ -84,15 +83,13 @@ function _studioS3(){
     {id:'young',    label:'🧑 청년'},
     {id:'custom',   label:'✏️ 직접입력'},
   ];
+  const _apiPrice = _costForApi(api) || 40;
   const genModes = [
-    {id:'save',    label:'💰 절약형',   desc:'씬별 1장+썸네일1', est:(sceneCount+1)*(costMap[api]||40)},
-    {id:'balance', label:'⚖️ 균형형',   desc:'씬별 2장+썸네일3', est:(sceneCount*2+3)*(costMap[api]||40)},
-    {id:'full',    label:'🎨 풀옵션',   desc:'씬별 4장+썸네일5', est:(sceneCount*4+5)*(costMap[api]||40)},
-    {id:'bg',      label:'🔄 배경교체', desc:'캐릭터1장+배경교체',est:(1+sceneCount)*(costMap[api]||40)},
+    {id:'save',    label:'💰 절약형',   desc:'씬별 1장+썸네일1', est:(sceneCount+1)*_apiPrice},
+    {id:'balance', label:'⚖️ 균형형',   desc:'씬별 2장+썸네일3', est:(sceneCount*2+3)*_apiPrice},
+    {id:'full',    label:'🎨 풀옵션',   desc:'씬별 4장+썸네일5', est:(sceneCount*4+5)*_apiPrice},
+    {id:'bg',      label:'🔄 배경교체', desc:'캐릭터1장+배경교체',est:(1+sceneCount)*_apiPrice},
   ];
-
-  const keyMap   = {dalle3:'uc_openai_key',dalle2:'uc_openai_key',flux:'uc_flux_key',sd:'uc_sd_key',gemini:'uc_gemini_key',minimax:'uc_minimax_key',ideogram:'uc_ideogram_key'};
-  const savedKey = localStorage.getItem(keyMap[api]||'uc_openai_key') || '';
 
   const apiHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
     apiList.map(function(a){
@@ -133,7 +130,7 @@ function _studioS3(){
       /* 모든 키 설정 진입은 통합 API 설정으로 redirect */
       var hasKeyFn    = (typeof window.s3HasImageApiKey === 'function');
       var keyOk       = hasKeyFn ? window.s3HasImageApiKey(api) :
-                        (typeof ucApiKeyStatus === 'function' ? ucApiKeyStatus(api).ok : !!savedKey);
+                        (typeof ucApiKeyStatus === 'function' ? ucApiKeyStatus(api).ok : false);
       var keyLabel    = keyOk ? '✅ 키 저장됨' : '⚠️ 키 없음 — 통합 설정 필요';
       var openCall    = 'mocaOpenApiSettings(\'image\')';
       return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:#f8f8f8;border-radius:8px;flex-wrap:wrap">' +
@@ -503,18 +500,38 @@ function studioS3SaveKey(){
 }
 
 async function studioS3AutoPrompt(idx){
+  /* ⭐ v3.1 compiler 우선 — 결정적 컴파일러로 일관된 프롬프트 생성.
+     실패하거나 미로드 시 legacy AI 호출로 폴백. */
+  if (typeof window.s3PromptCompileScene === 'function') {
+    try {
+      var v31 = window.s3PromptCompileScene(idx, 'image');
+      if (v31 && v31.prompt) {
+        var elV = document.getElementById('s3-prompt-'+idx);   if(elV)  elV.value  = v31.prompt;
+        var elDv = document.getElementById('s3d-prompt-'+idx); if(elDv) elDv.value = v31.prompt;
+        if(typeof ucShowToast==='function') ucShowToast('✅ v3.1 프롬프트 생성됨','success');
+        return v31.prompt;
+      }
+    } catch(_) { /* legacy 폴백으로 진행 */ }
+  }
+
+  /* legacy AI 호출 — resolveStudioScenes 우선 사용 (s3.scenes 직접 참조 회피) */
   var s3 = STUDIO.project.s3 || {};
-  var scenes = s3.scenes || [];
-  var sc = scenes[idx]; if(!sc) return;
+  var scenes = (typeof window.resolveStudioScenes === 'function') ? window.resolveStudioScenes() : (s3.scenes || []);
+  var sc = scenes[idx];
+  if(!sc){
+    if(typeof ucShowToast==='function') ucShowToast('⚠️ 씬을 찾지 못했습니다 — 1단계 대본을 확인하세요','warn');
+    return;
+  }
   var script = STUDIO.project.s2?.scriptKo || STUDIO.project.s2?.scriptJa || '';
+  var styleHint = s3.artStyle ? '\nArt style: '+s3.artStyle : '';
   var sys = 'Stable Diffusion image prompt expert. Answer in English only. Always include "9:16 vertical, portrait composition, full vertical frame, no text overlay, high quality" at the end.';
-  var user = 'Scene: '+sc.label+' ('+sc.time+')\nScript: '+script.slice(0,200)+'\nArt style: '+(s3.artStyle||'ghibli')+'\nWrite image prompt in 50 words or less. MUST end with: 9:16 vertical, portrait composition, full vertical frame, no text overlay, high quality.';
+  var user = 'Scene: '+(sc.label||sc.title||'')+' ('+(sc.time||'')+')\nScript: '+script.slice(0,200)+styleHint+'\nWrite image prompt in 50 words or less. MUST end with: 9:16 vertical, portrait composition, full vertical frame, no text overlay, high quality.';
 
   /* IntentSystem 의도 반영 (있을 때만, 실패해도 기존 동작 유지) */
   if (typeof IntentSystem !== 'undefined' && IntentSystem.buildSystemPrompt) {
     try {
       var intentCtx = IntentSystem.buildSystemPrompt(
-        (sc.label||'') + ' ' + script.slice(0,100),
+        (sc.label||sc.title||'') + ' ' + script.slice(0,100),
         { lengthHint: '50 words or less in English' }
       );
       if (intentCtx && typeof intentCtx === 'string') {
@@ -541,7 +558,12 @@ async function studioS3AutoPrompt(idx){
     var elD = document.getElementById('s3d-prompt-'+idx);
     if(elD) elD.value = out;
     if(typeof ucShowToast==='function') ucShowToast('✅ 프롬프트 생성됨','success');
-  } catch(e){ alert('오류: '+e.message); }
+  } catch(e){
+    /* 조용히 실패하지 않도록 — UI 표시 우선 (toast → alert fallback) */
+    var msg = (e && e.message) ? e.message : String(e);
+    if(typeof ucShowToast==='function') ucShowToast('❌ 프롬프트 생성 실패: '+msg, 'error');
+    else alert('오류: '+msg);
+  }
 }
 
 /* 9:16 강제 키워드 — AI 생성 결과에 누락되어 있으면 보강 */
@@ -558,7 +580,24 @@ function _s3EnsurePortraitKeywords(prompt){
 }
 
 async function studioS3AutoAllPrompts(){
-  var scenes = STUDIO.project.s3?.scenes || _studioS3ParseScenes('');
+  /* v3.1 일괄 컴파일러가 있으면 우선 사용 (결정적·빠름) */
+  if (typeof window.compileImagePromptsV31All === 'function') {
+    try {
+      var r = window.compileImagePromptsV31All();
+      if (r && r.count) {
+        if (typeof window.s3ScoreAllAndStoreV31 === 'function') {
+          try { window.s3ScoreAllAndStoreV31(); } catch(_){}
+        }
+        if(typeof ucShowToast==='function') ucShowToast('✅ '+r.count+'개 씬 v3.1 프롬프트 생성 완료','success');
+        if (typeof renderStudio === 'function') { try { renderStudio(); } catch(_){} }
+        return;
+      }
+    } catch(_) { /* 폴백 진행 */ }
+  }
+  /* legacy 순차 호출 — resolveStudioScenes 우선 */
+  var scenes = (typeof window.resolveStudioScenes === 'function')
+    ? window.resolveStudioScenes()
+    : (STUDIO.project.s3?.scenes || _studioS3ParseScenes(''));
   for(var i=0;i<scenes.length;i++){
     await studioS3AutoPrompt(i);
     await new Promise(function(r){ setTimeout(r,500); });
@@ -582,7 +621,9 @@ function studioS3RegenScene(idx){
 }
 
 async function studioS3GenAll(){
-  var scenes = STUDIO.project.s3?.scenes || _studioS3ParseScenes('');
+  var scenes = (typeof window.resolveStudioScenes === 'function')
+    ? window.resolveStudioScenes()
+    : (STUDIO.project.s3?.scenes || _studioS3ParseScenes(''));
   for(var i=0;i<scenes.length;i++){
     if (typeof window.generateSceneImage === 'function') {
       await window.generateSceneImage(i, { source: 'bulk' });

@@ -14,7 +14,7 @@ function studioNewProjectObj(){
     channel: 'ko',                  // ko / ja / both
     s1: { genre:'info', topic:'', lengthSec:60, series:false, target:'일반', mood:'밝게' },
     s2: { scriptKo:'', scriptJa:'', viralScore:0, scriptTab:'gen' },
-    s3: { artStyle:'ghibli', lighting:'soft natural', sceneImages:{ko:[], ja:[]}, thumbnails:[] },
+    s3: { artStyle:'', lighting:'soft natural', sceneImages:{ko:[], ja:[]}, thumbnails:[] },
     s4: { voiceKo:'senior-f', voiceJa:'yuki', speed:1.0, emotion:'중립', pitch:0, bgm:'soft piano', bgmVolume:15 },
     s5: { template:'시니어감동v1', transitions:[], motion:'kenburns', filter:'원본', opening:true, closing:true, branding:{logo:'',watermark:'',color:'#ef6fab'}, effects:[] },
     s6: { fontKo:'Pretendard', fontJa:'Noto Sans JP', subtitleLayout:'bottom', keywordHighlight:true, animation:'popup', jpVertical:false, jpFurigana:false, jpKeigo:false },

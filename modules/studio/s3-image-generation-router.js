@@ -26,65 +26,105 @@
      model     : OpenAI 어댑터 model 이름
      label     : UI 표기용
   */
+  /* priceKRW: 1장당 예상 KRW (UI 표시·비용 추산용 기본값).
+     ProviderConfig.COST_RATES.image 의 USD 단가가 있으면 그것을 우선해서 환산.
+     badge: UI 카드 라벨. note: 보조 설명. */
   var REGISTRY = {
     dalle3: {
       label:'DALL-E 3', adapter:'openai_image', model:'dall-e-3',
       storeId:'openai_img', altStoreId:'dalle3', legacyKey:'uc_openai_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:40, badge:'고품질'
     },
     dalle2: {
       label:'DALL-E 2', adapter:'openai_image', model:'dall-e-2',
       storeId:'openai_img', altStoreId:'dalle2', legacyKey:'uc_openai_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:8, badge:'저렴'
     },
     flux: {
       label:'Flux', adapter:'flux',
       storeId:'flux', legacyKey:'uc_flux_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:15, badge:'시드고정'
     },
     sd: {
       label:'Stable Diffusion', adapter:'stability',
       storeId:'sd', legacyKey:'uc_sd_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:3, badge:'최저가'
     },
     stable: {
       label:'Stable Diffusion', adapter:'stability',
       storeId:'sd', legacyKey:'uc_sd_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:3, badge:'최저가', alias:'sd'
     },
     stableDiffusion: {
       label:'Stable Diffusion', adapter:'stability',
       storeId:'sd', legacyKey:'uc_sd_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:3, badge:'최저가', alias:'sd'
     },
     gemini: {
       label:'Gemini Imagen', adapter:'gemini_imagen',
       storeId:'gemini_imagen', altStoreId:'gemini', legacyKey:'uc_gemini_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:0, badge:'Gemini키'
     },
     geminiImg: {
       label:'Gemini Imagen', adapter:'gemini_imagen',
       storeId:'gemini_imagen', altStoreId:'gemini', legacyKey:'uc_gemini_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:0, badge:'Gemini키', alias:'gemini'
     },
     geminiImagen: {
       label:'Gemini Imagen', adapter:'gemini_imagen',
       storeId:'gemini_imagen', altStoreId:'gemini', legacyKey:'uc_gemini_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:0, badge:'Gemini키', alias:'gemini'
     },
     minimax: {
       label:'MiniMax', adapter:'minimax_image_unsupported',
       storeId:'minimax', legacyKey:'uc_minimax_key',
-      image:false, video:true,
+      image:false, video:true, priceKRW:10, badge:'영상특화',
       note:'MiniMax 이미지 adapter 미구현 — 영상 생성 전용 provider 입니다.'
     },
     ideogram: {
       label:'Ideogram', adapter:'ideogram',
       storeId:'ideogram', legacyKey:'uc_ideogram_key',
-      image:true, video:false
+      image:true, video:false, priceKRW:20, badge:'텍스트↑'
     }
   };
   window.S3_IMAGE_PROVIDER_REGISTRY = REGISTRY;
+
+  /* ── 가격 산정 — ProviderConfig.COST_RATES 가 있으면 그쪽 USD 단가 환산값 우선,
+     없으면 REGISTRY 의 priceKRW 사용. UI 표시·예상비용에 모두 사용. */
+  function _imagePriceKRW(providerId){
+    var cfg = REGISTRY[providerId];
+    if (!cfg) return 0;
+    try {
+      var rates = window.ProviderConfig && window.ProviderConfig.COST_RATES;
+      if (rates && rates.image && cfg.model && rates.image[cfg.model]) {
+        var fx  = rates.fxDefault || 1350;
+        var per = rates.image[cfg.model].perImage || 0;
+        return Math.round(per * fx);
+      }
+    } catch(_) {}
+    return cfg.priceKRW || 0;
+  }
+  window.s3GetImageProviderPriceKRW = _imagePriceKRW;
+
+  /* ── 이미지 생성 가능한 (별칭 제외) provider 카드 목록 — UI 빌더용 ── */
+  function _listImageProviders(){
+    return Object.keys(REGISTRY).filter(function(id){
+      var cfg = REGISTRY[id];
+      return cfg && cfg.image !== false && !cfg.alias;
+    }).map(function(id){
+      var cfg = REGISTRY[id];
+      var price = _imagePriceKRW(id);
+      return {
+        id: id, label: cfg.label,
+        priceKRW: price,
+        priceLabel: price === 0 ? '무료' : ('₩' + price + '/장'),
+        badge: cfg.badge || '',
+        note:  cfg.note  || '',
+        legacyKey: cfg.legacyKey || ''
+      };
+    });
+  }
+  window.s3ListImageProviders = _listImageProviders;
 
   function _resolveCfg(providerId){
     if (!providerId) return null;
