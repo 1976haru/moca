@@ -418,6 +418,8 @@ window._s3OnImgLoaded = function(img, idx){
 function studioS3SetApi(api){
   STUDIO.project.s3 = STUDIO.project.s3 || {};
   STUDIO.project.s3.api = api;
+  /* router 가 우선적으로 보는 imageProvider 도 동기화 */
+  STUDIO.project.s3.imageProvider = api;
   studioSave(); renderStudio();
 }
 
@@ -564,55 +566,12 @@ async function studioS3AutoAllPrompts(){
 }
 
 async function studioS3GenScene(idx){
-  var s3 = STUDIO.project.s3 || {};
-  var api = s3.api || 'dalle3';
-  /* 보드 또는 상세 drawer 또는 legacy textarea에서 프롬프트 읽기 */
-  var prompt = (document.getElementById('s3d-prompt-'+idx)?.value
-             || document.getElementById('s3-prompt-'+idx)?.value
-             || (s3.imagePrompts||[])[idx]
-             || (s3.prompts||[])[idx] || '').trim();
-  if(!prompt){ alert('프롬프트를 입력하거나 🤖 AI생성 버튼을 누르세요'); return; }
-  /* 비율 모드별 키워드 자동 주입 */
-  var mode = (typeof window.s3DetectAspectMode === 'function') ? window.s3DetectAspectMode() : 'shorts';
-  if (typeof window.s3InjectAspectIntoPrompt === 'function') {
-    prompt = window.s3InjectAspectIntoPrompt(prompt, mode);
+  /* 모든 이미지 생성은 단일 라우터 generateSceneImage 로 통합.
+     legacy 분기(provider 별 fetch) 는 router 안의 어댑터로 이전됨. */
+  if (typeof window.generateSceneImage === 'function') {
+    return window.generateSceneImage(idx, { source: 'card' });
   }
-  var fullPrompt = prompt + (s3.artStyle?', '+s3.artStyle+' style':'') + (s3.lighting?', '+s3.lighting+' lighting':'') + ', high quality';
-  /* 비율에 맞는 size */
-  var size = (typeof window.s3GetImageSize === 'function') ? window.s3GetImageSize(mode, api) : { w:1024, h:1024 };
-  var sizeStr = (api === 'dalle3' || api === 'dalle2') ? (size.w + 'x' + size.h) : null;
-  try {
-    if(api==='dalle3'||api==='dalle2'){
-      /* 통합 store(image.dalle3 = OpenAI 키 공유) — ucGetApiKey 가 자동 처리 */
-      var key = (typeof ucGetApiKey==='function') ? ucGetApiKey('openai') : localStorage.getItem('uc_openai_key')||'';
-      if(!key){
-        if (confirm('OpenAI API 키가 없습니다. 통합 API 설정(이미지 탭)을 열까요?')) {
-          if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('image');
-        }
-        return;
-      }
-      try { console.log('[api] image provider ready: image.'+api); } catch(_) {}
-      if(typeof ucShowToast==='function') ucShowToast('⏳ 이미지 생성 중...','info');
-      var r = await fetch('https://api.openai.com/v1/images/generations',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body:JSON.stringify({model:api==='dalle3'?'dall-e-3':'dall-e-2',prompt:fullPrompt,n:1,size:sizeStr||'1024x1024'})
-      });
-      var d = await r.json();
-      var url = d?.data?.[0]?.url;
-      if(!url) throw new Error(JSON.stringify(d));
-      /* 후보 배열에 등록 (legacy s3.images도 자동 미러) */
-      if (typeof window.s3AddCandidate === 'function') {
-        window.s3AddCandidate(idx, url, { provider: api, aspectRatio: s3.aspectRatio||'', width: size.w, height: size.h });
-      } else {
-        s3.images = s3.images||[]; s3.images[idx] = url;
-      }
-      STUDIO.project.s3 = s3; studioSave(); renderStudio();
-      if(typeof ucShowToast==='function') ucShowToast('✅ 이미지 생성 완료','success');
-    } else {
-      if(typeof ucShowToast==='function') ucShowToast('⏳ '+api+' 연동 준비 중...','info');
-    }
-  } catch(e){ alert('이미지 생성 오류: '+e.message); }
+  alert('이미지 생성 라우터(s3-image-generation-router.js) 가 로드되지 않았습니다.');
 }
 
 function studioS3RegenScene(idx){
@@ -625,8 +584,16 @@ function studioS3RegenScene(idx){
 async function studioS3GenAll(){
   var scenes = STUDIO.project.s3?.scenes || _studioS3ParseScenes('');
   for(var i=0;i<scenes.length;i++){
-    await studioS3GenScene(i);
+    if (typeof window.generateSceneImage === 'function') {
+      await window.generateSceneImage(i, { source: 'bulk' });
+    } else {
+      await studioS3GenScene(i);
+    }
     await new Promise(function(r){ setTimeout(r,1000); });
+  }
+  /* bulk 모드는 매 씬마다 renderStudio() 를 건너뛰므로 마지막에 한 번만 */
+  if (typeof renderStudio === 'function') {
+    try { renderStudio(); } catch(_){}
   }
 }
 

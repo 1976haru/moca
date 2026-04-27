@@ -248,6 +248,31 @@
       '<div class="s3-detail-inner">' + _detailInnerHtml(sceneIdx) + '</div>' +
     '</div>';
   }
+
+  /* 생성 상태/오류 표시 (router 가 imagesV3[idx] 에 status 적재) */
+  function _detailStatusHtml(sceneIdx){
+    var slot = (typeof window.s3GetSlot === 'function') ? window.s3GetSlot(sceneIdx) : null;
+    if (!slot) return '';
+    var st = slot.status || 'idle';
+    var prov = slot.provider || '';
+    if (st === 'generating') {
+      return '<div class="s3d-gen-status s3d-gen-running">⏳ ' + _esc(prov||'provider') + ' 로 이미지 생성 중...</div>';
+    }
+    if (st === 'failed') {
+      var emsg = slot.lastError || '원인 불명';
+      var openSet = '<button class="s3d-act" onclick="window.openApiSettingsModal&&window.openApiSettingsModal(\'image\')">⚙️ API 설정 열기</button>';
+      var retry   = '<button class="s3d-act pri" data-s3-scene-generate="true" data-scene-index="'+sceneIdx+'" '+
+                    'onclick="window.generateSceneImage&&window.generateSceneImage('+sceneIdx+',{source:\'modal\'});return false;">🔁 다시 시도</button>';
+      return '<div class="s3d-gen-status s3d-gen-failed">' +
+        '<div class="s3d-gen-failed-msg">❌ 생성 실패 (' + _esc(prov||'') + ') — ' + _esc(emsg) + '</div>' +
+        '<div class="s3d-gen-failed-actions">' + retry + openSet + '</div>' +
+      '</div>';
+    }
+    if (st === 'done' && slot.lastGeneratedAt) {
+      return '<div class="s3d-gen-status s3d-gen-done">✅ ' + _esc(prov||'') + ' 생성 완료</div>';
+    }
+    return '';
+  }
   function _detailInnerHtml(sceneIdx) {
     var s3 = _s3();
     var scenes = s3.scenes || [];
@@ -306,18 +331,21 @@
       '</div>' +
       ratioMsg +
 
-      /* 액션 행 */
+      /* 액션 행 — AI 생성 / 재생성 모두 generateSceneImage 라우터 사용 */
       '<div class="s3d-action-row">' +
         (url ?
-          '<button class="s3d-act pri" onclick="window.studioS3RegenScene('+sceneIdx+')">🔄 재생성</button>' +
+          '<button class="s3d-act pri" data-s3-scene-generate="true" data-scene-index="'+sceneIdx+'" '+
+                 'onclick="(window.generateSceneImage?window.generateSceneImage('+sceneIdx+',{source:\'modal\'}):window.studioS3RegenScene('+sceneIdx+'));return false;">🔄 재생성</button>' +
           '<button class="s3d-act" onclick="window.s3OpenImagePreview(\''+_esc(url)+'\',\'씬 '+(sceneIdx+1)+'\')">🔍 확대</button>' +
           '<button class="s3d-act" onclick="window.s3OpenOriginal(\''+_esc(url)+'\')">🖼 원본</button>'
         :
-          '<button class="s3d-act pri" onclick="window.studioS3GenScene('+sceneIdx+')">🎨 AI 생성</button>'
+          '<button class="s3d-act pri" data-s3-scene-generate="true" data-scene-index="'+sceneIdx+'" '+
+                 'onclick="(window.generateSceneImage?window.generateSceneImage('+sceneIdx+',{source:\'modal\'}):window.studioS3GenScene('+sceneIdx+'));return false;">🎨 AI 생성</button>'
         ) +
         '<button class="s3d-act" onclick="window.s3BoardToggleSkip('+sceneIdx+');window.s3RefreshDetail('+sceneIdx+')">⏭ 건너뜀</button>' +
         '<button class="s3d-act" onclick="window.studioS3SaveLib('+sceneIdx+')">📁 라이브러리</button>' +
       '</div>' +
+      _detailStatusHtml(sceneIdx) +
 
       /* 자막 안전영역 설정 */
       '<details class="s3d-block" open>' +
@@ -531,6 +559,12 @@
       + '.s3d-prompt-actions,.s3d-vid-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}'
       + '.s3d-vid-pre{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;margin-top:6px;color:#3a3040}'
       + '.s3d-vid-empty{font-size:11.5px;color:#999;padding:6px 0}'
+      + '.s3d-gen-status{margin:0 0 12px;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;line-height:1.5}'
+      + '.s3d-gen-running{background:#fff7e6;color:#a05a00;border:1px solid #f1d99c}'
+      + '.s3d-gen-done{background:#effbf7;color:#1a7a5a;border:1px solid #c8ecd9}'
+      + '.s3d-gen-failed{background:#fff1f1;color:#c0392b;border:1px solid #f4cdcd}'
+      + '.s3d-gen-failed-msg{margin-bottom:6px;word-break:break-word;white-space:pre-wrap}'
+      + '.s3d-gen-failed-actions{display:flex;gap:6px;flex-wrap:wrap}'
       ;
     document.head.appendChild(st);
   }
