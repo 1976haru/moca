@@ -150,6 +150,96 @@
   }
 
   /* ════════════════════════════════════════════════
+     v4 의도 기반 영어 키워드 압축 (4~8 토큰)
+     visualActionEn / mustShow / genre / subject / environment 결합
+     예: "무릎 통증 계단" → "senior knee pain stairs handrail"
+         "강아지의 하루"   → "cute dog daily routine playful home"
+         "한국음식 vs 일본음식" → "Korean food Japanese food comparison table"
+     ════════════════════════════════════════════════ */
+  var GENRE_KEYWORDS = {
+    senior_info:   ['senior', 'health', 'lifestyle'],
+    emotional:     ['family', 'emotional', 'warm'],
+    wisdom:        ['quiet', 'reflective', 'minimal'],
+    comic:         ['playful', 'reaction'],
+    tikitaka:      ['conversation', 'two people'],
+    animal_anime:  ['cute', 'animal', 'playful'],
+    real_korea:    ['Korean', 'lifestyle'],
+    real_japan:    ['Japanese', 'lifestyle'],
+    news:          ['editorial', 'news']
+  };
+  var AUDIENCE_KEYWORDS = {
+    korean_senior:   ['Korean senior'],
+    japanese_senior: ['Japanese senior'],
+    youth:           ['young'],
+    general:         []
+  };
+  /* mustShow 항목을 검색 키워드로 정규화 — 'must show' / 괄호 / 형용사 일부 제거 */
+  function _shortenEvidence(item){
+    var s = String(item||'').toLowerCase();
+    s = s.replace(/^(must show:?|clear action:?|show:?|emotion:?|environment:?)\s*/, '');
+    s = s.replace(/\(.*?\)/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    /* "warm heat pack" → 'heat pack'  /  'home blood pressure monitor' → 'blood pressure monitor' */
+    var parts = s.split(/\s+/);
+    if (parts.length > 3) parts = parts.slice(parts.length - 3);
+    return parts.join(' ');
+  }
+  function _buildFromIntentV4(sceneIdx, prefer){
+    if (typeof window.analyzeProjectProfileV4 !== 'function' ||
+        typeof window.analyzeSceneIntentV4 !== 'function' ||
+        typeof window.s3GetResolvedScenesSafe !== 'function') return null;
+    try {
+      var profile = window.analyzeProjectProfileV4();
+      var scenes  = window.s3GetResolvedScenesSafe();
+      var sc = scenes[sceneIdx];
+      if (!sc) return null;
+      var intent = window.analyzeSceneIntentV4(sc, profile, sceneIdx, scenes.length);
+
+      var tokens = [];
+      var seen = {};
+      function _push(t){
+        if (!t) return;
+        var v = String(t).toLowerCase().trim();
+        if (!v || seen[v]) return;
+        seen[v] = true; tokens.push(v);
+      }
+
+      /* 1) audience / genre — 가장 넓은 영어 검색어 시드 */
+      (AUDIENCE_KEYWORDS[profile.audience] || []).forEach(_push);
+      (GENRE_KEYWORDS[profile.genre] || []).forEach(_push);
+
+      /* 2) subject / relationship / age — Korean/Japanese senior/married couple 등 */
+      if (intent.relationship)              _push(intent.relationship);
+      if (intent.age && intent.age.length < 30) _push(intent.age.replace(/^in (their|his|her) /, ''));
+      if (intent.subject) {
+        /* 'a middle-aged woman (mother)' → 'middle-aged woman' */
+        var subj = String(intent.subject).toLowerCase().split(',')[0].replace(/^(a|an)\s+/, '').replace(/\(.*?\)/g, '').replace(/\s{2,}/g,' ').trim();
+        /* 'person interacting with X' phrase 면 X 만 남김 */
+        var m = subj.match(/^person interacting with (.+)/);
+        if (m) _push(m[1]); else _push(subj);
+      }
+
+      /* 3) mustShow objects/actions/environment 첫 1~2개 — 핵심 evidence */
+      (intent.mustShowObjects || []).slice(0, 2).forEach(function(x){ _push(_shortenEvidence(x)); });
+      (intent.mustShowActions || []).slice(0, 1).forEach(function(x){ _push(_shortenEvidence(x)); });
+      (intent.mustShowEnvironment || []).slice(0, 1).forEach(function(x){ _push(_shortenEvidence(x)); });
+
+      /* 4) prefer=video 일 때 'motion' 한 단어 추가 (영상 stock 검색에 도움) */
+      if (prefer === 'video') _push('motion');
+
+      /* 4~8 토큰 cap. 너무 적으면 null 반환해서 legacy 경로로 폴백 */
+      if (tokens.length < 3) return null;
+      var capped = tokens.slice(0, 8);
+      /* 공백 정리 */
+      var query = capped.join(' ').replace(/\s{2,}/g,' ').trim();
+      return { query: query, profile: profile, intent: intent };
+    } catch (e) {
+      try { console.debug('[stock-query] v4 build failed, falling back:', e && e.message); } catch(_){}
+      return null;
+    }
+  }
+  window._s3BuildStockQueryFromIntentV4 = _buildFromIntentV4;
+
+  /* ════════════════════════════════════════════════
      메인 — buildStockSearchQuery(sceneIdx, opts)
      opts.prefer: 'image' | 'video'
      반환: { query, source, sceneIdx, debug }
@@ -159,7 +249,22 @@
     var prefer = opts.prefer || (opts.mediaType === 'video' ? 'video' : 'image');
     var debug = { sceneIdx: sceneIdx, prefer: prefer, sources: [] };
 
-    /* resolver(getScenePrompt) 만 사용 — 모든 fallback 통합 */
+    /* ⭐ v4 의도 기반 영어 키워드 우선 — 한국어 narration 도 4~8 토큰
+       영어 검색어로 압축. v4 분석기가 없거나 토큰이 너무 적으면 legacy 경로. */
+    var v4Built = _buildFromIntentV4(sceneIdx, prefer);
+    if (v4Built && v4Built.query) {
+      debug.method = 'v4-intent';
+      debug.sources.push('v4-intent');
+      try {
+        console.debug('[stock-query] sceneIndex:', sceneIdx);
+        console.debug('[stock-query] mediaType:', prefer);
+        console.debug('[stock-query] method: v4-intent');
+        console.debug('[stock-query] built query:', v4Built.query);
+      } catch(_) {}
+      return { query: v4Built.query, source: 'v4-intent', sceneIdx: sceneIdx, debug: debug };
+    }
+
+    /* legacy: resolver(getScenePrompt) 사용 — 모든 fallback 통합 */
     var ref = (typeof window.getScenePrompt === 'function')
             ? window.getScenePrompt(sceneIdx, prefer)
             : { prompt:'', source:'(resolver missing)' };
@@ -201,6 +306,10 @@
       query = 'lifestyle scene';
       debug.fallback = true;
     }
+
+    /* 5~8 토큰으로 추가 cap (legacy 경로도 일관성 유지) */
+    var qParts = query.split(/\s+/).filter(Boolean);
+    if (qParts.length > 8) query = qParts.slice(0, 8).join(' ');
 
     debug.query = query;
     try { console.debug('[stock-query] built query:', query); } catch(_) {}

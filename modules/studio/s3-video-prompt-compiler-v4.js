@@ -61,6 +61,67 @@
     return 'subtle natural goal-driven movement';
   }
 
+  /* ════════════════════════════════════════════════
+     장르별 모션 arc — 코믹/티키타카/동물애니 영상은 단순 상황 묘사가
+     아니라 [start pose → action beat → reaction → camera move →
+     prop motion → punchline payoff] 6단계 시퀀스를 강제.
+     다른 장르는 빈 문자열 반환 → 기존 subject/camera motion 그대로.
+     ════════════════════════════════════════════════ */
+  function _genreMotionArc(intent, profile, grammar){
+    var genre = (profile && profile.genre) || '';
+    if (genre !== 'comic' && genre !== 'tikitaka' && genre !== 'animal_anime') return '';
+
+    var role  = intent && intent.role || 'conflict_or_core';
+    var prop  = (intent.mustShowObjects   && intent.mustShowObjects[0])   || '';
+    var act   = (intent.mustShowActions   && intent.mustShowActions[0])   || '';
+    var emo   = (intent.mustShowEmotion   && intent.mustShowEmotion[0])   || '';
+    var anchor= (intent.continuityAnchor)
+              || (profile && profile.continuityCharacters && profile.continuityCharacters[0])
+              || '';
+
+    var startPose, actionBeat, reactionChange, cameraMove, propMotion, payoff;
+
+    if (genre === 'comic') {
+      startPose      = anchor ? (anchor + ' standing in neutral pose, deadpan expression') : 'subject in neutral standing pose, deadpan expression';
+      actionBeat     = act ? (act + ' deliberately') : (prop ? ('reaching for ' + prop + ' deliberately') : 'making a confident exaggerated gesture');
+      reactionChange = emo ? ('expression flips to ' + emo) : 'expression flips from neutral to wide-eyed astonishment';
+      cameraMove     = (role === 'hook') ? 'quick whip-pan landing on the punchline'
+                     : (role === 'cta')  ? 'pull-out revealing both subjects mid-laugh'
+                     :                     'snappy push-in onto the reaction face';
+      propMotion     = prop ? (prop + ' lifts or shifts visibly with the beat') : 'a single comedic prop tilts or wobbles with the beat';
+      payoff         = (role === 'cta') ? 'final freeze on a comedic peak frame, hand framing the punchline'
+                     :                    'snap freeze on the comedic payoff frame';
+    } else if (genre === 'tikitaka') {
+      startPose      = 'two subjects clearly framed on opposite sides, alert and engaged';
+      actionBeat     = act ? ('subject A initiates: ' + act) : 'subject A initiates with a strong claim gesture';
+      reactionChange = emo ? ('subject B counters with ' + emo + ' reaction') : 'subject B counters with a smug raised eyebrow';
+      cameraMove     = 'over-shoulder reverse cut between A and B, then split-frame two-shot';
+      propMotion     = prop ? (prop + ' moves between A and B with the rhythm') : 'a representative prop passes between A and B with the rhythm';
+      payoff         = (role === 'cta') ? 'both subjects laugh together, shoulders touching, hand reaching toward camera'
+                     : (role === 'reveal_or_solution') ? 'both subjects pause, then nod in unison toward the resolution'
+                     : 'rapid alternating reactions ending on a held mutual look';
+    } else { /* animal_anime */
+      startPose      = 'animal character relaxed in starting pose, ears soft, body still';
+      actionBeat     = act ? (act + ' with bouncy timing') : (prop ? ('engaging with ' + prop + ' with bouncy timing') : 'small bounce forward toward the camera');
+      reactionChange = emo ? ('expression shifts to ' + emo) : 'expression shifts to wide-eyed playful curiosity';
+      cameraMove     = (role === 'hook') ? 'low-angle dolly-in following the bounce'
+                     : (role === 'cta')  ? 'gentle pull-out framing the paw or extended muzzle toward camera'
+                     :                     'low-angle follow with soft head-tilt parallax';
+      propMotion     = prop ? (prop + ' bounces or rolls in sync with the character') : 'tail wags or paw lifts in sync with the beat';
+      payoff         = (role === 'cta') ? 'paw extends toward camera with a head-tilt — clear CTA invitation'
+                     :                    'final beat lands on a head-tilt or tail-wag punchline';
+    }
+
+    return [
+      'start pose: ' + startPose,
+      'action beat: ' + actionBeat,
+      'reaction change: ' + reactionChange,
+      'camera movement: ' + cameraMove,
+      'prop or body motion: ' + propMotion,
+      'punchline / payoff motion: ' + payoff
+    ].join('; ');
+  }
+
   function _lightingHint(profile, grammar){
     if (profile && profile.lighting) return profile.lighting + ' lighting';
     return (grammar && grammar.lightingGrammar) || 'soft natural daylight, warm and realistic';
@@ -88,6 +149,7 @@
     var camMo   = _cameraMotion(intent, grammar);
     var subjMo  = _subjectMotion(intent, grammar);
     var light   = _lightingHint(profile, grammar);
+    var arc     = _genreMotionArc(intent, profile, grammar); /* 코믹/티키타카/동물애니 6단계 시퀀스 */
 
     /* subject — empty 일 때 보강 우선순위:
        1) continuityCharacters / continuityAnchor
@@ -167,6 +229,7 @@
       actionBit ? (actionBit + locBit + emoBit + propsBit) : (locBit + emoBit + propsBit).replace(/^,\s*/, ''),
       'subject motion: ' + subjMo,
       'camera motion: ' + camMo,
+      arc, /* 코믹/티키타카/동물애니 6단계 시퀀스. 다른 장르는 빈 문자열 → filter(Boolean) 으로 제거 */
       'framing: ' + (grammar.framingRules || 'subject clearly readable'),
       'lighting: ' + light,
       'composition: ' + (grammar.composition || 'subject clearly readable'),

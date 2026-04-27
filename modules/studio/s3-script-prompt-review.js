@@ -289,8 +289,19 @@
     _refresh();
   };
 
-  /* 전체 컴파일 — 새 compiler */
+  /* 전체 컴파일 — v4 우선, v4 없을 때만 legacy s3SC 사용.
+     v4 가 있으면 generic fallback 'middle-aged adult ...' 같은 phrase 가
+     절대 prompt 에 들어가지 않도록 v4 경로로만 라우팅. */
   window.s3SprCompileAll = function() {
+    if (typeof window.compileImagePromptsV4All === 'function') {
+      try {
+        var rv = window.compileImagePromptsV4All();
+        if (typeof window.s3ScoreAllAndStoreV4 === 'function') { try { window.s3ScoreAllAndStoreV4(); } catch(_){} }
+        if (typeof ucShowToast === 'function') ucShowToast('🪄 v4 — ' + (rv && rv.count || 0) + '개 씬 프롬프트 컴파일', 'success');
+        _refresh();
+        return;
+      } catch (e) { try { console.debug('[s3spr] v4 compile failed, falling back:', e && e.message); } catch(_){} }
+    }
     if (typeof window.s3SCCompileAndApply === 'function') {
       var r = window.s3SCCompileAndApply({ rerender:false });
       if (typeof ucShowToast === 'function') ucShowToast('🪄 ' + r.count + '개 씬 프롬프트 컴파일 + STUDIO 적용', 'success');

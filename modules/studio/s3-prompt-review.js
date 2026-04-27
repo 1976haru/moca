@@ -237,6 +237,26 @@
      를 새 compiler 우선 사용하도록 override (기존 함수는 fallback 으로 보존)
      ════════════════════════════════════════════════ */
   function _wireExistingButtons() {
+    /* ⭐ v4 가드 — v4 컴파일러가 로드되어 있으면 legacy s3SC 가 'middle-aged
+       adult ... meaningful object' 같은 generic fallback 으로 v4 wrapper 를
+       덮는 것을 차단. v4 가 결과 만들 수 있으면 절대 legacy 경로로 가지 않음. */
+    var v4Available = (typeof window.compileImagePromptsV4All === 'function')
+                   || (typeof window.compileImagePromptV4 === 'function');
+    if (v4Available) {
+      try { console.debug('[s3-prompt-review] v4 detected — skip legacy s3SC override'); } catch(_){}
+      /* s3SCCompileSceneByIdx 만 노출해서 외부에서 명시적으로 호출할 때만 동작.
+         자동 wiring 은 안 함. */
+      window.s3SCCompileSceneByIdx = function(idx) {
+        var proj = (window.STUDIO && window.STUDIO.project) || {};
+        var sc = (proj.s3 && proj.s3.scenes && proj.s3.scenes[idx]);
+        if (!sc) return null;
+        var script = (proj.s2 && (proj.s2.scriptKo || proj.s2.scriptJa)) || '';
+        var genre = (proj.s1 && (proj.s1.genre || proj.s1.style)) || 'general-info';
+        return window.s3SCCompilePrompt(sc, { genre: genre, scriptText: script });
+      };
+      return;
+    }
+
     /* 1) 보드 툴바 "🪄 전체 프롬프트 컴파일" → window.s3PromptCompileAll */
     if (typeof window.s3SCCompileAndApply === 'function') {
       var legacyCompile = window.s3PromptCompileAll;

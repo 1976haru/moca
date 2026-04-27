@@ -142,6 +142,9 @@
     var hasAge       = /\bin (their|his|her) [2-9]0s\b/i.test(s);
     var hasRelation  = /\b(couple|mother|father|grandmother|grandfather|grandparent|grandchild|son|daughter|parent and child|owner|nurse|doctor|patient|neighbor|friends?)\b/i.test(s);
 
+    /* prompt 본문에 'person interacting with X' 가 직접 들어있는지도 검사 —
+       intent.subject 가 빈 값이지만 _serializeSubject 가 phrase 를 만들었을 때 대응 */
+    var promptInteractMatch = s.match(/person interacting with ([a-z][\w-]+)/);
     if (subjFirst && subjFirst.length >= 3 && s.indexOf(subjFirst) >= 0 && !/person|adult|character/.test(subjFirst)) {
       sc += 7; notes.push('who: ✓ (' + subjFirst + ')');
     } else if (subjFull && /^person interacting with /.test(subjFull)) {
@@ -149,6 +152,13 @@
       var objWord = subjFull.replace('person interacting with ','').split(/[ ,(]/)[0];
       if (objWord && s.indexOf(objWord) >= 0) { sc += 6; notes.push('who: mustShow 기반 ✓'); }
       else                                     { sc += 3; notes.push('who: mustShow phrase 약함'); }
+    } else if (promptInteractMatch && promptInteractMatch[1]) {
+      /* intent.subject 비어있어도 prompt 본문에 'person interacting with X' 가 있으면
+         X 가 prompt 에서 다시 등장하는지 확인 — must-show 와 직접 연결되어 있다는 신호 */
+      var objW = promptInteractMatch[1];
+      var occurrences = s.split(objW).length - 1;
+      if (occurrences >= 2) { sc += 6; notes.push('who: prompt 내 must-show 연결 ✓ (' + objW + ')'); }
+      else                  { sc += 4; notes.push('who: prompt phrase 약함 (' + objW + ')'); }
     } else if (hasEthnicity || hasAge || hasRelation) {
       /* 명시적 ethnicity / age / relationship 가 있으면 일반어 매칭이라도 4pts */
       sc += 4; notes.push('who: ethnicity/age/relationship ✓');
@@ -268,8 +278,20 @@
         sc += 4; notes.push('style hint 부분');
       }
     }
-    /* forbiddenPatterns 위배 */
-    var violated = (grammar && grammar.forbiddenPatterns || []).some(function(re){ return re.test(s); });
+    /* forbiddenPatterns 위배 — 단, prompt 본문에 'no {pattern}' 같은 부정 컨텍스트는
+       위배가 아님 (예: 'no monolog framing', 'no single subject only').
+       각 패턴마다 매칭 위치 앞 6자에 'no ' 가 있는지 확인. */
+    var violated = (grammar && grammar.forbiddenPatterns || []).some(function(re){
+      var flags = (re.flags || '').replace('g','') + 'g';
+      var globalRe = new RegExp(re.source, flags);
+      var m;
+      while ((m = globalRe.exec(s)) !== null) {
+        var before = s.slice(Math.max(0, m.index - 6), m.index).toLowerCase();
+        if (!/\bno\s+$/.test(before)) return true; /* 부정형 아니면 진짜 위배 */
+        if (m.index === globalRe.lastIndex) globalRe.lastIndex++;
+      }
+      return false;
+    });
     if (violated) { sc -= 5; notes.push('forbidden 패턴 매칭 감점'); }
     else          { sc += 5; notes.push('forbidden 회피 ✓'); }
     /* genre-specific evidence */
@@ -295,8 +317,11 @@
       if (_has(/duration:\s*\d/i, s))   { sc += 4; notes.push('duration ✓'); } else { notes.push('duration ✗'); }
       if (_has(/camera motion/i, s))    { sc += 4; notes.push('camera motion ✓'); } else { notes.push('camera motion ✗'); }
       if (_has(/subject motion/i, s))   { sc += 4; notes.push('subject motion ✓'); } else { notes.push('subject motion ✗'); }
-      if (_has(/static (shot|talking)|fade (in|out)|warm smile/i, s)) { sc -= 4; notes.push('static/fade 반복 감점'); }
-      else { sc += 3; notes.push('정적 표현 회피'); }
+      /* static/fade/warm smile — 'no static' / 'no fade' 같은 부정형은 제외.
+         (?<!no\s)/(?<!no )/ negative lookbehind 로 부정 컨텍스트 필터링 */
+      var hasStaticBad = /(?<!no\s)(static (?:shot|talking)|fade (?:in|out)|warm smile)/i.test(s);
+      if (hasStaticBad) { sc -= 4; notes.push('static/fade 반복 감점'); }
+      else              { sc += 3; notes.push('정적 표현 회피'); }
     } else {
       if (_has(/9:16|portrait composition|cinematic wide|centered focal point|card-news/i, s)) { sc += 5; notes.push('framing ✓'); } else { notes.push('framing ✗'); }
       if (_has(/safe area|caption safe|safe-area/i, s)) { sc += 5; notes.push('safe area ✓'); } else { notes.push('safe area ✗'); }

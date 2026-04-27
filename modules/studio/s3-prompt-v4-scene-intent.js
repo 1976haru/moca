@@ -111,6 +111,95 @@
     /* 비즈니스 */
     { re:/매장|가게|상점|お店/i,                         show:'small neighborhood shop interior' },
     { re:/제품|상품|商品/i,                             show:'the featured product' },
+
+    /* ── 음식 비교 (한국 vs 일본 등) ── */
+    { re:/김치찌개|kimchi stew/i,                        show:'bubbling kimchi stew pot' },
+    { re:/된장찌개|doenjang/i,                            show:'doenjang stew' },
+    { re:/부대찌개|budae jjigae/i,                       show:'budae jjigae pot' },
+    { re:/비빔밥|bibimbap/i,                             show:'colorful bibimbap bowl' },
+    { re:/불고기|bulgogi/i,                              show:'bulgogi grilling on plate' },
+    { re:/삼겹살|samgyeopsal/i,                          show:'samgyeopsal on grill' },
+    { re:/떡볶이|tteokbokki/i,                           show:'spicy tteokbokki' },
+    { re:/막걸리|makgeolli/i,                            show:'makgeolli bowl' },
+    { re:/스시|sushi|寿司/i,                             show:'sushi platter' },
+    { re:/우동|udon|うどん/i,                            show:'udon bowl' },
+    { re:/소바|soba|そば/i,                              show:'soba in bamboo basket' },
+    { re:/덴푸라|tempura|天ぷら/i,                       show:'tempura plate' },
+    { re:/규동|gyudon|牛丼/i,                            show:'gyudon beef bowl' },
+    { re:/오니기리|onigiri|おにぎり/i,                   show:'onigiri rice ball' },
+    { re:/츠케멘|tsukemen|つけ麺/i,                      show:'tsukemen dipping noodle' },
+    { re:/낫토|natto|納豆/i,                             show:'natto bowl' },
+    { re:/미소국|miso soup|味噌汁/i,                     show:'miso soup bowl' },
+    { re:/젓가락|chopsticks|箸/i,                        show:'chopsticks' },
+    { re:/숟가락|spoon|スプーン/i,                       show:'spoon' },
+    { re:/포크|fork|フォーク/i,                          show:'fork' },
+    { re:/접시|plate|皿/i,                               show:'ceramic plate' },
+
+    /* ── 동물·반려·애니메이션 캐릭터 ── */
+    { re:/강아지|puppy|dog\b|犬/i,                       show:'small friendly dog character' },
+    { re:/고양이|cat\b|猫/i,                             show:'fluffy cat character' },
+    { re:/토끼|rabbit|うさぎ/i,                          show:'cute rabbit character' },
+    { re:/곰|bear\b|くま/i,                              show:'gentle bear character' },
+    { re:/햄스터|hamster/i,                              show:'tiny hamster' },
+    { re:/앵무새|parrot|オウム/i,                        show:'colorful parrot' },
+    { re:/꼬리|tail|しっぽ/i,                            show:'wagging tail' },
+    { re:/털|fur|毛/i,                                   show:'soft fur texture' },
+    { re:/발바닥|paw|肉球/i,                             show:'paw close-up' },
+    { re:/귀\b|ear\b|耳/i,                               show:'perked ears' },
+    { re:/공\b|ball|ボール/i,                            show:'tennis ball or play ball' },
+    { re:/사료|kibble|餌/i,                              show:'pet food bowl' },
+    { re:/목줄|leash|リード/i,                           show:'pet leash' },
+    { re:/쥐\b|mouse toy|ねずみ/i,                       show:'small toy mouse' },
+    { re:/장난감|toy|おもちゃ/i,                         show:'pet toy' },
+
+    /* ── 명언/인생조언 — 상징적 사물 ── */
+    { re:/촛불|candle|ろうそく/i,                        show:'single lit candle' },
+    { re:/창문|window|窓/i,                              show:'soft daylight window' },
+    { re:/시계|clock|時計/i,                             show:'wall clock' },
+    { re:/모래시계|hourglass|砂時計/i,                   show:'hourglass with falling sand' },
+    { re:/문\b|door\b|ドア|扉/i,                         show:'wooden door' },
+    { re:/길\b|path\b|道/i,                              show:'long winding path' },
+    { re:/열쇠|key\b|鍵/i,                               show:'small key on a ring' },
+    { re:/등불|lantern|提灯/i,                           show:'paper lantern with warm glow' },
+    { re:/나뭇잎|leaf\b|葉/i,                            show:'single leaf catching light' },
+    { re:/그림자|shadow|影/i,                            show:'soft shadow on wall' },
+    { re:/계단(?:참|새)?|step on path/i,                 show:'stone step' },
+    { re:/돌(?:멩이)?|stone\b|石/i,                      show:'smooth stone' },
+
+    /* ── 코믹/티키타카 — 표정·소품 대비 ── */
+    { re:/안경테|frame glasses|メガネ/i,                 show:'oversized comedic glasses' },
+    { re:/포인터|pointer stick|指し棒/i,                 show:'comedic pointer stick' },
+    { re:/메모지|sticky note|付箋/i,                     show:'colored sticky note in hand' },
+    { re:/풍선|balloon|風船/i,                           show:'small bright balloon' },
+
+    /* ── 관계/가족 ── */
+    { re:/반지|ring\b|指輪/i,                            show:'wedding ring' },
+    { re:/꽃다발|bouquet|花束/i,                         show:'small flower bouquet' },
+    { re:/포옹|embrace|抱擁/i,                           show:'warm embrace gesture' },
+    { re:/유산|inheritance|遺産/i,                       show:'old document on table' },
+    { re:/유언장|will\b|遺言/i,                          show:'handwritten will paper' },
+    { re:/육아|parenting|育児/i,                         show:'childcare scene cue' },
+    { re:/학교 ?가방|school bag|ランドセル/i,            show:'school backpack' },
+
+    /* ── 제품/리뷰 ── */
+    { re:/박스|상자|box\b|箱/i,                          show:'product box on table' },
+    { re:/포장|package|包装/i,                           show:'package wrapping' },
+    { re:/리모컨|remote control|リモコン/i,              show:'remote control' },
+    { re:/이어폰|earphone|イヤホン/i,                    show:'wireless earbuds' },
+    { re:/충전기|charger|充電器/i,                       show:'charging cable plugged in' },
+    { re:/노트북|laptop|ノートPC/i,                      show:'open laptop' },
+    { re:/태블릿|tablet|タブレット/i,                    show:'tablet screen' },
+
+    /* ── 소상공인 홍보 ── */
+    { re:/간판|signboard|看板/i,                         show:'small shop signboard' },
+    { re:/메뉴(?:판|판)?|menu board|メニュー/i,          show:'wall menu board' },
+    { re:/영수증|receipt|レシート/i,                     show:'paper receipt' },
+    { re:/주방|kitchen counter|厨房/i,                   show:'small shop kitchen counter' },
+    { re:/포스(?:기|단말)|POS/i,                         show:'POS machine' },
+    { re:/택배|delivery box|配達/i,                      show:'delivery package at door' },
+    { re:/유니폼|uniform|制服/i,                         show:'staff uniform apron' },
+    { re:/명함|business card|名刺/i,                     show:'business card on table' },
+    { re:/오픈\s*사인|open sign|営業中/i,                show:'open sign on door' },
   ];
 
   var ACTION_RULES = [
@@ -142,6 +231,74 @@
     { re:/(?:전화|폰)(?:을|를 )?받|answer (?:the )?phone|電話に出/i, show:'answering the phone' },
     { re:/사진(?:을|을 )?(?:보|찍)|take a photo|写真を/i,        show:'looking at a photograph' },
     { re:/저장(?:을|을 )?(?:누|하)|tap save/i,                   show:'tapping the save button' },
+
+    /* ── 코믹/티키타카 동작 ── */
+    { re:/티격태격|bickering|揉め/i,                              show:'lively back-and-forth bickering' },
+    { re:/우기|insisting|主張/i,                                  show:'insisting with confidence' },
+    { re:/반박|countering|反論/i,                                 show:'countering the argument' },
+    { re:/장난|teasing|からかう/i,                                show:'playful teasing gesture' },
+    { re:/엄지|thumbs up|親指/i,                                  show:'thumbs up' },
+    { re:/박수|clap|拍手/i,                                       show:'clapping hands' },
+    { re:/하이파이브|high[- ]?five/i,                             show:'high-five gesture' },
+    { re:/어이없|stunned|呆れ/i,                                  show:'stunned reaction with wide eyes' },
+    { re:/뜨악|gobsmacked/i,                                      show:'gobsmacked freeze' },
+    { re:/들이밀|thrust forward|突き出/i,                         show:'thrusting object forward' },
+    { re:/모으|gathering|集め/i,                                  show:'gathering items toward center' },
+    { re:/가리키며 ?웃|laugh while pointing/i,                    show:'laughing while pointing' },
+
+    /* ── 동물 모션 ── */
+    { re:/꼬리(?:를|를 )?(?:흔|치)|wag (?:the )?tail|しっぽを振/i, show:'wagging tail energetically' },
+    { re:/짖|bark|吠/i,                                           show:'barking softly' },
+    { re:/야옹|meow|ニャー/i,                                     show:'meowing' },
+    { re:/뛰어 ?오르|leap up|跳ね/i,                              show:'leaping up playfully' },
+    { re:/달려 ?가|run toward|駆け/i,                             show:'running toward camera' },
+    { re:/쫓|chase|追/i,                                          show:'chasing the toy' },
+    { re:/킁킁|sniff|嗅ぎ/i,                                      show:'sniffing curiously' },
+    { re:/핥|lick|舐/i,                                           show:'gentle licking' },
+    { re:/머리 ?기울|head tilt|首をかしげ/i,                      show:'cute head tilt' },
+    { re:/구르|roll over|転が/i,                                  show:'rolling over playfully' },
+    { re:/기지개|stretch out|背伸び/i,                            show:'stretching out paws' },
+    { re:/발 ?을 ?올|paw up|手を乗せ/i,                           show:'placing paw on owner hand' },
+    { re:/잠 ?에서 ?깨|wake up|目覚め/i,                          show:'waking up with a yawn' },
+
+    /* ── 명언/인생조언 모션 ── */
+    { re:/촛불 ?끄|blow out candle/i,                             show:'gently blowing out a candle' },
+    { re:/창 ?밖(?:을|을 )?(?:바라|보)|look out the window/i,     show:'looking out a sunlit window' },
+    { re:/문(?:을|을 )?열|opening the door/i,                     show:'slowly opening a wooden door' },
+    { re:/길(?:을|을 )?걸|walking the path/i,                     show:'walking down a quiet path' },
+    { re:/열쇠(?:를|를 )?돌|turning the key/i,                    show:'turning a key in a lock' },
+    { re:/돌(?:멩이)?(?:를|를 )?잡|holding a stone/i,             show:'holding a smooth stone' },
+    { re:/내려놓는|setting down|置き/i,                           show:'setting an object down with care' },
+
+    /* ── 음식 비교 모션 ── */
+    { re:/그릇(?:을|을 )?내려놓|setting down a bowl/i,            show:'placing a bowl on the table' },
+    { re:/숟가락(?:을|을 )?들|lifting the spoon/i,                show:'lifting a spoon to mouth' },
+    { re:/젓가락(?:을|을 )?들|chopsticks lifting/i,               show:'lifting food with chopsticks' },
+    { re:/한 ?입|taking a bite|一口/i,                            show:'taking the first bite' },
+    { re:/김(?:이)? ?나|steam rising|湯気/i,                      show:'steam rising from the bowl' },
+
+    /* ── 관계/가족 모션 ── */
+    { re:/손(?:을|을 )?잡|holding hands|手を繋/i,                 show:'holding hands gently' },
+    { re:/안아 ?주|wrapping in a hug/i,                           show:'wrapping in a warm hug' },
+    { re:/입맞춤|kiss on cheek|キス/i,                            show:'gentle kiss on the cheek' },
+    { re:/머리(?:를|를 )?쓰다듬|patting the head/i,               show:'patting the head softly' },
+    { re:/같이 ?걷|walking together|一緒に歩/i,                   show:'walking side by side' },
+
+    /* ── 제품/리뷰 모션 ── */
+    { re:/박스(?:를|를 )?(?:열|뜯)|opening the box/i,             show:'opening the product box' },
+    { re:/제품(?:을|을 )?돌|rotating the product/i,               show:'rotating the product to camera' },
+    { re:/버튼(?:을|을 )?누|pressing the product button/i,        show:'pressing the product button' },
+    { re:/충전(?:기?를|기?를 )?꽂|plugging in the charger/i,      show:'plugging in the charger' },
+    { re:/포장(?:을|을 )?뜯|tearing the package/i,                show:'unboxing wrapper' },
+
+    /* ── 소상공인 모션 ── */
+    { re:/간판(?:을|을 )?거|hanging the signboard/i,              show:'hanging the shop sign' },
+    { re:/오픈|opening shop|開店/i,                               show:'flipping the open sign' },
+    { re:/계산|checkout|会計/i,                                   show:'ringing up at the register' },
+    { re:/배달|deliver|配達/i,                                    show:'handing the delivery package' },
+    { re:/고객(?:과|과 )?대화|talking with customer/i,            show:'talking warmly with a customer' },
+    { re:/메뉴(?:를|를 )?설명|explaining the menu/i,              show:'explaining the menu' },
+    { re:/제품(?:을|을 )?소개|introducing the product/i,          show:'introducing the product to camera' },
   ];
 
   var EMOTION_RULES = [
@@ -158,6 +315,27 @@
     { re:/충격|shock|ショック/i,           show:'subtle shock' },
     { re:/민망|쑥스|恥/i,                  show:'shy embarrassment' },
     { re:/자신감|confident|自信/i,         show:'quiet confidence' },
+    /* 코믹 */
+    { re:/어이없|呆れ|stunned/i,           show:'stunned comedic disbelief' },
+    { re:/대박|amazing/i,                  show:'wide-eyed astonishment' },
+    { re:/꼬소|smug|得意/i,                show:'smug grin' },
+    { re:/뻘쭘|awkward|ばつが悪/i,         show:'awkward pause expression' },
+    { re:/궁시렁|grumbling|ぶつぶつ/i,     show:'grumbling under breath' },
+    { re:/박장대소|bursting laugh/i,       show:'bursting into laughter' },
+    /* 명언 */
+    { re:/평온|calm|穏やか/i,              show:'reflective calm' },
+    { re:/사색|pondering|思案/i,           show:'soft pondering gaze' },
+    { re:/허무|emptiness/i,                show:'sober emptiness' },
+    { re:/희망|hope|希望/i,                show:'subtle hope' },
+    /* 동물 */
+    { re:/신남|excited|興奮/i,             show:'playful excitement' },
+    { re:/호기심|curious|好奇/i,           show:'pure curiosity' },
+    /* 관계/가족 */
+    { re:/애정|affection|愛情/i,           show:'tender affection' },
+    { re:/지지|support|支え/i,             show:'silent supportive presence' },
+    /* 제품 리뷰 */
+    { re:/만족|satisfied|満足/i,           show:'satisfied nod' },
+    { re:/기대|anticipation|期待/i,        show:'building anticipation' },
   ];
 
   var ENV_RULES = [
@@ -176,6 +354,24 @@
     { re:/마당|backyard|庭/i,                              show:'home backyard' },
     { re:/계단/i,                                          show:'indoor staircase' },
     { re:/베란다|veranda|ベランダ/i,                       show:'apartment veranda' },
+    /* 음식점/카페/시장 */
+    { re:/식당|restaurant|レストラン|食堂/i,                show:'small cozy restaurant interior' },
+    { re:/포장마차|street food cart|屋台/i,                 show:'lively street food cart' },
+    { re:/술집|izakaya|居酒屋/i,                            show:'warm izakaya interior' },
+    { re:/도서관|library|図書館/i,                          show:'quiet library' },
+    /* 자연/명언 배경 */
+    { re:/하늘|sky|空/i,                                    show:'soft sky background' },
+    { re:/바다|sea|海/i,                                    show:'calm sea horizon' },
+    { re:/산\b|mountain|山/i,                              show:'distant mountain silhouette' },
+    { re:/숲|forest|森/i,                                   show:'soft sunlit forest' },
+    { re:/들판|field|野原/i,                                show:'open quiet field' },
+    /* 동물/반려 */
+    { re:/반려동물 ?거실|pet room|ペットルーム/i,           show:'pet-friendly home corner' },
+    { re:/마당 ?잔디|backyard grass|庭の芝生/i,             show:'sunny backyard grass' },
+    /* 소상공인/제품 */
+    { re:/스튜디오|studio|スタジオ/i,                       show:'small product photo studio' },
+    { re:/창고|warehouse|倉庫/i,                            show:'small storage room' },
+    { re:/카운터|counter|カウンター/i,                      show:'shop counter' },
   ];
 
   var TIME_RULES = [
