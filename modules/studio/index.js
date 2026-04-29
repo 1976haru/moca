@@ -187,6 +187,12 @@ const STUDIO_FONTS_JA = [
   'New Tegomin','Reggae One','RocknRoll One','Shippori Mincho'
 ];
 
-/* ─── 전역 상태 ─── */
-const STUDIO = { project: null, autoSaveTimer: null };
+/* ─── 전역 상태 ───
+   classic <script> 의 const 는 global declarative record 에만 들어가 window 에
+   직접 노출되지 않는다. 외부(테스트/엔진 진입 HTML/devtools)에서 동일 객체를
+   보려면 window.STUDIO 도 같은 reference 로 동기화해야 한다. */
+const STUDIO = (typeof window !== 'undefined' && window.STUDIO && typeof window.STUDIO === 'object')
+  ? window.STUDIO
+  : { project: null, autoSaveTimer: null };
+if (typeof window !== 'undefined') window.STUDIO = STUDIO;
 

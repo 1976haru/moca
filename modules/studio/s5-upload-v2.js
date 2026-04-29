@@ -465,6 +465,7 @@ function _s5vT3() {
       </button>
 
       <div class="s5v-individual-btns">
+        <button class="s5v-btn-outline" onclick="_s5vDl('project')">🗂 프로젝트 JSON</button>
         <button class="s5v-btn-outline" onclick="_s5vDl('script')">📝 대본 TXT</button>
         <button class="s5v-btn-outline" onclick="_s5vDl('meta')">📊 메타데이터 JSON</button>
         <button class="s5v-btn-outline" onclick="_s5vDl('srt')">📄 SRT 자막</button>
@@ -670,6 +671,13 @@ window._s5vDl = function(type) {
 
   let content='', filename='', mime='text/plain;charset=utf-8';
 
+  if (type==='project') {
+    /* 프로젝트 전체 데이터 — UI 목록(line ~412) 의 'project.json' 항목과 매칭 */
+    const proj = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
+    content  = JSON.stringify(proj, null, 2);
+    filename = `${title}_project.json`;
+    mime     = 'application/json';
+  }
   if (type==='script') {
     content  = `=== 한국어 대본 ===\n${script}\n\n=== 일본어 대본 ===\n${scriptJa}`;
     filename = `${title}_대본.txt`;

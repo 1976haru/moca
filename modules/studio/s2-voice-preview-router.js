@@ -204,7 +204,12 @@
     if (lang === 'multi' || lang === 'unknown') lang = 'ko';
     var text = opts.text || SAMPLE_TEXT[lang] || SAMPLE_TEXT.ko;
 
-    var prov = String(candidate.provider || '').toLowerCase();
+    /* provider 정규화 — s2-voice-step 에서는 이미 풀네임이지만, manual picker /
+       api-status 등 다른 호출 경로가 'EL'/'OA'/'NJ'/'SS' 같은 단축 코드를 보낼
+       수 있어 여기서 한 번 더 매핑한다. */
+    var rawProv = String(candidate.provider || '').toLowerCase();
+    var PROVIDER_ALIAS = { el:'elevenlabs', oa:'openai', nj:'browser', ss:'browser', openai_tts:'openai' };
+    var prov = PROVIDER_ALIAS[rawProv] || rawProv;
     try {
       console.debug('[voice-preview] provider:', prov);
       console.debug('[voice-preview] voiceId exists:', !!candidate.voiceId);
