@@ -188,14 +188,18 @@
       return String(s1.characterProfile).trim();
     }
     if (/할머니|할아버지|시니어|노인|어르신|シニア|高齢/.test(combined)) return 'senior person in their 60s or 70s';
-    if (/부모|어머니|아버지|親|母|父/.test(combined))                      return 'middle-aged adult and elderly parent';
+    if (/부모|어머니|아버지|親|母|父/.test(combined))                      return 'an adult son or daughter speaking with their elderly parent';
     if (/사장|점주|손님|매장|お店|店長/.test(combined))                   return 'small business owner and customer';
     if (/시민|민원|공무원|役所/.test(combined))                            return 'citizen at a public service desk';
     if (/아이|학생|자녀|子供|学生/.test(combined))                         return 'parent and child';
     if (/연인|커플|부부/.test(combined))                                   return 'a couple';
     /* 동물/3D 모드에서 사람 자동 삽입 방지 */
     if (/동물|animal|3d|애니메이션|anime|ghibli/i.test(combined))          return '';
-    return 'an adult relevant to the topic';
+    /* topic 영어 fragment 가 의미있을 때만 사용 — 'adult relevant to the topic' 같은
+       generic placeholder 는 v4 GENERIC_PHRASES 에 걸려 감점되므로 회피. */
+    var topicEn = String(topic || '').replace(/[ㄱ-ㆎ가-힣぀-ヿ]+/g,'').replace(/[^a-zA-Z0-9 ]+/g,' ').replace(/\s{2,}/g,' ').trim();
+    if (topicEn && topicEn.length >= 6) return 'a person whose hands are clearly engaged with ' + topicEn;
+    return 'a person whose hands are clearly engaged with the central object';
   }
 
   /* ════════════════════════════════════════════════

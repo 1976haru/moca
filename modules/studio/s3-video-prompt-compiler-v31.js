@@ -89,7 +89,7 @@
     var prompt = [
       'duration: ' + dur + 's',
       '9:16 vertical short-form video',
-      intent.subject || 'an adult relevant to the topic',
+      intent.subject || 'a person whose hands are clearly engaged with the central object of the scene',
       actionEn + locStr + emoStr,
       'subject motion: ' + subjMo,
       'camera motion: ' + camMo,

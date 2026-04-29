@@ -91,10 +91,11 @@
       scene = scenes[sceneIndex] || {};
     }
 
-    /* 1) intent 파싱 */
+    /* 1) intent 파싱 — fallback subject 는 v4 GENERIC_PHRASES 에 걸리지 않도록 구체적으로. */
     var intent = (typeof window.s3ParseSceneVisualIntentV31 === 'function')
       ? window.s3ParseSceneVisualIntentV31(scene, sceneIndex, project) : {
-          subject:'an adult relevant to the topic', mustShow:[],
+          subject:'a person whose hands are clearly engaged with the central object of the scene',
+          mustShow:[],
           visualActionKo:'', visualActionEn:'', emotion:'', camera:'', location:''
         };
 

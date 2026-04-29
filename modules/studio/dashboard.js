@@ -28,7 +28,7 @@ const DASH_TOPICS = {
 const DASH_MODES = [
   { id:'stepper',       ico:'📋', label:'단계별 제작',          desc:'대본→이미지→음성→편집 순서대로' },
   { id:'oneclick',      ico:'⚡', label:'딸깍 모드',             desc:'주제 입력 → AI가 전부 자동 완성' },
-  { id:'batch',         ico:'📦', label:'대량 생산',             desc:'여러 편을 한 번에 제작' },
+  { id:'batch',         ico:'📦', label:'대량 생산',             desc:'여러 편을 한 번에 제작 (준비 중)', experimental:true },
   { id:'ytRefAdapt',    ico:'🎬', label:'조회수 영상 따라 만들기', desc:'잘 된 영상의 구조만 참고해 내 주제로 새 숏츠를 만듭니다' },
 ];
 
@@ -45,7 +45,12 @@ function _studioDashboard(wrapId) {
   if (!wrap) return;
 
   const proj    = (typeof STUDIO !== 'undefined' && STUDIO.project) || {};
-  const channel = proj.channel || localStorage.getItem('studio_channel') || null;
+  /* 표시용 채널명 — proj.channelName / localStorage / (구) proj.channel(자유문자열) 폴백.
+     proj.channel 이 'ko'/'ja'/'both' 같은 라우팅 코드면 표시 후보에서 제외. */
+  const _routingCodes = { ko:1, ja:1, both:1 };
+  const channel = proj.channelName
+               || localStorage.getItem('studio_channel')
+               || (proj.channel && !_routingCodes[proj.channel] ? proj.channel : null);
   const recent  = _dashGetRecent();
   const topics  = _dashGetTodayTopics();
   const stats   = _dashGetStats();
@@ -89,8 +94,9 @@ function _studioDashboard(wrapId) {
       <div class="dash-section-title">🚀 새 프로젝트 시작</div>
       <div class="dash-modes">
         ${DASH_MODES.map(m=>`
-          <button class="dash-mode-card ${_dashMode===m.id?'on':''}"
+          <button class="dash-mode-card ${_dashMode===m.id?'on':''} ${m.experimental?'experimental':''}"
             onclick="_dashMode='${m.id}';_studioDashboard('${wrapId||'studio-body'}')">
+            ${m.experimental?'<span class="dash-mode-exp">실험</span>':''}
             <span class="dash-mode-ico">${m.ico}</span>
             <div class="dash-mode-label">${m.label}</div>
             <div class="dash-mode-desc">${m.desc}</div>
@@ -269,6 +275,14 @@ function _esc(str) {
 
 /* ── 액션 ── */
 window._dashStartNew = function(wid) {
+  /* batch 모드는 아직 전용 흐름이 없음 — 사용자에게 명시적으로 안내 (조용한 실패 방지) */
+  if (_dashMode === 'batch') {
+    if (typeof window.ucShowToast === 'function') {
+      window.ucShowToast('📦 대량 생산 모드는 준비 중입니다. 단계별 제작으로 진행합니다.', 'warn');
+    } else {
+      alert('📦 대량 생산 모드는 준비 중입니다. 단계별 제작으로 진행합니다.');
+    }
+  }
   if (typeof studioNewProjectObj === 'function') {
     const proj = studioNewProjectObj();
     proj.mode  = _dashMode;
@@ -317,9 +331,11 @@ window._dashLoadProject = function(id) {
 window._dashSetChannel = function() {
   const ch = prompt('채널명을 입력하세요 (예: 일본 시니어 채널):');
   if (ch) {
+    /* 채널명(표시용)과 채널 언어코드(ko/ja/both)는 분리 — channel 필드는
+       대본/음성 라우팅에서 'ko' | 'ja' | 'both' 로만 쓰이므로 덮어쓰지 않는다. */
     localStorage.setItem('studio_channel', ch);
     if (typeof STUDIO !== 'undefined' && STUDIO.project) {
-      STUDIO.project.channel = ch;
+      STUDIO.project.channelName = ch;
     }
     _studioDashboard('studio-body');
   }
@@ -359,6 +375,11 @@ function _dashInjectCSS() {
 .dash-mode-card{padding:12px 8px;border:2px solid #f1dce7;border-radius:14px;
   background:#fff;cursor:pointer;text-align:center;transition:.14s}
 .dash-mode-card.on{border-color:#ef6fab;background:#fff5f9}
+.dash-mode-card.experimental{position:relative;opacity:.78}
+.dash-mode-card.experimental.on{opacity:1}
+.dash-mode-exp{position:absolute;top:6px;right:8px;font-size:9.5px;font-weight:800;
+  color:#92400e;background:#fef3c7;border:1px solid #fcd34d;
+  padding:1px 6px;border-radius:8px;letter-spacing:.3px}
 .dash-mode-ico{font-size:24px;display:block;margin-bottom:6px}
 .dash-mode-label{font-size:13px;font-weight:800;margin-bottom:3px}
 .dash-mode-desc{font-size:10px;color:#9b8a93}

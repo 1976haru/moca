@@ -32,7 +32,7 @@
       locations:['warm home dining table','quiet living room','sunset window','old hometown street'],
       framings:['close-up of hands holding object','medium shot of person at table','over-the-shoulder'],
       emotions:['restrained regret','quiet warmth','reconciliation','nostalgia'],
-      defaultSubject:'middle-aged adult quietly engaging with a meaningful object that evokes a family memory',
+      defaultSubject:'a person at a dining table holding an old framed family photograph, restrained emotion visible on their face',
       avoid:['random elderly close-up only','funeral mood','hospital scene','excessive crying'],
     },
     'general-info': {
@@ -210,7 +210,7 @@
 
     /* subject — 스크립트 내 키워드로 우선 추출 */
     var subject = '';
-    if (/부모|어머니|아버지|親|母|父/.test(combined)) subject = 'middle-aged adult thinking of an elderly parent';
+    if (/부모|어머니|아버지|親|母|父/.test(combined)) subject = 'an adult son or daughter holding a phone, hesitating over an old framed photograph of an elderly parent';
     else if (/할머니|할아버지|시니어|어르신|老人|シニア/.test(combined)) subject = 'a respectful senior person';
     else if (/사장|점주|손님|가게|매장|お店|店長/.test(combined)) subject = 'a small business owner with a customer';
     else if (/시민|민원|공무원|市民|窓口/.test(combined)) subject = 'a citizen at a public service desk';

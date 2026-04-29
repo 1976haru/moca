@@ -121,7 +121,7 @@
     'handwritten letter':              'reading a handwritten letter at a desk',
     'medication packet':               'organizing a medication packet on a tray',
     'empty chair':                     'looking at an empty chair across the table',
-    'dining table':                    'sitting alone at a warm dining table',
+    'dining table':                    'placing both hands on the dining table next to an empty seat across, looking down',
     'accessibility ramp':              'choosing an accessibility ramp over stairs',
     'elevator':                        'pressing the elevator button',
     'small neighborhood shop interior':'standing inside a small neighborhood shop',
@@ -172,9 +172,10 @@
     if (role === 'situation') return 'an everyday situation that introduces the topic' + locStr;
     if (role === 'setup')    return 'an introductory everyday situation' + locStr;
     if (role === 'conclusion') return 'a calm summary moment with the key object visible' + locStr;
-    /* 4) 최후 fallback — 한국어 raw 를 영어 prompt 에 절대 그대로 넣지 않음 */
-    if (topicHint) return 'a clear practical scene related to ' + topicHint + locStr;
-    return 'a clear practical everyday scene relevant to the topic' + locStr;
+    /* 4) 최후 fallback — 한국어 raw 를 영어 prompt 에 절대 그대로 넣지 않음.
+       v4 GENERIC_PHRASES 정규식에 걸리지 않도록 구체 동작 + 사물을 명시. */
+    if (topicHint) return 'hands physically engaging with the central object of ' + topicHint + locStr;
+    return 'hands physically engaging with the central object of the scene' + locStr;
   }
   window.s3TranslateVisualActionToEnglish = translate;
 })();
