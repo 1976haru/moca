@@ -95,6 +95,48 @@
   }
 
   /* ════════════════════════════════════════════════
+     공통 — 영상 미리보기 헤더 (탭 2/3 에 sticky 로 표시)
+     iframe 미로드/임베드차단 시 thumbnail 폴백.
+     start: 씬 단위 timestamp jump 시 사용. */
+  function _renderVideoHeader(opts) {
+    opts = opts || {};
+    var vid = YRX.videoId;
+    if (!vid) {
+      return '<div class="yrx-video-hd empty">'+
+        '<div class="yrx-video-empty-msg">📺 유튜브 링크를 먼저 입력해 주세요. 영상이 보이면 씬 단위로 시점을 클릭해 원본을 확인할 수 있습니다.</div>'+
+      '</div>';
+    }
+    var startSec = opts.startSec || YRX._lastJumpSec || 0;
+    var src = 'https://www.youtube.com/embed/'+vid+
+              '?rel=0&modestbranding=1' +
+              (startSec > 0 ? '&start='+startSec : '') +
+              (opts.autoplay ? '&autoplay=1' : '');
+    var thumb = 'https://img.youtube.com/vi/'+vid+'/hqdefault.jpg';
+    var watchUrl = 'https://www.youtube.com/watch?v='+vid+(startSec>0?'&t='+startSec+'s':'');
+    return '<div class="yrx-video-hd">'+
+      '<div class="yrx-video-iframe">'+
+        '<iframe src="'+_escAttr(src)+'" '+
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+
+          'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>'+
+      '</div>'+
+      '<div class="yrx-video-side">'+
+        '<img class="yrx-video-thumb" src="'+_escAttr(thumb)+'" alt="원본 영상 썸네일" loading="lazy">'+
+        '<div class="yrx-video-meta">'+
+          '<div><b>영상 ID</b> '+_esc(vid)+'</div>'+
+          (YRX.title ? '<div><b>제목</b> '+_esc(YRX.title)+'</div>' : '')+
+          (startSec > 0 ? '<div><b>현재 시점</b> '+_esc(_fmtSec(startSec))+'</div>' : '')+
+          '<a href="'+_escAttr(watchUrl)+'" target="_blank" rel="noopener" class="yrx-video-link">새 창에서 열기 ↗</a>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
+  function _fmtSec(sec){
+    var s = Math.max(0, Math.round(sec || 0));
+    var m = Math.floor(s/60); var ss = s%60;
+    return m+':'+(ss<10?'0'+ss:ss);
+  }
+
+  /* ════════════════════════════════════════════════
      Section 1 — 링크 / 자막 입력
      ════════════════════════════════════════════════ */
   function _renderInputSection() {
@@ -134,6 +176,7 @@
           'oninput="yrxSet(\'transcript\',this.value)">'+_esc(YRX.transcript)+'</textarea>'+
         '<div class="yrx-actions">'+
           '<button type="button" class="yrx-btn pri" onclick="yrxParseScenes()">📋 자막/대본 장면으로 나누기</button>'+
+          '<button type="button" class="yrx-btn" '+(YRX.busy||!YRX.videoId?'disabled':'')+' onclick="yrxFetchTranscript()" title="유튜브 timedtext 엔드포인트 시도 — CORS 정책으로 실패할 수 있습니다">🔄 자막 자동 가져오기 시도</button>'+
           '<button type="button" class="yrx-btn" onclick="yrxClearTranscript()">🗑 자막 비우기</button>'+
         '</div>'+
 
@@ -193,9 +236,15 @@
      ════════════════════════════════════════════════ */
   function _renderOrigBoard() {
     if (!YRX.detectedScenes.length) {
-      return '<div class="yrx-empty">먼저 1단계에서 자막/대본을 붙여넣고 "장면으로 나누기" 를 눌러 주세요.</div>';
+      return _renderVideoHeader() +
+        '<div class="yrx-empty">'+
+          '<b>1단계에서 자막/대본을 붙여넣고 "장면으로 나누기" 를 눌러 주세요.</b><br>'+
+          '자동 가져오기를 시도하려면 <button class="yrx-mini" onclick="yrxFetchTranscript()">🔄 자막 자동 가져오기</button> '+
+          '버튼을 눌러 보세요. (CORS 정책으로 실패할 수 있습니다 — 이때는 직접 붙여넣기)'+
+        '</div>';
     }
     return ''+
+    _renderVideoHeader() +
     '<div class="yrx-board-hd">'+
       '<div class="yrx-board-title">📋 원본 장면 보드 — 총 '+YRX.detectedScenes.length+' 씬</div>'+
       '<div class="yrx-actions">'+
@@ -205,12 +254,16 @@
     '</div>'+
     '<div class="yrx-orig-grid">'+
       YRX.detectedScenes.map(function(sc, i){
+        var jumpBtn = (YRX.videoId && sc.startSec != null)
+          ? '<button type="button" class="yrx-mini" onclick="yrxJumpTo('+(sc.startSec||0)+')" title="이 시점부터 영상 보기">▶ '+_esc(_fmtSec(sc.startSec))+'</button>'
+          : '';
         return '<div class="yrx-orig-card">'+
           '<div class="yrx-orig-hd">'+
             '<span class="yrx-orig-no">씬 '+sc.sceneNumber+'</span>'+
             (sc.timeRange ? '<span class="yrx-orig-time">'+_esc(sc.timeRange)+'</span>' : '')+
             '<span class="yrx-orig-role">'+_esc(sc.roleLabel || sc.role)+'</span>'+
             '<span class="yrx-orig-shot">'+_esc(sc.shotTypeLabel || sc.shotType)+'</span>'+
+            jumpBtn +
           '</div>'+
           '<div class="yrx-orig-text">'+_esc(sc.original || '(빈 자막)')+'</div>'+
           '<div class="yrx-orig-meta">'+
@@ -231,10 +284,12 @@
      ════════════════════════════════════════════════ */
   function _renderCompareBoard() {
     if (!YRX.adaptedScenes.length) {
-      return '<div class="yrx-empty">아직 각색본이 없습니다. 1단계 또는 2단계에서 "🪄 전체 각색 시작" 을 눌러 주세요.</div>';
+      return _renderVideoHeader() +
+        '<div class="yrx-empty">아직 각색본이 없습니다. 1단계 또는 2단계에서 "🪄 전체 각색 시작" 을 눌러 주세요.</div>';
     }
     var perScene = (YRX.safety && YRX.safety.perScene) || [];
     return ''+
+    _renderVideoHeader() +
     '<div class="yrx-board-hd">'+
       '<div class="yrx-board-title">🔀 원본 / 각색 비교 — 총 '+YRX.adaptedScenes.length+' 씬</div>'+
       '<div class="yrx-actions">'+
@@ -247,12 +302,16 @@
         var orig = YRX.detectedScenes[i] || sc;
         var risk = perScene[i] || {};
         var busy = !!YRX.sceneBusy[i];
+        var jumpBtn = (YRX.videoId && orig.startSec != null)
+          ? '<button type="button" class="yrx-mini" onclick="yrxJumpTo('+(orig.startSec||0)+')" title="이 시점부터 영상 보기">▶ '+_esc(_fmtSec(orig.startSec))+'</button>'
+          : '';
         return '<div class="yrx-cmp-row">'+
           /* 좌 — 원본 */
           '<div class="yrx-cmp-col">'+
             '<div class="yrx-cmp-side orig">원본 · 씬 '+sc.sceneNumber+
               (orig.timeRange ? ' · '+_esc(orig.timeRange) : '')+
-              ' · '+_esc(orig.roleLabel || orig.role || '')+'</div>'+
+              ' · '+_esc(orig.roleLabel || orig.role || '')+
+              ' '+jumpBtn+'</div>'+
             '<div class="yrx-cmp-text">'+_esc(orig.original || '(빈 자막)')+'</div>'+
             '<div class="yrx-cmp-meta">'+
               '샷타입: <b>'+_esc(orig.shotTypeLabel || orig.shotType || '')+'</b> · '+
@@ -366,6 +425,73 @@
   window.yrxIframeFail = function(){
     _toast('⚠️ iframe 미리보기 로드 실패 — 영상이 임베드 차단됐을 수 있습니다. 새 창에서 열기를 사용해 주세요.', 'warn');
   };
+
+  /* 씬 timestamp 점프 — iframe src 를 start=N 으로 다시 그려 그 시점부터 재생.
+     YouTube IFrame Player API 없이 단순 src 교체 (페이지 reflow 만 발생). */
+  window.yrxJumpTo = function(startSec){
+    var sec = Math.max(0, Math.floor(Number(startSec) || 0));
+    YRX._lastJumpSec = sec;
+    /* iframe 직접 갱신 — 활성 탭에 video header 가 있으면 즉시 시점 변경 */
+    var box = document.querySelector('.yrx-video-iframe iframe');
+    if (box && YRX.videoId) {
+      var src = 'https://www.youtube.com/embed/'+YRX.videoId+
+                '?rel=0&modestbranding=1&autoplay=1' +
+                (sec > 0 ? '&start='+sec : '');
+      box.src = src;
+      _toast('▶ ' + _fmtSec(sec) + ' 시점으로 이동', 'info');
+      return;
+    }
+    /* 활성 탭에 iframe 이 없으면 새 창에서 열기 */
+    if (YRX.videoId) {
+      window.open('https://www.youtube.com/watch?v='+YRX.videoId+'&t='+sec+'s', '_blank', 'noopener');
+    }
+  };
+
+  /* 자막 자동 가져오기 시도 — youtube timedtext 엔드포인트는 보통 CORS 막힘.
+     실패 시 명확한 가이드 (자막 다운로드 페이지 / 직접 붙여넣기) 안내. */
+  window.yrxFetchTranscript = async function(){
+    if (!YRX.videoId) { _toast('⚠️ 먼저 유튜브 링크를 입력해 주세요.', 'warn'); return; }
+    YRX.busy = true; YRX.busyTag = 'fetch'; YRX.status = '🔄 자막 자동 가져오기 시도 중...'; _refresh();
+    var langs = ['ko', 'ja', 'en'];
+    var got = '';
+    for (var i = 0; i < langs.length; i++) {
+      try {
+        var url = 'https://video.google.com/timedtext?lang='+langs[i]+'&v='+encodeURIComponent(YRX.videoId);
+        var res = await fetch(url, { mode: 'cors' });
+        if (!res.ok) continue;
+        var txt = await res.text();
+        if (txt && txt.indexOf('<text') >= 0) {
+          got = _parseTimedTextXml(txt);
+          if (got) { YRX.transcript = got; break; }
+        }
+      } catch(_) { /* CORS 차단 — 다음 lang */ }
+    }
+    YRX.busy = false; YRX.busyTag = '';
+    if (got) {
+      YRX.status = '✅ 자막을 가져왔습니다 — "장면으로 나누기" 를 눌러 분해하세요.';
+      _toast(YRX.status, 'success');
+      _persist();
+      _refresh();
+    } else {
+      YRX.status = '⚠️ 자동 가져오기 실패 (CORS 차단 또는 자막 없음). 유튜브 → 자막(CC) → 자막 텍스트를 복사해서 붙여넣어 주세요.';
+      _toast(YRX.status, 'warn');
+      _refresh();
+    }
+  };
+  function _parseTimedTextXml(xml){
+    var out = [];
+    var rx = /<text\s+start="([\d.]+)"(?:\s+dur="[\d.]+")?[^>]*>([\s\S]*?)<\/text>/g;
+    var m;
+    while ((m = rx.exec(xml)) !== null) {
+      var sec = Math.floor(parseFloat(m[1]) || 0);
+      var min = Math.floor(sec/60); var ss = sec%60;
+      var ts = min+':'+(ss<10?'0'+ss:ss);
+      var body = m[2].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+                     .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').trim();
+      if (body) out.push(ts + ' ' + body);
+    }
+    return out.join('\n');
+  }
 
   /* ════════════════════════════════════════════════
      자막 → 씬 분해
