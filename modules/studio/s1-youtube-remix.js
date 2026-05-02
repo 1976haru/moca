@@ -304,13 +304,25 @@
       var label = s.overallRisk === 'low' ? '낮음 — 사용 가능' :
                   s.overallRisk === 'medium' ? '보통 — 일부 표현 수정 권장' :
                   '높음 — 다시 각색 권장';
-      var items = [].concat(s.sentenceSimilarityWarnings || [], s.visualSimilarityWarnings || []);
+      var items = [].concat(
+        s.sentenceSimilarityWarnings || [],
+        s.visualSimilarityWarnings || [],
+        s.brandCarryoverWarnings || []
+      );
       if (s.titleSimilarityWarning) items.push(s.titleSimilarityWarning);
+      var hasRisky = (s.perScene || []).some(function(p){ return p.risk === 'high' || p.risk === 'medium'; });
       safetyHtml = '<div class="yrx-cs '+_esc(s.overallRisk)+'">'+
-        '<div class="yrx-cs-hd">🛡 원본 유사도: '+_esc(label)+'</div>'+
+        '<div class="yrx-cs-hd">🛡 원본 유사도: '+_esc(label)+
+          (s.overallRisk === 'high' ? ' — 원본과 너무 유사합니다. 구조만 남기고 표현을 다시 각색하세요.' : '')+
+        '</div>'+
         (items.length ? '<ul class="yrx-cs-list">'+items.map(function(x){ return '<li>'+_esc(x)+'</li>'; }).join('')+'</ul>'
                       : '<div>유사도 위반 항목이 없습니다.</div>') +
         ((s.recommendedFixes||[]).length ? '<ul class="yrx-cs-list">'+s.recommendedFixes.map(function(x){ return '<li>'+_esc(x)+'</li>'; }).join('')+'</ul>' : '') +
+        '<div class="yrx-actions" style="margin-top:8px">'+
+          '<button type="button" class="yrx-btn" '+(YRX.busy||!hasRisky?'disabled':'')+' onclick="yrxRedoRisky()">⚠️ 위험 문장만 다시 각색</button>'+
+          '<button type="button" class="yrx-btn" '+(YRX.busy?'disabled':'')+' onclick="yrxAdaptAll()">↻ 전체 다시 각색</button>'+
+          '<button type="button" class="yrx-btn pri" '+(YRX.busy?'disabled':'')+' onclick="yrxRecreateFromStructure()">🪄 구조만 남기고 완전 재작성</button>'+
+        '</div>'+
       '</div>';
     }
 
@@ -456,6 +468,40 @@
     if (!YRX.adaptedScenes[idx]) return;
     YRX.adaptedScenes[idx][key] = val;
     _persistAdaptation(YRX.adaptedScenes);
+  };
+
+  /* ── 위험(medium/high) 씬만 일괄 재각색 ── */
+  window.yrxRedoRisky = async function(){
+    if (YRX.busy) return;
+    var sf = YRX.safety;
+    if (!sf || !Array.isArray(sf.perScene)) {
+      _toast('⚠️ 먼저 유사도 검사를 실행해 주세요.', 'warn'); return;
+    }
+    var risky = sf.perScene.filter(function(p){ return p.risk === 'high' || p.risk === 'medium'; });
+    if (!risky.length) { _toast('✅ 위험 씬이 없습니다.', 'success'); return; }
+    YRX.busy = true; YRX.busyTag = 'redo-risky';
+    YRX.status = '⚠️ 위험 씬 ' + risky.length + '개 다시 각색 중...';
+    _refresh();
+    try {
+      for (var k = 0; k < risky.length; k++) {
+        var idx = risky[k].sceneIndex;
+        await window.yrxRedoScene(idx);
+      }
+      YRX.status = '✅ 위험 ' + risky.length + '개 씬 재각색 완료';
+      _toast(YRX.status, 'success');
+    } catch(e) {
+      YRX.status = '❌ 재각색 실패: ' + ((e && e.message) || e);
+      _toast(YRX.status, 'error');
+    }
+    YRX.busy = false; YRX.busyTag = ''; _refresh();
+  };
+
+  /* ── 구조만 남기고 완전 재작성 — adaptationMode 강제 'full_recreate' ── */
+  window.yrxRecreateFromStructure = function(){
+    if (YRX.busy) return;
+    YRX.adaptationMode = 'full_recreate';
+    _persist();
+    return window.yrxAdaptAll();
   };
 
   window.yrxSendOneToStep2 = function(idx){

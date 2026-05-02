@@ -111,14 +111,22 @@
     }
     var titleWarning = titleSimilarity >= 0.5 ? '새 제목/훅이 원본 제목과 유사 (' + Math.round(titleSimilarity * 100) + '%)' : '';
 
+    /* ── 캐릭터/브랜드/로고 carryover 검사 ──
+       원본 텍스트에서 고유명사처럼 보이는 토큰(2회 이상 반복 + 최소 2자) 을
+       추출해, 각색본 narration/caption/visual 에 그대로 등장하는지 확인.
+       사용자가 명시한 "원본 캐릭터/브랜드/로고/인물 그대로 복제 금지" 보호. */
+    var brandHits = _detectBrandCarryover(src, scenes, opts);
+    var brandWarnings = brandHits.warnings;
+
     var overallRisk = 'low';
-    if (highCount > 0 || titleSimilarity >= 0.7) overallRisk = 'high';
-    else if (midCount > 0 || titleSimilarity >= 0.5 || visualWarnings.length) overallRisk = 'medium';
+    if (highCount > 0 || titleSimilarity >= 0.7 || brandHits.highRisk) overallRisk = 'high';
+    else if (midCount > 0 || titleSimilarity >= 0.5 || visualWarnings.length || brandWarnings.length) overallRisk = 'medium';
 
     var fixes = [];
     if (highCount)              fixes.push('위험 씬은 "이 씬만 다시 각색" 으로 표현을 새로 쓰세요.');
     if (visualWarnings.length)  fixes.push('화면 설명을 새 주제 맥락으로 더 구체적으로 다시 쓰세요.');
     if (titleWarning)           fixes.push('새 주제·훅을 더 차별화된 표현으로 바꿔보세요.');
+    if (brandWarnings.length)   fixes.push('원본 인물/브랜드/캐릭터명이 각색본에 그대로 들어 있습니다. 새 주제 맥락의 표현으로 바꾸세요.');
     if (overallRisk === 'high') fixes.push('전체 다시 각색 권장 — 구조만 유지하고 표현을 완전히 새로 쓰세요.');
 
     return {
@@ -126,11 +134,76 @@
       perScene:                  perScene,
       sentenceSimilarityWarnings: sentenceWarnings,
       visualSimilarityWarnings:   visualWarnings,
+      brandCarryoverWarnings:    brandWarnings,
+      brandHits:                 brandHits.hits,
       titleSimilarityWarning:     titleWarning,
       titleSimilarity:            Math.round(titleSimilarity * 100),
       recommendedFixes:           fixes,
       checkedAt:                  Date.now(),
     };
+  }
+
+  /* ── 브랜드/캐릭터/로고 carryover 탐지 ──
+     원본 텍스트에서 고유명사 후보(2회 이상 반복되거나 ALL CAPS / 한글 2자 이상 + 호칭) 를 추출. */
+  function _detectBrandCarryover(originalText, scenes, opts) {
+    var candidates = _extractProperNouns(originalText);
+    /* 사용자 화이트리스트(새 주제 단어) 는 제외 */
+    var allow = new Set();
+    String(opts.newTopic || '').split(/\s+/).forEach(function(w){ if (w.length >= 2) allow.add(w.toLowerCase()); });
+    candidates = candidates.filter(function(c){ return !allow.has(c.toLowerCase()); });
+
+    var warnings = [];
+    var hits = [];
+    var highRisk = false;
+    if (!candidates.length) return { warnings: warnings, hits: hits, highRisk: highRisk };
+
+    (scenes || []).forEach(function(sc, i){
+      var combined = [
+        sc.adaptedNarration || '',
+        sc.adaptedCaption   || '',
+        sc.captionKo        || '',
+        sc.captionJa        || '',
+        sc.visualDescription || '',
+      ].join(' ');
+      var found = candidates.filter(function(c){
+        return combined.indexOf(c) >= 0;
+      });
+      if (found.length) {
+        var uniq = Array.from(new Set(found));
+        hits.push({ sceneIndex: i, sceneNumber: i + 1, names: uniq });
+        warnings.push('씬 ' + (i + 1) + ': 원본 고유명 노출 — ' + uniq.join(', '));
+        if (uniq.length >= 2) highRisk = true;
+      }
+    });
+    return { warnings: warnings, hits: hits, highRisk: highRisk };
+  }
+
+  function _extractProperNouns(text) {
+    var s = String(text || '');
+    if (!s) return [];
+    var out = Object.create(null);
+    /* 1) 한국어 고유명 후보 — 2~6자 한글 + 호칭(씨/님/박사/선생/회장 등) 직전 토큰 */
+    var rxKo = /([가-힣]{2,6})(?:\s*(?:씨|님|박사|선생|회장|대표|기자|작가|선수|배우|가수))/g;
+    var m;
+    while ((m = rxKo.exec(s))) { _bump(out, m[1]); }
+    /* 2) ALL-CAPS 영문 (브랜드/로고) — 2자 이상 */
+    var rxCaps = /\b[A-Z][A-Z0-9]{1,}\b/g;
+    while ((m = rxCaps.exec(s))) { _bump(out, m[0]); }
+    /* 3) 영문 PascalCase 2회 이상 반복되는 토큰 */
+    var rxPascal = /\b[A-Z][a-z]{2,}\b/g;
+    var pascalCounts = Object.create(null);
+    while ((m = rxPascal.exec(s))) { pascalCounts[m[0]] = (pascalCounts[m[0]] || 0) + 1; }
+    Object.keys(pascalCounts).forEach(function(k){ if (pascalCounts[k] >= 2) _bump(out, k); });
+    /* 4) 일본어 카타카나 3자 이상 — 외래어 브랜드 */
+    var rxKata = /[ァ-ヶー]{3,}/g;
+    while ((m = rxKata.exec(s))) { _bump(out, m[0]); }
+
+    return Object.keys(out).filter(function(w){ return w.length >= 2; });
+  }
+  function _bump(map, key) {
+    var k = String(key || '').trim();
+    if (!k) return;
+    map[k] = (map[k] || 0) + 1;
   }
 
   window.YT_REMIX_SAFETY = {
