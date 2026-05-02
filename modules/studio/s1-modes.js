@@ -31,8 +31,14 @@ let _s1LongStruct = 'list';
 function _s1RenderModeBlock(wid, mode) {
   if (mode === 'tikitaka') return _s1RenderTikitakaBlock(wid);
   if (mode === 'longform') return _s1RenderLongformBlock(wid);
-  if (mode === 'youtube_reference_adapt' && typeof window._s1RenderYoutubeRefBlock === 'function') {
-    return window._s1RenderYoutubeRefBlock(wid);
+  if (mode === 'youtube_reference_adapt') {
+    /* 신규 리믹스 보드 우선 — 미로드 시 legacy 분석·각색 UI 폴백 */
+    if (typeof window._s1RenderYoutubeRemixBlock === 'function') {
+      return window._s1RenderYoutubeRemixBlock(wid);
+    }
+    if (typeof window._s1RenderYoutubeRefBlock === 'function') {
+      return window._s1RenderYoutubeRefBlock(wid);
+    }
   }
   return '';
 }
