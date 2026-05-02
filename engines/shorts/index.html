@@ -127,11 +127,13 @@ window.renderAll = window.renderAll || function(){};
 <script src="../../modules/studio/s1-modes.js"></script>
 <!-- ⭐ 유튜브 링크 분석·각색 모드 — s1-modes.js 디스패처가 호출 -->
 <script src="../../modules/studio/s1-youtube-reference.js"></script>
-<!-- ⭐ 유튜브 레퍼런스 리믹스 보드 — parser/safety/adapter → 메인 UI 순서로 로드 -->
+<!-- ⭐ 유튜브 레퍼런스 리믹스 보드 — parser/safety/adapter → 메인 UI → 60/40 보드 순서로 로드 -->
 <script src="../../modules/studio/s1-youtube-remix-parser.js"></script>
 <script src="../../modules/studio/s1-youtube-remix-safety.js"></script>
 <script src="../../modules/studio/s1-youtube-remix-adapter.js"></script>
 <script src="../../modules/studio/s1-youtube-remix.js"></script>
+<!-- ⭐ 60/40 리믹스 보드 (자동숏츠 스타일 Scene 카드 + 편집 패널) — 디스패처 1순위 -->
+<script src="../../modules/studio/s1-youtube-remix-board.js"></script>
 <script src="../../modules/studio/s1-review.js"></script>
 <script src="../../modules/studio/s3-source-tabs.js"></script>
 <script src="../../modules/studio/s1-script.js"></script>

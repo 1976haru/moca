@@ -27,7 +27,7 @@ const S1_MODES = [
   { id:'general',                 ico:'⚡', label:'일반 숏츠' },
   { id:'tikitaka',                ico:'💬', label:'티키타카' },
   { id:'longform',                ico:'📺', label:'롱폼' },
-  { id:'youtube_reference_adapt', ico:'🎬', label:'유튜브 레퍼런스 리믹스' },
+  { id:'youtube_reference_adapt', ico:'🎬', label:'유튜브 리믹스 보드' },
 ];
 
 const S1_QUICK_LENS_SHORT = [30, 40, 60, 90, 180, 300, 480];

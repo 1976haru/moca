@@ -591,8 +591,25 @@
   };
 
   window.yrxAdaptEdit = function(idx, key, val){
-    if (!YRX.adaptedScenes[idx]) return;
+    /* 보드에서 사용자가 각색 전에 직접 편집할 수 있도록 entry 가 없으면 시드 */
+    if (!YRX.adaptedScenes[idx]) {
+      var src = YRX.detectedScenes[idx] || {};
+      YRX.adaptedScenes[idx] = {
+        sceneIndex: idx, sceneNumber: idx + 1,
+        role: src.role, roleLabel: src.roleLabel,
+        original: src.original || '',
+        startSec: src.startSec, endSec: src.endSec, timeRange: src.timeRange,
+        adaptedNarration: '', adaptedCaption: '',
+        captionKo: '', captionJa: '', captionBoth: '',
+        visualDescription: '', imagePrompt: '', videoPrompt: '',
+      };
+    }
     YRX.adaptedScenes[idx][key] = val;
+    _persistAdaptation(YRX.adaptedScenes);
+  };
+
+  /* ⭐ 보드에서 호출 — _persistAdaptation 을 외부 모듈에 노출 */
+  window.yrxPersistAdaptation = function(){
     _persistAdaptation(YRX.adaptedScenes);
   };
 
@@ -702,12 +719,31 @@
     proj.s1.youtubeReference.adaptedScenes  = scenes;
     proj.s1.youtubeReference.adaptationMode = YRX.adaptationMode;
 
+    /* ⭐ deleted 씬은 Step 2 출력에서 제외 — 보드에서 hide 가 아니라 실제 export 에도 빠짐.
+       editedText (사용자가 보드에서 직접 수정한 한국어 자막) 가 있으면 adaptedNarration 보다 우선. */
+    var visible = [];
+    for (var k = 0; k < scenes.length; k++) {
+      var src = YRX.detectedScenes[k];
+      if (src && src.deleted) continue;
+      var merged = Object.assign({}, scenes[k] || {});
+      if (src && src.editedText && !merged.adaptedNarration) merged.adaptedNarration = src.editedText;
+      if (src && src.notes) merged.notes = src.notes;
+      visible.push(merged);
+    }
+    /* 씬 번호 재정렬 — Step 2 가 1, 2, 3... 으로 받음 */
+    visible = visible.map(function(sc, i){
+      sc = Object.assign({}, sc);
+      sc.sceneIndex = i;
+      sc.sceneNumber = i + 1;
+      return sc;
+    });
+
     /* ⭐ Step 2 resolver 가 1순위로 읽는 위치 */
-    proj.s1.scenes = scenes.map(_toStudioScene);
+    proj.s1.scenes = visible.map(_toStudioScene);
     proj.scenes    = proj.s1.scenes.slice();
 
     /* scriptText/scriptKo — 미리보기/검색용 */
-    var scriptText = scenes.map(function(sc){
+    var scriptText = visible.map(function(sc){
       return '씬 ' + sc.sceneNumber + ' (' + (sc.roleLabel || sc.role || '') + ')\n' +
              (sc.adaptedNarration || sc.original || '') +
              ((sc.adaptedCaption || sc.captionKo || sc.captionJa) ?
@@ -718,9 +754,9 @@
     proj.s1.scriptKo = scriptText;
 
     /* Step 2 prompt 호환 */
-    proj.s3.imagePrompts = scenes.map(function(sc){ return sc.imagePrompt || ''; });
-    proj.s3.videoPrompts = scenes.map(function(sc){ return sc.videoPrompt || ''; });
-    proj.s3.scenePrompts = scenes.map(function(sc, i){
+    proj.s3.imagePrompts = visible.map(function(sc){ return sc.imagePrompt || ''; });
+    proj.s3.videoPrompts = visible.map(function(sc){ return sc.videoPrompt || ''; });
+    proj.s3.scenePrompts = visible.map(function(sc, i){
       return {
         sceneIndex:        i,
         promptCompiled:    sc.imagePrompt || '',

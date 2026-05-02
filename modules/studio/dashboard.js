@@ -29,7 +29,7 @@ const DASH_MODES = [
   { id:'stepper',       ico:'📋', label:'단계별 제작',          desc:'대본→이미지→음성→편집 순서대로' },
   { id:'oneclick',      ico:'⚡', label:'딸깍 모드',             desc:'주제 입력 → AI가 전부 자동 완성' },
   { id:'batch',         ico:'📦', label:'대량 생산',             desc:'여러 편을 한 번에 제작 (준비 중)', experimental:true },
-  { id:'ytRefAdapt',    ico:'🎬', label:'조회수 영상 구조로 새로 만들기', desc:'잘 된 영상의 구성과 리듬만 참고해 내 주제로 새 숏츠를 만듭니다' },
+  { id:'ytRefAdapt',    ico:'🎬', label:'조회수 영상 리믹스', desc:'링크와 자막을 기반으로 원본 구조를 보면서 내 주제로 바꾸거나 자막만 번역합니다' },
 ];
 
 /* ── 전역 상태 ── */
@@ -107,7 +107,7 @@ function _studioDashboard(wrapId) {
         onclick="_dashStartNew('${wrapId||'studio-body'}')">
         ${_dashMode==='oneclick'?'⚡ 지금 바로 시작':
           _dashMode==='batch'?'📦 배치 생성 시작':
-          _dashMode==='ytRefAdapt'?'🎬 유튜브 레퍼런스 리믹스 시작':
+          _dashMode==='ytRefAdapt'?'🎬 조회수 영상 리믹스 시작':
           '📋 단계별로 시작하기'} →
       </button>
     </div>

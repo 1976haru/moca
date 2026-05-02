@@ -32,7 +32,10 @@ function _s1RenderModeBlock(wid, mode) {
   if (mode === 'tikitaka') return _s1RenderTikitakaBlock(wid);
   if (mode === 'longform') return _s1RenderLongformBlock(wid);
   if (mode === 'youtube_reference_adapt') {
-    /* 신규 리믹스 보드 우선 — 미로드 시 legacy 분석·각색 UI 폴백 */
+    /* 60/40 리믹스 보드 (자동숏츠 스타일) → 탭 보드 → legacy 분석·각색 UI 순으로 폴백 */
+    if (typeof window._s1RenderYoutubeRemixBoardBlock === 'function') {
+      return window._s1RenderYoutubeRemixBoardBlock(wid);
+    }
     if (typeof window._s1RenderYoutubeRemixBlock === 'function') {
       return window._s1RenderYoutubeRemixBlock(wid);
     }
