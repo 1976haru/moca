@@ -296,6 +296,95 @@
       else if (typeof window.rmParseAndSplit === 'function') window.rmParseAndSplit();
     }, 100);
   };
+  /* ── STT-only 흐름 (업로드 → 자막만) ──
+       사용 케이스:
+         1) MP4 업로드 모드에서 사용자가 "🎤 STT 자동 자막 생성" 버튼 클릭
+         2) YouTube 모드에서 자막 추출 실패 후 영상 업로드로 전환
+       segments → _segmentsToScenes → RM_CORE.setScenes 흐름 (프레임 추출 없음).
+       provider/language 는 dropdown 에서 받음. */
+  window.rmSrvTranscribeFile = async function(file, opts){
+    if (!file) { _setStatus('⚠️ 파일이 없습니다.', 'warn'); return; }
+    if (!window.RM_SERVER) { _setStatus('❌ RM_SERVER 모듈 미로드', 'err'); return; }
+    if (!window.RM_SERVER.getBaseUrl()) {
+      _setStatus('⚠️ 서버 주소를 먼저 입력하고 "🔄 연결 테스트" 를 통과시키세요.', 'warn');
+      return;
+    }
+    opts = opts || {};
+    var lang = opts.language || 'ko';
+    var prov = opts.provider || 'auto';
+    _setStatus('🔄 음성 인식 중... ('+prov+', '+lang+', 네트워크 상태에 따라 수십 초 소요)', 'loading');
+    var t = await window.RM_SERVER.transcribe(file, { language: lang, provider: prov });
+    if (!t.ok) {
+      _setStatus('❌ STT 실패: ' + window.RM_SERVER.friendlyMessage(t), 'err');
+      return;
+    }
+    var segs = t.segments || [];
+    if (!segs.length) { _setStatus('⚠️ 인식된 자막이 없습니다.', 'warn'); return; }
+    /* raw 텍스트 (timestamp 포함) — textarea 에서 확인/수정 가능 */
+    var raw = segs.map(function(s){
+      var ms = Math.floor(s.startSec || 0);
+      var m = Math.floor(ms/60); var ss = ms%60;
+      return m+':'+(ss<10?'0'+ss:ss)+' '+(s.text||'');
+    }).join('\n');
+    window.RM_CORE.setTranscriptRaw(raw, 'timestamp');
+    /* segments → scenes (source:'stt') */
+    var scenes = (typeof _segmentsToScenes === 'function')
+      ? _segmentsToScenes(segs).map(function(sc){ return Object.assign(sc, { source: 'stt' }); })
+      : (function(){
+          var pr = window.RM_PARSER.parseAndSplit(raw, {});
+          return pr.scenes || [];
+        })();
+    if (!scenes.length) { _setStatus('⚠️ scene 변환 결과가 비었습니다.', 'warn'); return; }
+    /* upload 모드 보장 + blob URL 갱신 */
+    var blobUrl = URL.createObjectURL(file);
+    window.RM_CORE.setSource({
+      type: 'upload', fileName: file.name || 'media', fileBlobUrl: blobUrl,
+      durationSec: t.durationSec || 0, title: file.name || '',
+      youtubeUrl: '', videoId: '',
+    });
+    window.RM_CORE.setScenes(scenes);
+    window.RM_CORE.setStage('scenes');
+    var pp = window.RM_CORE.project();
+    pp._active = 0;
+    window.RM_CORE.save();
+    _setStatus('✅ STT 완료 — ' + segs.length + ' segments · ' + scenes.length + ' 씬 (provider: ' +
+      (t.provider || prov) + ', 언어: ' + (t.language || lang) +
+      ') — 일본어 자막 생성·자동숏츠 전달 가능합니다.', 'ok');
+    _re();
+  };
+
+  /* MP4 업로드 모드에서 이미 로드된 file 객체를 가져와 STT 실행 ── */
+  window.rmStartUploadStt = async function(){
+    var p = window.RM_CORE.project();
+    if (!p.source || p.source.type !== 'upload' || !p.source.fileBlobUrl) {
+      _setStatus('⚠️ 먼저 MP4/오디오 파일을 업로드하세요.', 'warn');
+      return;
+    }
+    /* blob URL 에서 fetch 로 Blob 복원 (브라우저 캐시) */
+    var blob;
+    try {
+      var resp = await fetch(p.source.fileBlobUrl);
+      blob = await resp.blob();
+    } catch (e) {
+      _setStatus('❌ 업로드 파일 재로드 실패 — 다시 업로드하세요.', 'err');
+      return;
+    }
+    var file = new File([blob], p.source.fileName || 'upload.mp4', { type: blob.type || 'video/mp4' });
+    var prov = (document.getElementById('rm-stt-provider') || {}).value || 'auto';
+    var lang = (document.getElementById('rm-stt-language') || {}).value || 'ko';
+    return window.rmSrvTranscribeFile(file, { provider: prov, language: lang });
+  };
+
+  /* MP4/오디오 파일 input change → 업로드 + STT 즉시 실행 (YouTube 모드 fallback) */
+  window.rmUploadAndStt = async function(ev){
+    var f = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!f) return;
+    var prov = (document.getElementById('rm-stt-provider') || {}).value || 'auto';
+    var lang = (document.getElementById('rm-stt-language') || {}).value || 'ko';
+    try { await window.rmSrvTranscribeFile(f, { provider: prov, language: lang }); }
+    finally { try { ev.target.value = ''; } catch(_){} }
+  };
+
   window.rmSrvUploadAndProcess = async function(ev){
     var f = ev && ev.target && ev.target.files && ev.target.files[0];
     if (!f) return;

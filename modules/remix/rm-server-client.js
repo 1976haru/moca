@@ -150,14 +150,20 @@
     }
   }
 
-  /* ── /api/remix/transcribe (multipart) ── */
+  /* ── /api/remix/transcribe (multipart) ──
+       opts: { language, provider }
+         provider: 'auto' (기본 — 서버가 daglo→whisper→stub 순서로 자동 선택)
+                 | 'whisper' | 'daglo' (명시 요청 — 미설정 시 503 반환)
+       file: MP4/WebM/MP3/WAV/M4A — 사용자가 업로드한 권한 영상/오디오 */
   async function transcribe(file, opts) {
     var base = _get();
     if (!base) return _err('NO_SERVER', '서버 주소 미설정.');
     if (!file) return _err('NO_FILE', '업로드할 파일이 없습니다.');
     var fd = new FormData();
-    fd.append('video', file, file.name || 'video.mp4');
+    /* 비디오/오디오 파일 모두 'video' 필드명 사용 (server route 가 어느 필드든 수용) */
+    fd.append('video', file, file.name || 'media.bin');
     if (opts && opts.language) fd.append('language', opts.language);
+    if (opts && opts.provider) fd.append('provider', opts.provider);
     try {
       var r = await fetch(base + '/api/remix/transcribe', { method: 'POST', body: fd });
       var j;
@@ -212,6 +218,9 @@
     INVALID_URL:         '유튜브 URL 에서 videoId 를 찾지 못했습니다.',
     NO_FILE:             '업로드할 파일이 필요합니다.',
     /* 공개 자막 보조 추출 — 실험 기능 */
+    /* STT (음성 인식) — 사용자 업로드 파일 */
+    STT_AUTH_FAIL:         'STT 서비스 인증에 실패했습니다. 서버의 STT API 키를 확인하세요.',
+    STT_PROVIDER_FAIL:     'STT 공급자 호출이 실패했습니다. 다른 provider 로 다시 시도해 보세요.',
     NO_PUBLIC_CAPTIONS:    '이 영상에서 공개 자막을 찾지 못했습니다. 자막/대본을 직접 붙여넣거나 SRT/TXT 파일을 업로드하세요.',
     CAPTION_TRACK_NOT_FOUND:'요청한 언어의 자막 트랙이 없습니다.',
     CAPTION_FETCH_BLOCKED:  '자막 트랙 접근이 차단되었습니다. 시간을 두고 다시 시도하거나 다른 fallback 을 사용하세요.',

@@ -35,12 +35,14 @@
       unsplash: 'uc_unsplash_key',
     },
     voice: {
-      elevenlabs: 'uc_eleven_key',
-      openai_tts: 'uc_openai_key',
-      google_tts: 'uc_google_key',
-      azure_tts:  'uc_azure_key',
-      nijivoice:  'uc_nijivoice_key',
-      clova:      'uc_clova_key',
+      elevenlabs:  'uc_eleven_key',
+      openai_tts:  'uc_openai_key',
+      google_tts:  'uc_google_key',
+      azure_tts:   'uc_azure_key',
+      nijivoice:   'uc_nijivoice_key',
+      clova:       'uc_clova_key',
+      daglo:       'uc_daglo_key',     /* STT (음성 인식) — Daglo */
+      whisper_api: 'uc_openai_key',    /* STT — OpenAI 키 공유 (alias) */
     },
     video: {
       shotstack:    'uc_shotstack_key',

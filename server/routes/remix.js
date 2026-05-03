@@ -26,23 +26,42 @@ function _cleanup(file) {
   fs.unlink(file.path, () => {});
 }
 
-/* ── /api/remix/transcribe ── */
-router.post('/transcribe', upload.single('video'), async (req, res, next) => {
+/* ── /api/remix/transcribe ──
+     입력: multipart/form-data
+       - video|audio|file: MP4/WebM/MP3/WAV/M4A 파일 (사용자 권한 영상)
+       - language:  (선택) 'ko', 'ja', 'en' 등
+       - provider:  (선택) 'auto' | 'whisper' | 'daglo'
+     출력: { ok, language, durationSec, segments:[{startSec,endSec,text}], source, provider } */
+router.post('/transcribe', upload.any(), async (req, res, next) => {
+  /* multer.any() — 'video', 'audio', 'file' 등 어느 필드명이든 첫 파일 사용 */
+  const file = (req.files || []).find(f => /^(video|audio|file)$/i.test(f.fieldname)) || (req.files || [])[0];
   try {
-    if (!req.file) {
+    if (!file) {
       return res.status(400).json({ ok: false, error: 'NO_FILE',
-        message: 'multipart/form-data 의 "video" 필드에 파일이 필요합니다.' });
+        message: 'multipart/form-data 의 "video" / "audio" / "file" 필드에 파일이 필요합니다.' });
     }
     const language = String(req.body.language || process.env.WHISPER_LANGUAGE || '').trim() || undefined;
-    const result = await transcribeSvc.run(req.file.path, { language });
-    _cleanup(req.file);
+    const provider = String(req.body.provider || 'auto').trim().toLowerCase();
+    const result = await transcribeSvc.run(file.path, { language, provider });
+    _cleanup(file);
     res.json({ ok: true, ...result });
   } catch (e) {
-    _cleanup(req.file);
-    if (e.code === 'NO_OPENAI_KEY') {
-      /* stub fallback 도 실패한 경우만 — 일반적으로 stub 은 항상 성공 */
+    _cleanup(file);
+    if (e.code === 'NO_DAGLO_KEY') {
       return res.status(503).json({ ok: false, error: 'STT_NOT_CONFIGURED',
-        message: '음성 인식이 설정되지 않았습니다. OPENAI_API_KEY 환경변수를 설정하거나, 자막 파일을 직접 업로드하세요.' });
+        message: '음성 인식(Daglo)이 설정되지 않았습니다. DAGLO_API_KEY 환경변수를 설정하거나, provider=whisper 또는 provider=auto 로 다시 시도하세요.' });
+    }
+    if (e.code === 'NO_OPENAI_KEY') {
+      return res.status(503).json({ ok: false, error: 'STT_NOT_CONFIGURED',
+        message: '음성 인식(Whisper)이 설정되지 않았습니다. OPENAI_API_KEY 환경변수를 설정하거나, provider=daglo 로 다시 시도하세요.' });
+    }
+    if (e.code === 'DAGLO_AUTH_FAIL') {
+      return res.status(401).json({ ok: false, error: 'STT_AUTH_FAIL',
+        message: 'Daglo 인증 실패 — DAGLO_API_KEY 를 확인하세요.' });
+    }
+    if (e.code === 'DAGLO_HTTP_FAIL' || e.code === 'DAGLO_PARSE_FAIL' || e.code === 'DAGLO_NETWORK_FAIL') {
+      return res.status(502).json({ ok: false, error: 'STT_PROVIDER_FAIL',
+        message: 'Daglo 호출 실패: ' + (e.message || '') });
     }
     next(e);
   }

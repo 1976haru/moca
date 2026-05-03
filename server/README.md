@@ -16,7 +16,7 @@
 | GET | `/api/youtube/oauth/callback` | OAuth 콜백 | (위와 동일) |
 | GET | `/api/youtube/captions/list?videoId=` | 🅱 권한 있는 영상의 자막 목록 | OAuth + Bearer 토큰 |
 | GET | `/api/youtube/captions/download?captionId=&format=srt|vtt` | 🅱 자막 다운로드 | OAuth + Bearer 토큰 |
-| POST | `/api/remix/transcribe` (multipart `video`) | MP4 → 자막 segments | (선택) `OPENAI_API_KEY` |
+| POST | `/api/remix/transcribe` (multipart `video`/`audio`/`file`) | MP4·MP3·WAV → 자막 segments. body 의 `provider`(auto/whisper/daglo) + `language` 지원 | (선택) `OPENAI_API_KEY` 또는 `DAGLO_API_KEY` |
 | POST | `/api/remix/keyframes` (multipart `video` + `scenes` JSON) | scene midSec 프레임 추출 | — (ffmpeg-static 포함) |
 
 > 🅰 **공개 자막 보조 추출 (`/api/youtube/public-transcript`)** — 영상 파일/오디오를 다운로드하지 않고
@@ -53,8 +53,19 @@ npm start                  # 또는 npm run dev (--watch)
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (선택 — OAuth 자막)
    - `GOOGLE_OAUTH_REDIRECT` = `https://your-render-app.onrender.com/api/youtube/oauth/callback`
    - `OPENAI_API_KEY` (선택 — Whisper STT)
+   - `DAGLO_API_KEY` (선택 — Daglo 한국어 STT)
+   - `DAGLO_API_BASE` (선택 — 기본 `https://apis.daglo.ai`)
+   - `DAGLO_API_PATH` (선택 — 기본 `/transcribe`)
+   - `DAGLO_API_FIELD` (선택 — multipart 파일 필드명, 기본 `file`)
    - `ALLOWED_ORIGINS` = `https://1976haru.github.io` (또는 빈 칸 = 전체 허용)
    - `PUBLIC_BASE_URL` = `https://your-render-app.onrender.com`
+
+### STT provider 우선순위
+- `provider=auto` (기본): `DAGLO_API_KEY` → `OPENAI_API_KEY` → stub 순서로 자동 선택
+- `provider=daglo`: Daglo 만 사용. `DAGLO_API_KEY` 미설정 시 503
+- `provider=whisper`: OpenAI Whisper 만 사용. `OPENAI_API_KEY` 미설정 시 503
+
+⚠️ STT API 키는 서버 환경변수에만 존재 — 프론트엔드 응답에 키 원문 포함 금지.
 
 다른 PaaS (Railway, Fly.io, Vercel Functions) 도 동일 패턴.
 

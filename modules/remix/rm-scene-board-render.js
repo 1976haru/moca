@@ -261,19 +261,53 @@
   /* ── MP4 업로드 모드 UI ── */
   function _renderModeUpload(p) {
     var src = p.source || {};
-    var videoHtml = src.fileBlobUrl
+    var hasFile = !!src.fileBlobUrl;
+    var hasServer = !!(window.RM_SERVER && window.RM_SERVER.getBaseUrl && window.RM_SERVER.getBaseUrl());
+    var srvHealth = (p && p._serverHealth) || null;
+    var feats = (srvHealth && srvHealth.features) || {};
+    var sttDaglo   = !!feats.sttDaglo;
+    var sttWhisper = !!feats.sttWhisper;
+    var sttReady   = !!(hasServer && (sttDaglo || sttWhisper || !srvHealth));
+    var videoHtml = hasFile
       ? '<video id="rm-video-el" src="'+_escAttr(src.fileBlobUrl)+'" controls preload="metadata" style="width:100%;height:100%;background:#000"></video>'
-      : '<div class="rm-iframe-empty">📁 MP4 파일을 업로드하면 미리보기가 표시됩니다.</div>';
+      : '<div class="rm-iframe-empty">📁 MP4 / 오디오 파일을 업로드하면 미리보기가 표시됩니다.</div>';
+
+    /* STT 컨트롤 — provider/language 선택 + 실행 버튼 */
+    var providerOptions =
+      '<option value="auto"' + (sttDaglo || sttWhisper ? '' : ' selected') + '>🤖 자동 (서버 기본)</option>' +
+      '<option value="daglo"' + (sttDaglo ? ' selected' : '') + '>🇰🇷 Daglo' + (sttDaglo ? '' : ' (서버 미설정)') + '</option>' +
+      '<option value="whisper"' + (!sttDaglo && sttWhisper ? ' selected' : '') + '>✨ OpenAI Whisper' + (sttWhisper ? '' : ' (서버 미설정)') + '</option>';
+    var sttBar =
+      '<div class="rm-stt-bar">' +
+        '<span class="rm-stt-label">🎤 STT 자동 자막</span>' +
+        '<select id="rm-stt-provider" class="rm-stt-sel" title="STT 공급자 선택">' + providerOptions + '</select>' +
+        '<select id="rm-stt-language" class="rm-stt-sel" title="음성 언어">' +
+          '<option value="ko">한국어 (ko)</option>' +
+          '<option value="ja">일본어 (ja)</option>' +
+          '<option value="en">영어 (en)</option>' +
+          '<option value="">자동 감지</option>' +
+        '</select>' +
+        (sttReady
+          ? '<button type="button" class="rm-tb-btn pri" onclick="rmStartUploadStt()" '+(hasFile?'':'disabled')+
+              ' title="업로드된 영상의 음성을 서버에서 인식해 자막 생성">🎤 자막 생성 시작</button>'
+          : '<button type="button" class="rm-tb-btn" disabled title="서버 자동 가져오기 카드에서 API 서버 주소를 입력하고 연결 테스트를 통과시키세요">🎤 STT (서버 미연결)</button>') +
+        '<small class="rm-stt-note">' +
+          (hasFile ? '✅ 파일 준비됨 — ' + _esc(src.fileName || '') : '⚠️ 먼저 MP4/오디오 파일을 업로드하세요') +
+        '</small>' +
+      '</div>';
+
     return '<div class="rm-tb-row">' +
         '<label class="rm-tb-btn rm-file rm-file-pri">' +
-          '<input type="file" accept="video/mp4,video/webm,video/quicktime" onchange="rmLoadVideoFile(event)"> 📁 MP4 / WebM 업로드' +
+          '<input type="file" accept="video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/mp4,audio/m4a" onchange="rmLoadVideoFile(event)"> 📁 영상/오디오 업로드' +
           (src.fileName ? ' (현재: '+_esc(src.fileName)+')' : '') +
         '</label>' +
         '<label class="rm-tb-btn rm-file"><input type="file" accept=".srt,.vtt,.txt" onchange="rmLoadCaptionFile(event)"> 📄 자막 파일</label>' +
         '<button type="button" class="rm-tb-btn pri" onclick="rmParseAndSplit()">🪄 장면 분리</button>' +
       '</div>' +
-      '<div class="rm-up-info">📁 본인 영상 또는 사용 허가받은 영상만 업로드하세요. ' +
-        'MP4 모드에서는 Scene 별 프레임 캡처가 가능합니다 (Scene 카드의 📷 캡처 버튼).</div>' +
+      sttBar +
+      '<div class="rm-up-info">📁 본인 영상 또는 사용 허가받은 영상/오디오만 업로드하세요. ' +
+        'STT 는 서버에서 처리되며 API 키는 프론트엔드에 노출되지 않습니다. ' +
+        '업로드된 파일은 처리 후 서버 임시 디렉토리에서 자동 삭제됩니다.</div>' +
       '<div class="rm-tb-row">' +
         '<div class="rm-iframe-box">' + videoHtml + '</div>' +
         _renderPasteArea(p) +

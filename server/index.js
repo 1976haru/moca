@@ -49,11 +49,15 @@ app.get('/api/health', (req, res) => {
       youtubeMeta:               true, /* oEmbed 는 항상 동작 */
       youtubePublicTranscript:   true, /* 실험 기능 — captionTracks 보조 추출. 영상별 성공률 다름 */
       youtubeCaptionsOAuth:      !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-      mp4Transcribe:             true, /* OPENAI_API_KEY 없으면 stub 모드 */
-      mp4TranscribeReal:         !!process.env.OPENAI_API_KEY,
+      mp4Transcribe:             true, /* 키 없으면 stub 모드 */
+      mp4TranscribeReal:         !!(process.env.OPENAI_API_KEY || process.env.DAGLO_API_KEY),
+      sttWhisper:                !!process.env.OPENAI_API_KEY,
+      sttDaglo:                  !!process.env.DAGLO_API_KEY,
       keyframes:                 true, /* ffmpeg-static 사용 */
     },
-    transcribeMode: process.env.OPENAI_API_KEY ? 'whisper' : 'stub',
+    transcribeMode: process.env.DAGLO_API_KEY ? 'daglo'
+                  : process.env.OPENAI_API_KEY ? 'whisper'
+                  : 'stub',
   });
 });
 
