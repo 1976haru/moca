@@ -25,15 +25,13 @@ const DASH_TOPICS = {
   ],
 };
 
+/* ⭐ 자동숏츠 핵심 제작 모드는 3개 (단계별 / 딸깍 / 대량). 영상 리믹스는 별도 카테고리로
+      이동했으므로 이 grid 에 포함하지 않습니다. 사용자는 메인 사이드바의 "🎞️ 영상 리믹스
+      스튜디오" 카테고리 또는 본 대시보드 하단의 안내 박스로 이동합니다. */
 const DASH_MODES = [
-  { id:'stepper',       ico:'📋', label:'단계별 제작',          desc:'대본→이미지→음성→편집 순서대로' },
-  { id:'oneclick',      ico:'⚡', label:'딸깍 모드',             desc:'주제 입력 → AI가 전부 자동 완성' },
-  { id:'batch',         ico:'📦', label:'대량 생산',             desc:'여러 편을 한 번에 제작 (준비 중)', experimental:true },
-  /* ⭐ 외부 스튜디오 — 자동숏츠 의 핵심 제작 모드가 아니라 "이동 안내 카드".
-        클릭 시 engines/remix/index.html 로 바로 이동, _dashMode 선택 흐름에 끼지 않음. */
-  { id:'ytRefAdapt',    ico:'🎞️', label:'영상 리믹스 스튜디오로 이동',
-    desc:'기존 영상/자막을 불러와 자막 번역·일부 각색·음성교체를 합니다',
-    external:true, externalUrl:'../remix/index.html', externalBtn:'영상 리믹스 열기' },
+  { id:'stepper',  ico:'📋', label:'단계별 제작', desc:'대본→이미지→음성→편집 순서대로' },
+  { id:'oneclick', ico:'⚡', label:'딸깍 모드',   desc:'주제 입력 → AI가 전부 자동 완성' },
+  { id:'batch',    ico:'📦', label:'대량 생산',   desc:'여러 편을 한 번에 제작 (준비 중)', experimental:true },
 ];
 
 /* ── 전역 상태 ── */
@@ -97,27 +95,15 @@ function _studioDashboard(wrapId) {
     <div class="dash-section">
       <div class="dash-section-title">🚀 새 프로젝트 시작</div>
       <div class="dash-modes">
-        ${DASH_MODES.map(m=>{
-          if (m.external) {
-            /* 외부 스튜디오 카드 — _dashMode 선택에 끼지 않고 직접 이동 */
-            return `
-            <a class="dash-mode-card external" href="${m.externalUrl}">
-              <span class="dash-mode-exp dash-mode-ext">별도 스튜디오</span>
-              <span class="dash-mode-ico">${m.ico}</span>
-              <div class="dash-mode-label">${m.label}</div>
-              <div class="dash-mode-desc">${m.desc}</div>
-              <div class="dash-mode-extbtn">${m.externalBtn || '열기'} →</div>
-            </a>`;
-          }
-          return `
+        ${DASH_MODES.map(m=>`
           <button class="dash-mode-card ${_dashMode===m.id?'on':''} ${m.experimental?'experimental':''}"
             onclick="_dashMode='${m.id}';_studioDashboard('${wrapId||'studio-body'}')">
             ${m.experimental?'<span class="dash-mode-exp">실험</span>':''}
             <span class="dash-mode-ico">${m.ico}</span>
             <div class="dash-mode-label">${m.label}</div>
             <div class="dash-mode-desc">${m.desc}</div>
-          </button>`;
-        }).join('')}
+          </button>
+        `).join('')}
       </div>
       <button class="dash-start-btn"
         onclick="_dashStartNew('${wrapId||'studio-body'}')">
@@ -125,6 +111,15 @@ function _studioDashboard(wrapId) {
           _dashMode==='batch'?'📦 배치 생성 시작':
           '📋 단계별로 시작하기'} →
       </button>
+      <!-- 영상 리믹스 보조 안내 — 핵심 제작 카드와 시각적으로 구분 -->
+      <div class="dash-remix-notice">
+        <span class="dash-remix-ico">🎞️</span>
+        <div class="dash-remix-text">
+          <b>기존 영상/자막을 불러와 번역·각색·음성교체를 하려면</b>
+          <span> 별도 카테고리 "영상 리믹스 스튜디오"를 사용하세요.</span>
+        </div>
+        <a class="dash-remix-btn" href="../remix/index.html">영상 리믹스 스튜디오 열기 →</a>
+      </div>
     </div>
 
     <!-- 3. 최근 프로젝트 (이어 만들기) -->
@@ -398,16 +393,16 @@ function _dashInjectCSS() {
 .dash-mode-ico{font-size:24px;display:block;margin-bottom:6px}
 .dash-mode-label{font-size:13px;font-weight:800;margin-bottom:3px}
 .dash-mode-desc{font-size:10px;color:#9b8a93}
-/* 외부 스튜디오 카드 — 자동숏츠 핵심 제작 모드와 시각적으로 구분 */
-.dash-mode-card.external{position:relative;display:block;text-decoration:none;color:inherit;
-  border-style:dashed;border-color:#c7b3e5;background:#fafafe}
-.dash-mode-card.external:hover{border-color:#9181ff;background:#f5f0ff}
-.dash-mode-card.external .dash-mode-label{color:#5b1a4a}
-.dash-mode-ext{color:#5a4a8a;background:#f5f0ff;border-color:#c7b3e5}
-.dash-mode-extbtn{margin-top:6px;padding:5px 10px;border-radius:8px;background:#fff;
-  border:1px solid #c7b3e5;color:#5a4a8a;font-size:10.5px;font-weight:800;display:inline-block}
-.dash-mode-card.external:hover .dash-mode-extbtn{background:linear-gradient(135deg,#ef6fab,#9181ff);
-  color:#fff;border-color:transparent}
+/* 영상 리믹스 보조 안내 박스 — 핵심 제작 모드 그리드 아래, 작고 별도 표시 */
+.dash-remix-notice{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:10px;padding:8px 12px;background:#fafafe;border:1px dashed #c7b3e5;
+  border-radius:10px;font-size:11.5px;color:#5a4a56;line-height:1.55}
+.dash-remix-ico{font-size:18px;flex:0 0 auto}
+.dash-remix-text{flex:1 1 200px;min-width:0}
+.dash-remix-text b{color:#5b1a4a}
+.dash-remix-btn{flex:0 0 auto;padding:6px 12px;background:#fff;border:1px solid #c7b3e5;
+  border-radius:8px;color:#5a4a8a;font-size:11px;font-weight:800;text-decoration:none}
+.dash-remix-btn:hover{background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;border-color:transparent}
 .dash-start-btn{width:100%;padding:14px;border:none;border-radius:14px;
   background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;
   font-size:15px;font-weight:900;cursor:pointer;transition:.14s}
