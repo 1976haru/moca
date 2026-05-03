@@ -23,11 +23,15 @@ const S1_STYLES = [
   { id:'custom',    ico:'✏️', label:'직접 입력',    desc:'스타일 직접 지정' },
 ];
 
+/* ⭐ 자동숏츠 Step 1 은 "새 영상 만들기" 흐름 전용입니다.
+      유튜브 링크/자막 기반 편집·번역·음성교체는 별도 카테고리 "영상 리믹스 스튜디오"
+      (engines/remix/index.html) 에서 처리합니다.
+      legacy youtube_reference_adapt mode id 는 dispatcher 에 호환을 위해 유지되며,
+      모드 선택 UI 에는 더 이상 노출하지 않습니다. */
 const S1_MODES = [
-  { id:'general',                 ico:'⚡', label:'일반 숏츠' },
-  { id:'tikitaka',                ico:'💬', label:'티키타카' },
-  { id:'longform',                ico:'📺', label:'롱폼' },
-  { id:'youtube_reference_adapt', ico:'🎬', label:'유튜브 리믹스 보드' },
+  { id:'general',  ico:'⚡', label:'일반 숏츠' },
+  { id:'tikitaka', ico:'💬', label:'티키타카' },
+  { id:'longform', ico:'📺', label:'롱폼' },
 ];
 
 const S1_QUICK_LENS_SHORT = [30, 40, 60, 90, 180, 300, 480];
@@ -137,6 +141,10 @@ function _studioS1Step(wrapId) {
             ${m.ico} ${m.label}
           </button>
         `).join('')}
+      </div>
+      <div class="s1s-mode-hint" style="margin-top:8px;padding:6px 10px;background:#fafafe;border:1px dashed #c7b3e5;border-radius:8px;font-size:11px;color:#5a4a8a;line-height:1.55">
+        🎞 유튜브 링크 자막을 번역하거나 일부 각색·음성교체를 하려면
+        <a href="../remix/index.html" style="color:#9181ff;text-decoration:underline;font-weight:800">영상 리믹스 스튜디오</a>를 사용하세요. (기존 youtube_reference_adapt 프로젝트는 자동으로 호환됩니다)
       </div>
     </div>
 

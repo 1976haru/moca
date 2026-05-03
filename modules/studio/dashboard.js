@@ -29,7 +29,11 @@ const DASH_MODES = [
   { id:'stepper',       ico:'📋', label:'단계별 제작',          desc:'대본→이미지→음성→편집 순서대로' },
   { id:'oneclick',      ico:'⚡', label:'딸깍 모드',             desc:'주제 입력 → AI가 전부 자동 완성' },
   { id:'batch',         ico:'📦', label:'대량 생산',             desc:'여러 편을 한 번에 제작 (준비 중)', experimental:true },
-  { id:'ytRefAdapt',    ico:'🎬', label:'조회수 영상 리믹스', desc:'링크와 자막을 기반으로 원본 구조를 보면서 내 주제로 바꾸거나 자막만 번역합니다' },
+  /* ⭐ 외부 스튜디오 — 자동숏츠 의 핵심 제작 모드가 아니라 "이동 안내 카드".
+        클릭 시 engines/remix/index.html 로 바로 이동, _dashMode 선택 흐름에 끼지 않음. */
+  { id:'ytRefAdapt',    ico:'🎞️', label:'영상 리믹스 스튜디오로 이동',
+    desc:'기존 영상/자막을 불러와 자막 번역·일부 각색·음성교체를 합니다',
+    external:true, externalUrl:'../remix/index.html', externalBtn:'영상 리믹스 열기' },
 ];
 
 /* ── 전역 상태 ── */
@@ -93,21 +97,32 @@ function _studioDashboard(wrapId) {
     <div class="dash-section">
       <div class="dash-section-title">🚀 새 프로젝트 시작</div>
       <div class="dash-modes">
-        ${DASH_MODES.map(m=>`
+        ${DASH_MODES.map(m=>{
+          if (m.external) {
+            /* 외부 스튜디오 카드 — _dashMode 선택에 끼지 않고 직접 이동 */
+            return `
+            <a class="dash-mode-card external" href="${m.externalUrl}">
+              <span class="dash-mode-exp dash-mode-ext">별도 스튜디오</span>
+              <span class="dash-mode-ico">${m.ico}</span>
+              <div class="dash-mode-label">${m.label}</div>
+              <div class="dash-mode-desc">${m.desc}</div>
+              <div class="dash-mode-extbtn">${m.externalBtn || '열기'} →</div>
+            </a>`;
+          }
+          return `
           <button class="dash-mode-card ${_dashMode===m.id?'on':''} ${m.experimental?'experimental':''}"
             onclick="_dashMode='${m.id}';_studioDashboard('${wrapId||'studio-body'}')">
             ${m.experimental?'<span class="dash-mode-exp">실험</span>':''}
             <span class="dash-mode-ico">${m.ico}</span>
             <div class="dash-mode-label">${m.label}</div>
             <div class="dash-mode-desc">${m.desc}</div>
-          </button>
-        `).join('')}
+          </button>`;
+        }).join('')}
       </div>
       <button class="dash-start-btn"
         onclick="_dashStartNew('${wrapId||'studio-body'}')">
         ${_dashMode==='oneclick'?'⚡ 지금 바로 시작':
           _dashMode==='batch'?'📦 배치 생성 시작':
-          _dashMode==='ytRefAdapt'?'🎬 조회수 영상 리믹스 시작':
           '📋 단계별로 시작하기'} →
       </button>
     </div>
@@ -287,12 +302,12 @@ window._dashStartNew = function(wid) {
     const proj = studioNewProjectObj();
     proj.mode  = _dashMode;
     proj.lang  = _dashLang;
-    /* ytRefAdapt 모드 — Step 1 의 youtube_reference_adapt 모드로 진입.
-       s1.mode 를 미리 설정해 _s1RenderModeBlock 이 youtube reference 블록을
-       바로 렌더링하도록 한다. */
+    /* legacy: ytRefAdapt 는 더 이상 핵심 제작 모드가 아닙니다.
+       카드는 외부 스튜디오 (engines/remix/) 로 직접 이동하므로 일반 사용 경로에서는
+       이 코드에 도달하지 않습니다. 기존 저장 프로젝트 호환을 위한 fallback 만 유지. */
     if (_dashMode === 'ytRefAdapt') {
-      proj.s1 = proj.s1 || {};
-      proj.s1.mode = 'youtube_reference_adapt';
+      window.location.href = '../remix/index.html';
+      return;
     }
     if (typeof STUDIO !== 'undefined') STUDIO.project = proj;
     if (typeof studioSave === 'function') { try { studioSave(); } catch(_){} }
@@ -383,6 +398,16 @@ function _dashInjectCSS() {
 .dash-mode-ico{font-size:24px;display:block;margin-bottom:6px}
 .dash-mode-label{font-size:13px;font-weight:800;margin-bottom:3px}
 .dash-mode-desc{font-size:10px;color:#9b8a93}
+/* 외부 스튜디오 카드 — 자동숏츠 핵심 제작 모드와 시각적으로 구분 */
+.dash-mode-card.external{position:relative;display:block;text-decoration:none;color:inherit;
+  border-style:dashed;border-color:#c7b3e5;background:#fafafe}
+.dash-mode-card.external:hover{border-color:#9181ff;background:#f5f0ff}
+.dash-mode-card.external .dash-mode-label{color:#5b1a4a}
+.dash-mode-ext{color:#5a4a8a;background:#f5f0ff;border-color:#c7b3e5}
+.dash-mode-extbtn{margin-top:6px;padding:5px 10px;border-radius:8px;background:#fff;
+  border:1px solid #c7b3e5;color:#5a4a8a;font-size:10.5px;font-weight:800;display:inline-block}
+.dash-mode-card.external:hover .dash-mode-extbtn{background:linear-gradient(135deg,#ef6fab,#9181ff);
+  color:#fff;border-color:transparent}
 .dash-start-btn{width:100%;padding:14px;border:none;border-radius:14px;
   background:linear-gradient(135deg,#ef6fab,#9181ff);color:#fff;
   font-size:15px;font-weight:900;cursor:pointer;transition:.14s}
