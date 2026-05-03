@@ -128,6 +128,7 @@
   /* ── 3 모드 카드 chooser ── */
   function _renderSourceModeCards() {
     var modes = (window.RM_SOURCE && window.RM_SOURCE.MODES) || [];
+    var hasJSZip = typeof window.JSZip !== 'undefined';
     return '<div class="rm-toolbar">' +
       '<div class="rm-mode-intro"><b>1단계 — 소스 가져오기</b><br>' +
         '<small>아래 3 가지 방식 중 하나를 선택하세요. 모드에 따라 가능한 작업이 다릅니다.</small>' +
@@ -150,6 +151,28 @@
               : '<div class="rm-mode-cta disabled">현재 비활성 (서버 미연결)</div>') +
           '</div>';
         }).join('') +
+      '</div>' +
+      /* ── 또는: 미리 만든 패키지 불러오기 ── */
+      '<div class="rm-pkg-bar">' +
+        '<div class="rm-pkg-hd">' +
+          '<b>📦 또는 — 리믹스 패키지 불러오기</b> ' +
+          '<small>로컬 헬퍼 또는 다른 도구가 만든 파일을 한 번에 import</small>' +
+        '</div>' +
+        '<div class="rm-pkg-row">' +
+          '<label class="rm-tb-btn rm-file rm-file-pri">' +
+            '<input type="file" accept=".json,.zip,.srt,.vtt,.txt" onchange="rmPkgImport(event)"> ' +
+            '📂 파일 선택 (.json / .zip / .srt / .vtt / .txt)' +
+          '</label>' +
+          '<small style="color:#7b6080;line-height:1.55;flex:1 1 220px;min-width:180px">' +
+            'remix_project.json, remix_package.zip' + (hasJSZip ? '' : ' <span style="color:#92400e">(ZIP은 JSZip 라이브러리 추가 시 활성)</span>') +
+            ', SRT/VTT/TXT 자막 모두 지원' +
+          '</small>' +
+        '</div>' +
+        '<div class="rm-pkg-help">' +
+          '⚠️ 유튜브 링크에서 자막/프레임을 자동으로 가져오려면 <b>로컬 리믹스 헬퍼</b> 또는 ' +
+          '<b>서버 자동 가져오기</b> 가 필요합니다. 현재 웹앱에서는 직접 붙여넣기 또는 ' +
+          '<b>remix_project.json</b> 파일 불러오기를 지원합니다.' +
+        '</div>' +
       '</div>' +
     '</div>';
   }
@@ -587,6 +610,28 @@
       _re();
     });
   };
+  /* ── 리믹스 패키지 import (.json / .zip / .srt / .vtt / .txt) ── */
+  window.rmPkgImport = async function(ev){
+    var f = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!f) return;
+    if (!window.RM_PACKAGE) {
+      _setStatus('❌ RM_PACKAGE 모듈 미로드', 'err');
+      try { ev.target.value = ''; } catch(_){}
+      return;
+    }
+    _setStatus('🔄 패키지 import 중... (' + f.name + ')', 'loading');
+    var r = await window.RM_PACKAGE.importAuto(f);
+    try { ev.target.value = ''; } catch(_){}
+    if (!r.ok) {
+      _setStatus('❌ import 실패 (' + (r.error || 'UNKNOWN') + ') — ' + (r.message || ''), 'err');
+      return;
+    }
+    _setStatus('✅ 패키지 import 완료 — ' + r.sceneCount + ' 씬' +
+      (r.hasFrames ? ' · 프레임 ' + r.hasFrames + ' 개' : '') +
+      ' · source: ' + r.source, 'ok');
+    _re();
+  };
+
   window.rmLoadCaptionFile = function(ev){
     var f = ev && ev.target && ev.target.files && ev.target.files[0];
     if (!f) return;
