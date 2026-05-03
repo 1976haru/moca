@@ -149,7 +149,7 @@
 
   /* ── 작업 모드 ── */
   function setMode(mode) {
-    if (!/^(subtitle_only|voice_replace|partial_rewrite|structure_only)$/.test(mode)) return;
+    if (!/^(subtitle_only|voice_replace|partial_rewrite|structure_only|longform_extract)$/.test(mode)) return;
     load();
     P.mode = mode;
     save();

@@ -247,10 +247,11 @@
   /* ── 작업 모드 + 자막 언어 + 시니어 톤 ── */
   function _renderModeBar(p) {
     var modes = [
-      { id:'subtitle_only',  label:'자막만 번역',     hint:'장면 구조 유지 · 일본어 자막 변환' },
-      { id:'voice_replace',  label:'음성만 교체',     hint:'원본 영상 + 새 TTS 대본 (Step 3 전달)' },
-      { id:'partial_rewrite',label:'일부 각색',       hint:'장면 구조 유지 · 말투/표현만 수정' },
-      { id:'structure_only', label:'구조만 참고',     hint:'대사/장면 새로 작성 (Step 2 전달)' },
+      { id:'subtitle_only',  label:'자막만 번역',       hint:'장면 구조 유지 · 일본어 자막 변환' },
+      { id:'voice_replace',  label:'음성만 교체',       hint:'원본 영상 + 새 TTS 대본 (Step 3 전달)' },
+      { id:'partial_rewrite',label:'일부 각색',         hint:'장면 구조 유지 · 말투/표현만 수정' },
+      { id:'structure_only', label:'구조만 참고',       hint:'대사/장면 새로 작성 (Step 2 전달)' },
+      { id:'longform_extract', label:'🎯 롱폼→숏폼 추출', hint:'긴 영상에서 15~60s 숏츠 후보 자동 추출' },
     ];
     var langs = [{id:'ko',label:'한국어'},{id:'ja',label:'일본어'},{id:'both',label:'한일 동시'}];
     return '<div class="rm-modebar">' +
@@ -272,7 +273,12 @@
   /* ── 60/40 보드 ── */
   function _renderBoard(p) {
     var hasScenes = (p.scenes || []).length > 0;
-    return '<div class="rm-board">' +
+    /* 롱폼→숏폼 추출 모드 — Scene 보드 위에 후보 패널 추가 */
+    var lfPanel = '';
+    if (p.mode === 'longform_extract' && typeof window._rmRenderLongformPanel === 'function') {
+      lfPanel = window._rmRenderLongformPanel(p);
+    }
+    return lfPanel + '<div class="rm-board">' +
       _renderSceneList(p, hasScenes) +
       _renderRightPanel(p, hasScenes) +
     '</div>';
