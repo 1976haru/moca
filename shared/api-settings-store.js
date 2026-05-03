@@ -57,12 +57,13 @@
       udio: 'uc_udio_key',
     },
     upload: {
-      youtube:    'uc_youtube_key',
-      tiktok:     'uc_tiktok_key',
-      instagram:  'uc_instagram_key',
-      facebook:   'uc_facebook_key',
-      naver_blog: 'uc_naver_key',
-      threads:    'uc_threads_key',
+      youtube:        'uc_youtube_key',
+      youtubeDataApi: 'uc_youtube_key',  /* 별칭 — youtube 와 동일 키 공유 (메타데이터 조회용) */
+      tiktok:         'uc_tiktok_key',
+      instagram:      'uc_instagram_key',
+      facebook:       'uc_facebook_key',
+      naver_blog:     'uc_naver_key',
+      threads:        'uc_threads_key',
     },
   };
   window.MOCA_API_LEGACY_MAP = LEGACY_MAP;

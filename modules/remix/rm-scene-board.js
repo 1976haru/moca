@@ -180,20 +180,56 @@
   /* ── YouTube 링크 모드 UI ── */
   function _renderModeYoutube(p) {
     var src = p.source || {};
+    var meta = src.youtubeMeta || null;
+    var hasApiKey = !!(window.RM_YT_META && window.RM_YT_META.hasApiKey && window.RM_YT_META.hasApiKey());
+    var hasOAuth  = !!(window.RM_SERVER && window.RM_SERVER.getToken && window.RM_SERVER.getToken());
     var iframeHtml = src.videoId
       ? '<iframe src="https://www.youtube.com/embed/'+_escAttr(src.videoId)+'?rel=0&modestbranding=1" '+
         'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+
         'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>'
       : '<div class="rm-iframe-empty">유튜브 URL 을 입력하면 미리보기가 표시됩니다.</div>';
+
+    var metaHtml = '';
+    if (meta && meta.title) {
+      metaHtml = '<div class="rm-yt-meta">' +
+        (meta.thumbnailUrl ? '<img class="rm-yt-meta-thumb" src="'+_escAttr(meta.thumbnailUrl)+'" alt="" loading="lazy">' : '') +
+        '<div class="rm-yt-meta-info">' +
+          '<div class="rm-yt-meta-title">'+_esc(meta.title)+'</div>' +
+          '<div class="rm-yt-meta-sub">' +
+            (meta.channelTitle ? '📺 '+_esc(meta.channelTitle)+' · ' : '') +
+            (meta.duration ? '⏱ '+_esc(meta.duration)+' · ' : '') +
+            'ID '+_esc(meta.videoId || src.videoId || '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var keyHint = hasApiKey
+      ? '<small style="color:#1a7a5a">✅ YouTube Data API v3 키 저장됨 — 메타데이터 자동 조회 가능</small>'
+      : '<small style="color:#92400e">⚠️ YouTube Data API v3 키 미설정 — 설정 → API 통합 설정 → 업로드·배포 에서 입력하세요</small>';
+
+    var captionBtn;
+    if (hasOAuth) {
+      captionBtn = '<button type="button" class="rm-tb-btn" onclick="rmFetchOAuthCaption()" '+(src.videoId?'':'disabled')+
+        ' title="OAuth 권한이 있는 영상만 자막을 가져올 수 있습니다">🔐 OAuth 자막 가져오기</button>';
+    } else {
+      captionBtn = '<button type="button" class="rm-tb-btn" onclick="rmAutoCaptionInfo()" '+(src.videoId?'':'disabled')+
+        ' title="API 키만으로는 자막을 가져올 수 없습니다 — OAuth 가 필요합니다">🔐 자동 자막 (OAuth 필요)</button>';
+    }
+
     return '<div class="rm-tb-row">' +
         '<input type="url" class="rm-inp" placeholder="유튜브 링크 (watch?v=, shorts/, youtu.be/)" '+
           'value="'+_escAttr(src.youtubeUrl || '')+'" oninput="rmSetYoutubeUrl(this.value)">' +
+        '<button type="button" class="rm-tb-btn" onclick="rmFetchYoutubeMeta()" '+(src.videoId?'':'disabled')+'>🔍 영상 정보 가져오기</button>' +
         '<label class="rm-tb-btn rm-file"><input type="file" accept=".srt,.vtt,.txt" onchange="rmLoadCaptionFile(event)"> 📄 자막 파일</label>' +
-        '<button type="button" class="rm-tb-btn" onclick="rmTryAutoTranscript()" '+(src.videoId?'':'disabled')+'>🔄 자동 자막 시도</button>' +
+        captionBtn +
         '<button type="button" class="rm-tb-btn pri" onclick="rmParseAndSplit()">🪄 장면 분리</button>' +
       '</div>' +
-      '<div class="rm-yt-warn">⚠️ 유튜브 영상 미리보기만 표시됩니다. 자막/대본을 붙여넣어야 Scene 이 생성됩니다. ' +
-        '자동 자막은 권한·CORS 정책으로 실패할 수 있습니다 — 실패 시 직접 붙여넣기로 진행하세요.</div>' +
+      '<div class="rm-yt-keyhint">'+keyHint+'</div>' +
+      metaHtml +
+      '<div class="rm-yt-warn">⚠️ 영상 미리보기만으로는 Scene 이 생성되지 않습니다. ' +
+        '자막/대본을 붙여넣거나, 권한 있는 영상의 경우 OAuth 자막 가져오기를 사용하세요. ' +
+        '<b>공개 영상 자막을 API 키만으로 자동 추출할 수는 없습니다.</b></div>' +
       '<div class="rm-tb-row">' +
         '<div class="rm-iframe-box">' + iframeHtml + '</div>' +
         _renderPasteArea(p) +
@@ -564,42 +600,106 @@
     window.RM_CORE.save();
     _re();
   };
-  /* 자동 자막 시도 — YT_IMPORT.fetchTimedText 가 있으면 호출, 실패 시 명확히 안내 */
-  window.rmTryAutoTranscript = async function(){
+  /* ── 영상 메타데이터 조회 (YouTube Data API v3) ── */
+  window.rmFetchYoutubeMeta = async function(){
+    var p = window.RM_CORE.project();
+    if (!p.source || !p.source.videoId) {
+      _setStatus('⚠️ 먼저 유튜브 링크를 입력하세요.', 'warn');
+      return;
+    }
+    if (!window.RM_YT_META || typeof window.RM_YT_META.getYouTubeVideoMeta !== 'function') {
+      _setStatus('❌ RM_YT_META 모듈 미로드', 'err');
+      return;
+    }
+    if (!window.RM_YT_META.hasApiKey()) {
+      _setStatus('⚠️ YouTube Data API v3 키 미설정 — 설정 → API 통합 설정 → 업로드·배포 에서 입력하세요.', 'warn');
+      return;
+    }
+    _setStatus('🔄 영상 정보 조회 중...', 'loading');
+    var r = await window.RM_YT_META.getYouTubeVideoMeta(p.source.youtubeUrl || p.source.videoId);
+    if (!r.ok) {
+      _setStatus('❌ ' + window.RM_YT_META.friendlyMessage(r), 'err');
+      return;
+    }
+    var pp = window.RM_CORE.project();
+    pp.source = pp.source || {};
+    pp.source.title = r.title || pp.source.title;
+    pp.source.durationSec = r.durationSec || pp.source.durationSec;
+    pp.source.youtubeMeta = {
+      videoId:      r.videoId,
+      title:        r.title,
+      channelTitle: r.channelTitle,
+      duration:     r.duration,
+      durationSec:  r.durationSec,
+      thumbnailUrl: r.thumbnailUrl,
+      fetchedAt:    Date.now(),
+    };
+    window.RM_CORE.save();
+    _setStatus('✅ 영상 정보: ' + (r.title || r.videoId) + ' · ' + (r.duration || '') +
+      ' — 자막/대본은 붙여넣거나, 권한 있는 영상의 경우 OAuth 자막 가져오기를 사용하세요.', 'ok');
+    _re();
+  };
+
+  /* ── 자동 자막 안내 (OAuth 필요) ── */
+  window.rmAutoCaptionInfo = function(){
+    _setStatus('🔐 자동 자막 가져오기는 OAuth 권한이 필요합니다. ' +
+      '서버 자동 가져오기 모드에서 Google 로그인 후 시도하거나, 자막/대본을 직접 붙여넣어 주세요.', 'warn');
+    _focusPasteTextarea();
+  };
+
+  /* ── OAuth 자막 가져오기 (서버 OAuth 토큰 보유 시) ──
+       권한 없는 영상에서는 401/403 — 그 경우 명확히 안내 */
+  window.rmFetchOAuthCaption = async function(){
     var p = window.RM_CORE.project();
     if (!p.source || !p.source.videoId) {
       _setStatus('⚠️ 유튜브 링크가 없습니다.', 'warn');
       return;
     }
-    if (!window.YT_IMPORT || typeof window.YT_IMPORT.fetchTimedText !== 'function') {
-      _setStatus('⚠️ 자동 자막 모듈 미로드 — 자막을 직접 붙여넣어 주세요.', 'warn');
+    if (!window.RM_YT_META) { _setStatus('❌ RM_YT_META 모듈 미로드', 'err'); return; }
+    var lst = await window.RM_YT_META.listYouTubeCaptions(p.source.videoId);
+    if (!lst.ok) {
+      var err = lst.error || '';
+      if (err === 'NO_TOKEN' || err === 'OAUTH_NOT_CONFIGURED') {
+        _setStatus('🔐 ' + window.RM_YT_META.friendlyMessage(lst), 'warn');
+        return;
+      }
+      if ((lst.httpStatus === 401) || (lst.httpStatus === 403) || /401|403|forbidden|permission/i.test(err)) {
+        _setStatus('❌ 이 영상의 자막을 가져올 권한이 없습니다. 본인 영상 또는 자막 접근 권한이 있는 영상만 가능합니다.', 'err');
+        _focusPasteTextarea();
+        return;
+      }
+      _setStatus('❌ 자막 목록 조회 실패: ' + window.RM_YT_META.friendlyMessage(lst), 'err');
       return;
     }
-    _setStatus('🔄 자동 자막 시도 중... (CORS 정책으로 실패할 수 있음)', 'loading');
-    try {
-      var cues = await window.YT_IMPORT.fetchTimedText(p.source.videoId);
-      if (cues && cues.length) {
-        var raw = cues.map(function(c){
-          var s = Math.floor(c.startSec||0);
-          var m = Math.floor(s/60); var ss = s%60;
-          return m+':'+(ss<10?'0'+ss:ss)+' '+(c.text||'');
-        }).join('\n');
-        window.RM_CORE.setTranscriptRaw(raw, 'timestamp');
-        _setStatus('✅ 자동 자막 ' + cues.length + ' 큐 가져옴 — "🪄 장면 분리" 를 눌러 Scene 생성', 'ok');
-      } else {
-        _setStatus('⚠️ 자동 자막 가져오기 실패 (CORS 차단 또는 자막 없음). 자막을 직접 붙여넣어 주세요.', 'warn');
-        _focusPasteTextarea();
-      }
-    } catch(e) {
-      _setStatus('❌ 자동 자막 오류: ' + (e && e.message || e) + ' — 직접 붙여넣기로 진행하세요.', 'err');
+    var caps = lst.captions || [];
+    if (!caps.length) {
+      _setStatus('⚠️ 이 영상에 가져올 수 있는 자막 트랙이 없습니다. 자막을 직접 붙여넣어 주세요.', 'warn');
       _focusPasteTextarea();
+      return;
     }
+    var pick = caps.find(function(c){ return c.language === 'ko' || c.language === 'ja'; }) || caps[0];
+    _setStatus('🔄 자막 다운로드 중... (' + (pick.language || '') + ')', 'loading');
+    var d = await window.RM_YT_META.downloadYouTubeCaption(pick.id, 'srt');
+    if (!d.ok) {
+      _setStatus('❌ 자막 다운로드 실패: ' + window.RM_YT_META.friendlyMessage(d), 'err');
+      return;
+    }
+    window.RM_CORE.setTranscriptRaw(d.text, 'srt');
+    _setStatus('✅ 자막 가져옴 (' + (pick.language || '') + ') — "🪄 장면 분리" 를 누르거나 자동 분리를 기다리세요', 'ok');
+    _re();
+    setTimeout(function(){
+      if (typeof _maybeAutoParse === 'function') _maybeAutoParse();
+    }, 100);
   };
   window.rmSetYoutubeUrl  = function(v){
+    var prev = window.RM_CORE.project();
+    var prevId = (prev.source && prev.source.videoId) || '';
     window.RM_SOURCE.setYoutubeUrl(v);
-    /* URL 입력 시 모드 안 정해져 있으면 youtube 모드로 자동 셋팅 */
     var p = window.RM_CORE.project();
+    /* URL 입력 시 모드 안 정해져 있으면 youtube 모드로 자동 셋팅 */
     if (!p.source.type && p.source.videoId) p.source.type = 'youtube';
+    /* videoId 가 바뀌면 이전 메타 캐시 무효화 */
+    if (p.source.videoId !== prevId && p.source.youtubeMeta) p.source.youtubeMeta = null;
     window.RM_CORE.save();
     _re();
   };

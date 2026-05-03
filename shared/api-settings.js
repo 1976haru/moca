@@ -215,12 +215,13 @@ var MOCA_APIS_V2 = {
       free:'무료 (프롬프트만)' },
   ],
   '업로드·배포': [
-    { id:'youtube',   name:'YouTube Data API',    keyName:'uc_youtube_key',
-      desc:'유튜브 자동 업로드·제목·태그',
+    { id:'youtube',   name:'YouTube Data API v3', keyName:'uc_youtube_key',
+      desc:'영상 메타데이터(제목·썸네일·길이·채널) 조회용. ' +
+           '※ 공개 영상 자막 다운로드와 자동 업로드는 OAuth 권한이 필요합니다 — API 키만으로는 동작하지 않습니다.',
       placeholder:'AIzaSy...',
-      guide:'1. console.cloud.google.com 접속\n2. 새 프로젝트 생성\n3. YouTube Data API v3 활성화\n4. 사용자 인증 정보 → API 키 생성',
+      guide:'1. console.cloud.google.com 접속\n2. 새 프로젝트 생성\n3. YouTube Data API v3 활성화\n4. 사용자 인증 정보 → API 키 생성\n\n[저장 위치]\nmoca_api_settings_v1.upload.youtube.apiKey (기존 구조)\n→ 헬퍼는 youtubeDataApi 별칭도 함께 인식합니다.',
       url:'https://console.cloud.google.com/',
-      free:'무료 (할당량 있음)' },
+      free:'무료 (일 10,000 unit 할당량)' },
     { id:'instagram', name:'Instagram Graph API', keyName:'uc_instagram_key',
       desc:'인스타그램 릴스 자동 업로드',
       placeholder:'EAAxxxx...',
