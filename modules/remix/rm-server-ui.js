@@ -22,6 +22,55 @@
     if (window.RM_BOARD && typeof window.RM_BOARD.render === 'function') window.RM_BOARD.render();
   }
 
+  /* ── 공개 자막 segments → scenes 변환 ──
+       사용자 명세 schema 그대로 변환. 자동숏츠 핸드오프(rm-export.preflight) 와도 호환. */
+  function _inferRole(i, total) {
+    if (total <= 1) return 'body';
+    if (i === 0) return 'intro';
+    if (i === total - 1) return 'outro';
+    return 'body';
+  }
+  function _fmtTime(sec) {
+    var s = Math.max(0, Math.round(sec || 0));
+    var m = Math.floor(s / 60); var ss = s % 60;
+    return m + ':' + (ss < 10 ? '0' + ss : ss);
+  }
+  function _segmentsToScenes(segments) {
+    var arr = Array.isArray(segments) ? segments : [];
+    var n = arr.length;
+    return arr.map(function(seg, i){
+      var start = +seg.startSec || 0;
+      var end   = +seg.endSec   || (start + 4);
+      var text  = String(seg.text || '').trim();
+      return {
+        id:                'rm_' + String(i + 1).padStart(3, '0'),
+        sceneIndex:        i,
+        sceneNumber:       i + 1,
+        startSec:          start,
+        endSec:            end,
+        timeRange:         _fmtTime(start) + '–' + _fmtTime(end),
+        originalCaption:   text,
+        editedCaption:     text,
+        captionKo:         text,
+        captionJa:         '',
+        captionBoth:       '',
+        selected:          true,
+        deleted:           false,
+        role:              _inferRole(i, n),
+        roleLabel:         '',
+        notes:             '',
+        visualDescription: '',
+        thumbnailUrl:      '',
+        frameUrl:          '',
+        previewStatus:     '',
+        source:            'youtube_public_caption',
+        sourceType:        'video_remix_studio',
+      };
+    });
+  }
+  /* 모듈 내·외부에서 모두 호출 가능하도록 헬퍼 노출 */
+  window._rmSegmentsToScenes = _segmentsToScenes;
+
   /* ── 서버 자동 가져오기 모드 렌더 ── */
   window._rmRenderModeServer = function(p) {
     var SC = window.RM_SERVER;
@@ -78,20 +127,31 @@
   }
   function _renderServerActions(p, feats, hasTok) {
     var src = p.source || {};
+    var hasUrl = !!(src.videoId);
     return '<div class="rm-server-actions">' +
       '<div class="rm-server-action">' +
-        '<b>🔗 YouTube 메타 + OAuth 자막</b><br>' +
+        '<b>🔗 YouTube 메타 + 자막 가져오기</b><br>' +
         '<input type="url" class="rm-inp" placeholder="유튜브 링크" '+
           'value="'+_escAttr(src.youtubeUrl||'')+'" oninput="rmSetYoutubeUrl(this.value)">' +
         '<div class="rm-server-action-row">' +
-          '<button type="button" class="rm-mini" onclick="rmSrvFetchMeta()">메타 조회</button>' +
+          '<button type="button" class="rm-mini" onclick="rmSrvFetchMeta()">📋 메타 조회</button>' +
+          /* A. 공개 자막 가져오기 (실험 기능, 보조 추출) */
+          (feats.youtubePublicTranscript
+            ? '<button type="button" class="rm-mini" onclick="rmSrvPublicTranscript()" '+(hasUrl?'':'disabled')+
+                ' title="공개 자막 트랙이 열려있는 영상만 가능 — 실패할 수 있습니다">📥 공개 자막 가져오기 시도</button>'
+            : '') +
+          /* B. OAuth 자막 (본인/권한 영상) */
           (feats.youtubeCaptionsOAuth
             ? (hasTok
-              ? '<button class="rm-mini ok" onclick="rmSrvCaptionsList()">📜 자막 목록 (로그인됨)</button> ' +
+              ? '<button class="rm-mini ok" onclick="rmSrvCaptionsList()">🔐 OAuth 자막 (로그인됨)</button> ' +
                 '<button class="rm-mini" onclick="rmSrvOAuthLogout()">로그아웃</button>'
-              : '<button class="rm-mini" onclick="rmSrvOAuthStart()">🔐 Google 로그인</button>')
+              : '<button class="rm-mini" onclick="rmSrvOAuthStart()">🔐 Google 로그인 (OAuth 자막)</button>')
             : '<small style="color:#92400e">OAuth 미설정 (서버 GOOGLE_CLIENT_ID 필요)</small>') +
         '</div>' +
+        '<small style="color:#7b6080;line-height:1.55">' +
+          '🅰 공개 자막 가져오기는 실패할 수 있는 <b>보조(실험) 기능</b>입니다. ' +
+          '🅱 정확하고 안정적인 자막은 <b>본인 영상 OAuth</b> 또는 <b>MP4 STT</b> 를 사용하세요.' +
+        '</small>' +
       '</div>' +
       '<div class="rm-server-action">' +
         '<b>📁 MP4 자동 자막 + 프레임</b><br>' +
@@ -142,6 +202,60 @@
       _setStatus('❌ ' + window.RM_SERVER.friendlyMessage(r), 'err');
     }
   };
+  /* ── 공개 자막 가져오기 시도 (실험 기능) ──
+       성공 시 segments → scenes 로 변환해 RM_CORE 에 저장.
+       실패 시 명확한 에러 메시지 + textarea focus 유도. */
+  window.rmSrvPublicTranscript = async function(){
+    if (!window.RM_SERVER) { _setStatus('❌ RM_SERVER 모듈 미로드', 'err'); return; }
+    if (!window.RM_SERVER.getBaseUrl()) {
+      _setStatus('⚠️ 서버 자동 가져오기를 사용하려면 API 서버 주소를 먼저 입력하고 "🔄 연결 테스트" 를 통과시키세요.', 'warn');
+      return;
+    }
+    var p = window.RM_CORE.project();
+    var url = (p.source && p.source.youtubeUrl) || '';
+    if (!url) { _setStatus('⚠️ 유튜브 링크를 먼저 입력하세요.', 'warn'); return; }
+
+    _setStatus('🔄 공개 자막 가져오기 시도 중... (실험 기능 — 영상별로 실패할 수 있습니다)', 'loading');
+    var r = await window.RM_SERVER.publicTranscript(url);
+    if (!r.ok) {
+      var msg = window.RM_SERVER.friendlyMessage(r);
+      _setStatus('⚠️ 공개 자막을 자동으로 가져오지 못했습니다 — ' + msg +
+        ' · 자막/대본 붙여넣기, SRT 업로드, MP4 업로드 STT 중 하나를 사용하세요.', 'warn');
+      var ta = document.getElementById('rm-paste-ta');
+      if (ta) {
+        try {
+          ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(function(){ try { ta.focus(); } catch(_){} }, 180);
+        } catch(_){}
+      }
+      return;
+    }
+    var segs = Array.isArray(r.segments) ? r.segments : [];
+    if (!segs.length) {
+      _setStatus('⚠️ 자막을 받았지만 비어있습니다. 자막을 직접 붙여넣어 주세요.', 'warn');
+      return;
+    }
+    /* raw 텍스트도 저장 — 사용자가 textarea 에서 확인/수정 가능 */
+    var rawLines = segs.map(function(s){
+      var ms = Math.floor(s.startSec || 0);
+      var m = Math.floor(ms / 60); var ss = ms % 60;
+      return m + ':' + (ss < 10 ? '0' + ss : ss) + ' ' + (s.text || '');
+    }).join('\n');
+    window.RM_CORE.setTranscriptRaw(rawLines, 'timestamp');
+
+    var scenes = _segmentsToScenes(segs);
+    window.RM_CORE.setScenes(scenes);
+    window.RM_CORE.setStage('scenes');
+    var pp = window.RM_CORE.project();
+    pp._active = 0;
+    window.RM_CORE.save();
+
+    var auto = r.isAutoGenerated ? ' (자동 생성 자막)' : '';
+    _setStatus('✅ 공개 자막에서 ' + segs.length + '개 구간을 가져왔어요' + auto +
+      ' · 언어: ' + (r.language || '?') + ' — Scene 보드에서 편집·번역하세요.', 'ok');
+    _re();
+  };
+
   window.rmSrvOAuthStart = function(){
     if (!window.RM_SERVER) return;
     var url = window.RM_SERVER.oauthStartUrl();

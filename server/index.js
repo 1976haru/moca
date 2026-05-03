@@ -46,11 +46,12 @@ app.get('/api/health', (req, res) => {
     time: new Date().toISOString(),
     version: '0.1.0',
     features: {
-      youtubeMeta:           true, /* oEmbed 는 항상 동작 */
-      youtubeCaptionsOAuth:  !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-      mp4Transcribe:         true, /* OPENAI_API_KEY 없으면 stub 모드 */
-      mp4TranscribeReal:     !!process.env.OPENAI_API_KEY,
-      keyframes:             true, /* ffmpeg-static 사용 */
+      youtubeMeta:               true, /* oEmbed 는 항상 동작 */
+      youtubePublicTranscript:   true, /* 실험 기능 — captionTracks 보조 추출. 영상별 성공률 다름 */
+      youtubeCaptionsOAuth:      !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      mp4Transcribe:             true, /* OPENAI_API_KEY 없으면 stub 모드 */
+      mp4TranscribeReal:         !!process.env.OPENAI_API_KEY,
+      keyframes:                 true, /* ffmpeg-static 사용 */
     },
     transcribeMode: process.env.OPENAI_API_KEY ? 'whisper' : 'stub',
   });

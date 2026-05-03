@@ -183,6 +183,11 @@
     var meta = src.youtubeMeta || null;
     var hasApiKey = !!(window.RM_YT_META && window.RM_YT_META.hasApiKey && window.RM_YT_META.hasApiKey());
     var hasOAuth  = !!(window.RM_SERVER && window.RM_SERVER.getToken && window.RM_SERVER.getToken());
+    var hasServer = !!(window.RM_SERVER && window.RM_SERVER.getBaseUrl && window.RM_SERVER.getBaseUrl());
+    var srvHealth = (p && p._serverHealth) || null;
+    var serverConnected = !!(srvHealth && srvHealth.ok);
+    var feats = (srvHealth && srvHealth.features) || {};
+    var publicCaptionEnabled = !!(serverConnected && feats.youtubePublicTranscript !== false);
     var iframeHtml = src.videoId
       ? '<iframe src="https://www.youtube.com/embed/'+_escAttr(src.videoId)+'?rel=0&modestbranding=1" '+
         'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+
@@ -208,13 +213,25 @@
       ? '<small style="color:#1a7a5a">✅ YouTube Data API v3 키 저장됨 — 메타데이터 자동 조회 가능</small>'
       : '<small style="color:#92400e">⚠️ YouTube Data API v3 키 미설정 — 설정 → API 통합 설정 → 업로드·배포 에서 입력하세요</small>';
 
-    var captionBtn;
-    if (hasOAuth) {
-      captionBtn = '<button type="button" class="rm-tb-btn" onclick="rmFetchOAuthCaption()" '+(src.videoId?'':'disabled')+
-        ' title="OAuth 권한이 있는 영상만 자막을 가져올 수 있습니다">🔐 OAuth 자막 가져오기</button>';
+    /* A. 공개 자막 가져오기 (실험 기능 — 서버 연결 + 기능 활성 시) */
+    var publicBtn;
+    if (publicCaptionEnabled) {
+      publicBtn = '<button type="button" class="rm-tb-btn" onclick="rmSrvPublicTranscript()" '+(src.videoId?'':'disabled')+
+        ' title="공개 자막이 있는 영상만 가능하며, 실패할 수 있습니다.">📥 공개 자막 가져오기 시도</button>';
+    } else if (hasServer && !serverConnected) {
+      publicBtn = '<button type="button" class="rm-tb-btn" disabled title="서버 자동 가져오기 카드에서 \'🔄 연결 테스트\' 를 먼저 통과시키세요.">📥 공개 자막 (서버 미연결)</button>';
     } else {
-      captionBtn = '<button type="button" class="rm-tb-btn" onclick="rmAutoCaptionInfo()" '+(src.videoId?'':'disabled')+
-        ' title="API 키만으로는 자막을 가져올 수 없습니다 — OAuth 가 필요합니다">🔐 자동 자막 (OAuth 필요)</button>';
+      publicBtn = '<button type="button" class="rm-tb-btn" disabled title="서버 자동 가져오기 모드에서 API 서버 주소를 입력하면 활성화됩니다.">📥 공개 자막 (서버 필요)</button>';
+    }
+
+    /* B. OAuth 자막 (본인/권한 있는 영상) */
+    var oauthBtn;
+    if (hasOAuth) {
+      oauthBtn = '<button type="button" class="rm-tb-btn" onclick="rmFetchOAuthCaption()" '+(src.videoId?'':'disabled')+
+        ' title="OAuth 권한이 있는 영상만 자막을 가져올 수 있습니다">🔐 OAuth 자막 (권한 영상)</button>';
+    } else {
+      oauthBtn = '<button type="button" class="rm-tb-btn" onclick="rmAutoCaptionInfo()" '+(src.videoId?'':'disabled')+
+        ' title="API 키만으로는 자막을 가져올 수 없습니다 — OAuth 가 필요합니다">🔐 OAuth 자막 (로그인 필요)</button>';
     }
 
     return '<div class="rm-tb-row">' +
@@ -222,14 +239,16 @@
           'value="'+_escAttr(src.youtubeUrl || '')+'" oninput="rmSetYoutubeUrl(this.value)">' +
         '<button type="button" class="rm-tb-btn" onclick="rmFetchYoutubeMeta()" '+(src.videoId?'':'disabled')+'>🔍 영상 정보 가져오기</button>' +
         '<label class="rm-tb-btn rm-file"><input type="file" accept=".srt,.vtt,.txt" onchange="rmLoadCaptionFile(event)"> 📄 자막 파일</label>' +
-        captionBtn +
+        publicBtn +
+        oauthBtn +
         '<button type="button" class="rm-tb-btn pri" onclick="rmParseAndSplit()">🪄 장면 분리</button>' +
       '</div>' +
       '<div class="rm-yt-keyhint">'+keyHint+'</div>' +
       metaHtml +
       '<div class="rm-yt-warn">⚠️ 영상 미리보기만으로는 Scene 이 생성되지 않습니다. ' +
-        '자막/대본을 붙여넣거나, 권한 있는 영상의 경우 OAuth 자막 가져오기를 사용하세요. ' +
-        '<b>공개 영상 자막을 API 키만으로 자동 추출할 수는 없습니다.</b></div>' +
+        '<b>공개 자막 가져오기</b> 는 실패할 수 있는 보조(실험) 기능입니다 — 안정적인 자막은 ' +
+        '<b>본인 영상 OAuth</b> 또는 <b>MP4 STT</b> 를 사용하세요. ' +
+        '실패 시 자막/대본 붙여넣기 또는 SRT/TXT 파일 업로드로 진행하세요.</div>' +
       '<div class="rm-tb-row">' +
         '<div class="rm-iframe-box">' + iframeHtml + '</div>' +
         _renderPasteArea(p) +

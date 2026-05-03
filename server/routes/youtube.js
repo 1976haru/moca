@@ -7,6 +7,7 @@
 const express = require('express');
 const router  = express.Router();
 const oauthSvc = require('../services/youtubeOAuth');
+const publicTx = require('../services/youtubePublicTranscript');
 
 /* ── videoId 파싱 ── */
 function _extractVideoId(url) {
@@ -45,6 +46,46 @@ router.get('/meta', async (req, res, next) => {
     } catch (_) { /* oEmbed 실패해도 기본 thumbnail 로 진행 */ }
     res.json({ ok: true, source: 'youtube', ...meta });
   } catch (e) { next(e); }
+});
+
+/* ── 공개 자막 보조 추출 (실험 기능) ──
+     공식 OAuth captions.download 와는 별개의 fallback 경로.
+     영상 파일/오디오는 다운로드하지 않고 자막 텍스트만 시도.
+     실패 가능성을 전제로 명확한 error code 반환. */
+async function _handlePublicTranscript(req, res, next) {
+  try {
+    const url = String(req.query.url || '').trim();
+    const videoId = String(req.query.videoId || '').trim() || _extractVideoId(url);
+    if (!videoId) {
+      return res.status(400).json({ ok: false, error: 'INVALID_URL',
+        message: '유튜브 URL 또는 videoId 가 필요합니다.' });
+    }
+    const language = req.query.language ? String(req.query.language) : '';
+    const r = await publicTx.getPublicTranscript(videoId, { language });
+    if (!r.ok) {
+      const status =
+        r.error === 'INVALID_URL'              ? 400 :
+        r.error === 'VIDEO_NOT_FOUND'          ? 404 :
+        r.error === 'NO_PUBLIC_CAPTIONS'       ? 404 :
+        r.error === 'CAPTION_TRACK_NOT_FOUND'  ? 404 :
+        r.error === 'CAPTION_FETCH_BLOCKED'    ? 502 :
+        r.error === 'POLICY_RESTRICTED'        ? 451 :
+        r.error === 'PARSE_FAILED'             ? 502 :
+        r.error === 'NETWORK_FAIL'             ? 502 : 500;
+      return res.status(status).json(r);
+    }
+    return res.json(r);
+  } catch (e) { next(e); }
+}
+router.get('/public-transcript', _handlePublicTranscript);
+/* alias: /api/youtube/transcript?url=&mode=public */
+router.get('/transcript', (req, res, next) => {
+  const mode = String(req.query.mode || 'public').toLowerCase();
+  if (mode !== 'public') {
+    return res.status(400).json({ ok: false, error: 'UNSUPPORTED_MODE',
+      message: 'mode=public 만 지원합니다. OAuth 자막은 /api/youtube/captions/list+download 를 사용하세요.' });
+  }
+  return _handlePublicTranscript(req, res, next);
 });
 
 /* ── OAuth 로그인 시작 ── */

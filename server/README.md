@@ -10,12 +10,24 @@
 |---|---|---|---|
 | GET | `/api/health` | 서버 상태 + 사용 가능 기능 | — |
 | GET | `/api/youtube/meta?url=` | 영상 제목/썸네일 (oEmbed) | — |
-| GET | `/api/youtube/oauth/start` | Google 로그인 시작 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| GET | `/api/youtube/public-transcript?url=` | 🅰 공개 자막 보조 추출 (실험) | — |
+| GET | `/api/youtube/transcript?url=&mode=public` | 위와 동일 (alias) | — |
+| GET | `/api/youtube/oauth/start` | 🅱 Google 로그인 시작 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | GET | `/api/youtube/oauth/callback` | OAuth 콜백 | (위와 동일) |
-| GET | `/api/youtube/captions/list?videoId=` | 권한 있는 영상의 자막 목록 | OAuth + Bearer 토큰 |
-| GET | `/api/youtube/captions/download?captionId=&format=srt|vtt` | 자막 다운로드 | OAuth + Bearer 토큰 |
+| GET | `/api/youtube/captions/list?videoId=` | 🅱 권한 있는 영상의 자막 목록 | OAuth + Bearer 토큰 |
+| GET | `/api/youtube/captions/download?captionId=&format=srt|vtt` | 🅱 자막 다운로드 | OAuth + Bearer 토큰 |
 | POST | `/api/remix/transcribe` (multipart `video`) | MP4 → 자막 segments | (선택) `OPENAI_API_KEY` |
 | POST | `/api/remix/keyframes` (multipart `video` + `scenes` JSON) | scene midSec 프레임 추출 | — (ffmpeg-static 포함) |
+
+> 🅰 **공개 자막 보조 추출 (`/api/youtube/public-transcript`)** — 영상 파일/오디오를 다운로드하지 않고
+> 자막 텍스트 트랙만 시도하는 **실험 기능**입니다. 영상별로 성공률이 다르며 실패할 수 있습니다.
+> 추출 시도 순서: ① watch 페이지 HTML → `ytInitialPlayerResponse.captions` → captionTracks
+> ② baseUrl 호출 (XML/SRV3) ③ timedtext endpoint 직접 시도. 언어 우선순위는 ko → ja → en.
+> 실패 시 명확한 error code 반환: `INVALID_URL` · `VIDEO_NOT_FOUND` · `NO_PUBLIC_CAPTIONS` ·
+> `CAPTION_TRACK_NOT_FOUND` · `CAPTION_FETCH_BLOCKED` · `NETWORK_FAIL` · `PARSE_FAILED` ·
+> `POLICY_RESTRICTED`. 프론트엔드는 실패 시 자막 붙여넣기 / SRT 업로드 / MP4 STT 로 fallback.
+>
+> 🅱 **OAuth captions API** 는 본인/권한 있는 영상에만 사용. 정확하고 안정적이지만 OAuth 셋업 필요.
 
 환경변수가 없으면 해당 endpoint 는 `503 + {ok:false, error, message}` 로 명확히 응답합니다.
 서버는 절대 silent fail 하지 않습니다.

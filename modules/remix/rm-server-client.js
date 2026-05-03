@@ -81,6 +81,16 @@
     return await _call('/api/youtube/meta?url=' + encodeURIComponent(url));
   }
 
+  /* ── /api/youtube/public-transcript ──
+     ⚠️ 실험 기능: 공개 영상에서만 가능하며, 영상별로 성공률이 다릅니다.
+     실패 시 자막 붙여넣기 / SRT 업로드 / MP4 STT 로 fallback 하세요. */
+  async function publicTranscript(url, language) {
+    if (!url) return _err('NO_URL', '유튜브 링크를 입력하세요.');
+    var qs = '/api/youtube/public-transcript?url=' + encodeURIComponent(url);
+    if (language) qs += '&language=' + encodeURIComponent(language);
+    return await _call(qs);
+  }
+
   /* ── OAuth ── */
   function oauthStartUrl() {
     var base = _get();
@@ -201,6 +211,13 @@
     KEYFRAME_FAIL:       '프레임 추출에 실패했습니다. 자막 기반으로 계속 진행할 수 있습니다.',
     INVALID_URL:         '유튜브 URL 에서 videoId 를 찾지 못했습니다.',
     NO_FILE:             '업로드할 파일이 필요합니다.',
+    /* 공개 자막 보조 추출 — 실험 기능 */
+    NO_PUBLIC_CAPTIONS:    '이 영상에서 공개 자막을 찾지 못했습니다. 자막/대본을 직접 붙여넣거나 SRT/TXT 파일을 업로드하세요.',
+    CAPTION_TRACK_NOT_FOUND:'요청한 언어의 자막 트랙이 없습니다.',
+    CAPTION_FETCH_BLOCKED:  '자막 트랙 접근이 차단되었습니다. 시간을 두고 다시 시도하거나 다른 fallback 을 사용하세요.',
+    PARSE_FAILED:           '자막을 받았지만 파싱에 실패했습니다.',
+    POLICY_RESTRICTED:      '재생 제한 영상이라 공개 자막을 추출할 수 없습니다.',
+    VIDEO_NOT_FOUND:        '영상을 찾을 수 없습니다 (비공개·삭제·지역 제한 가능).',
   };
   function friendlyMessage(result) {
     if (!result || result.ok) return '';
@@ -219,6 +236,7 @@
     /* api */
     health:           health,
     youtubeMeta:      youtubeMeta,
+    publicTranscript: publicTranscript,
     oauthStartUrl:    oauthStartUrl,
     listenForOAuthToken: listenForOAuthToken,
     captionsList:     captionsList,
