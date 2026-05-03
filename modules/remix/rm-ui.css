@@ -84,6 +84,50 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 .rm-state-msg.warn { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
 .rm-state-msg.ok { background:#dcfce7; color:#166534; border:1px solid #86efac; }
 
+/* ── 3 소스 모드 chooser ── */
+.rm-mode-intro { padding:6px 10px; font-size:12px; color:#5a4a56; line-height:1.6;
+  background:#fafafe; border:1px dashed #c7b3e5; border-radius:8px; }
+.rm-mode-intro b { color:#5b1a4a; }
+.rm-mode-cards { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:10px; }
+@media(max-width:760px) { .rm-mode-cards { grid-template-columns:1fr; } }
+.rm-mode-card { padding:12px; border:1.5px solid #f1dce7; border-radius:12px; background:#fff;
+  cursor:pointer; display:flex; flex-direction:column; gap:6px; transition:.15s;
+  font-size:11.5px; line-height:1.5; }
+.rm-mode-card:hover { border-color:#9181ff; box-shadow:0 4px 16px rgba(145,129,255,.15); transform:translateY(-1px); }
+.rm-mode-card.disabled { opacity:.55; cursor:not-allowed; background:#fafafe; }
+.rm-mode-card.disabled:hover { border-color:#f1dce7; box-shadow:none; transform:none; }
+.rm-mode-card-hd { display:flex; align-items:center; gap:8px; }
+.rm-mode-card-ico { font-size:22px; }
+.rm-mode-card-title { font-size:13px; font-weight:800; color:#2b2430; }
+.rm-mode-card-desc { color:#5a4a56; }
+.rm-mode-can { font-size:10.5px; color:#166534; line-height:1.55; padding:4px 8px;
+  background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; }
+.rm-mode-can b { font-weight:800; }
+.rm-mode-cant { font-size:10.5px; color:#92400e; line-height:1.55; padding:4px 8px;
+  background:#fffbeb; border:1px solid #fde68a; border-radius:6px; }
+.rm-mode-cant b { font-weight:800; }
+.rm-mode-cta { margin-top:auto; padding:7px 10px; background:linear-gradient(135deg,#ef6fab,#9181ff);
+  color:#fff; border-radius:8px; font-weight:800; text-align:center; font-size:11.5px; }
+.rm-mode-cta.disabled { background:#e5e1eb; color:#9b8a93; }
+
+/* ── 선택된 모드 스트립 (다시 선택 버튼) ── */
+.rm-mode-strip { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:6px 10px; background:#f5f0ff; border:1px solid #c7b3e5; border-radius:8px;
+  font-size:11.5px; color:#5b1a4a; }
+.rm-mode-strip b { color:#5b1a4a; }
+
+/* ── 모드별 안내 박스 ── */
+.rm-yt-warn { padding:6px 10px; background:#fffbeb; border:1px solid #fde68a;
+  border-radius:8px; font-size:11px; color:#92400e; line-height:1.55; }
+.rm-up-info { padding:6px 10px; background:#eff6ff; border:1px solid #bfdbfe;
+  border-radius:8px; font-size:11px; color:#1e3a8a; line-height:1.55; }
+.rm-server-info { padding:14px; background:#fafafe; border:1.5px dashed #c7b3e5;
+  border-radius:10px; font-size:12px; color:#5a4a56; line-height:1.6; }
+.rm-server-info code { font-family:'SFMono-Regular', Consolas, monospace; font-size:11px;
+  background:#fff; padding:1px 6px; border:1px solid #d6c7e0; border-radius:4px; color:#5b1a4a; }
+.rm-file-pri { background:linear-gradient(135deg,#fff5fa,#f5f0ff)!important;
+  border-color:#c7b3e5!important; color:#5b1a4a!important; }
+
 /* ── 모드 바 ── */
 .rm-modebar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:6px 8px;
   background:#fafafe; border:1px solid #f1dce7; border-radius:8px; margin-bottom:8px; }

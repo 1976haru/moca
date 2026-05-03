@@ -111,12 +111,84 @@
     '공개 영상은 구조 분석과 참고용으로만 사용하고, 원본 화면·로고·캐릭터·문장을 그대로 복제하지 마세요.',
   ];
 
+  /* ── 3 가지 소스 모드 정의 (UI 카드가 사용) ── */
+  var MODES = [
+    {
+      id: 'youtube', icon: '🎬', title: 'YouTube 링크로 시작',
+      desc: '유튜브 영상을 미리보면서 자막/대본을 붙여넣어 편집합니다.',
+      can: ['iframe 미리보기', '링크 ID 추출', '자막/대본 붙여넣기', 'SRT/TXT 업로드',
+            '장면 분리', '일본어 자막 변환'],
+      cant: ['공개 영상 자막 자동 추출은 실패할 수 있음', '영상 프레임 자동 추출은 서버 기능 필요'],
+      enabled: true,
+    },
+    {
+      id: 'upload', icon: '📁', title: 'MP4 파일로 시작',
+      desc: '내가 가진 영상 파일을 업로드해 자막/장면을 편집합니다.',
+      can: ['MP4 업로드', 'video element 미리보기', 'SRT/TXT 업로드', '장면 분리',
+            '프레임 캡처', '일본어 자막 생성', '음성 교체 준비'],
+      cant: [],
+      enabled: true,
+    },
+    {
+      id: 'server', icon: '☁️', title: '서버 자동 가져오기 (준비중)',
+      desc: '서버 API 가 연결되면 유튜브 자막/프레임을 자동으로 가져옵니다.',
+      can: ['/api/youtube/meta · /api/youtube/transcript · /api/youtube/keyframes 연결 시'],
+      cant: ['현재는 서버 미연결 상태 — 자막/대본 붙여넣기 또는 MP4 업로드를 사용하세요.'],
+      enabled: false,
+    },
+  ];
+
+  /* ── MP4 frame capture ──
+     사용자가 업로드한 MP4 (engines/remix 페이지의 #rm-video-active 또는 #rm-video-el) 의
+     해당 시점 프레임을 canvas 로 캡처해 dataURL 로 반환.
+     주의: 유튜브 iframe 은 cross-origin 이라 캡처 불가 — upload 모드에서만 호출 보장. */
+  function captureFrameAtSec(sec, opts) {
+    return new Promise(function(resolve, reject) {
+      try {
+        var video = document.getElementById('rm-video-active') || document.getElementById('rm-video-el');
+        if (!video) { reject(new Error('video element 없음 — MP4 업로드 모드인지 확인')); return; }
+        if (video.tagName !== 'VIDEO') { reject(new Error('iframe 은 frame capture 불가 — MP4 업로드 모드만 가능')); return; }
+        var W = (opts && opts.width)  || 240;
+        var H = (opts && opts.height) || 135;
+        var target = Math.max(0, +sec || 0);
+        var done = false;
+        function _capture() {
+          if (done) return;
+          done = true;
+          try {
+            var canvas = document.createElement('canvas');
+            canvas.width = W; canvas.height = H;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, W, H);
+            var url = canvas.toDataURL('image/jpeg', 0.7);
+            resolve(url);
+          } catch(e) { reject(e); }
+        }
+        var prev = video.currentTime;
+        video.addEventListener('seeked', function _onSeeked(){
+          video.removeEventListener('seeked', _onSeeked);
+          /* 약간의 지연 — decode 끝나기를 기다림 */
+          setTimeout(_capture, 80);
+        }, { once: true });
+        try { video.currentTime = target; }
+        catch(e) {
+          /* seek 실패 — 현재 프레임이라도 캡처 */
+          setTimeout(_capture, 60);
+        }
+        /* 4 초 안에 seeked 이벤트 안 오면 timeout 으로 캡처 */
+        setTimeout(function(){ if (!done) _capture(); }, 4000);
+      } catch(e) { reject(e); }
+    });
+  }
+
   window.RM_SOURCE = {
     extractVideoId:  extractVideoId,
     setYoutubeUrl:   setYoutubeUrl,
     loadMp4File:     loadMp4File,
     loadCaptionFile: loadCaptionFile,
     clearSource:     clearSource,
+    captureFrameAtSec: captureFrameAtSec,
+    MODES:           MODES,
     COPY_NOTICE:     COPY_NOTICE,
   };
 })();

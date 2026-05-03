@@ -102,39 +102,132 @@
     }).join('') + '</div>';
   }
 
-  /* ── 툴바 (URL / 파일 / 자막 입력 / 분석) ── */
+  /* ── 툴바 (3 모드 chooser → 모드별 UI) ── */
   function _renderToolbar(p) {
+    var src = p.source || {};
+    /* 모드 미설정 시 3 카드 chooser */
+    if (!src.type) return _renderSourceModeCards();
+    /* 모드별 UI */
+    return '<div class="rm-toolbar">' +
+      '<div class="rm-mode-strip">' +
+        '<span class="rm-mode-label">소스 모드:</span> ' +
+        '<b>' + _esc(_modeLabel(src.type)) + '</b>' +
+        ' <button type="button" class="rm-mini" onclick="rmResetSource()">← 모드 다시 선택</button>' +
+      '</div>' +
+      (src.type === 'youtube' ? _renderModeYoutube(p) :
+       src.type === 'upload'  ? _renderModeUpload(p) :
+       src.type === 'server'  ? _renderModeServer(p) : '') +
+    '</div>';
+  }
+  function _modeLabel(id) {
+    var modes = (window.RM_SOURCE && window.RM_SOURCE.MODES) || [];
+    for (var i = 0; i < modes.length; i++) if (modes[i].id === id) return modes[i].title;
+    return id;
+  }
+
+  /* ── 3 모드 카드 chooser ── */
+  function _renderSourceModeCards() {
+    var modes = (window.RM_SOURCE && window.RM_SOURCE.MODES) || [];
+    return '<div class="rm-toolbar">' +
+      '<div class="rm-mode-intro"><b>1단계 — 소스 가져오기</b><br>' +
+        '<small>아래 3 가지 방식 중 하나를 선택하세요. 모드에 따라 가능한 작업이 다릅니다.</small>' +
+      '</div>' +
+      '<div class="rm-mode-cards">' +
+        modes.map(function(m){
+          return '<div class="rm-mode-card '+(m.enabled?'':'disabled')+'"'+
+            (m.enabled ? ' onclick="rmSetSourceMode(\''+m.id+'\')"' : '') +'>' +
+            '<div class="rm-mode-card-hd">' +
+              '<span class="rm-mode-card-ico">'+m.icon+'</span>' +
+              '<span class="rm-mode-card-title">'+_esc(m.title)+'</span>' +
+            '</div>' +
+            '<div class="rm-mode-card-desc">'+_esc(m.desc)+'</div>' +
+            (m.can.length ? '<div class="rm-mode-can"><b>가능</b>: ' +
+              m.can.map(_esc).join(' · ') + '</div>' : '') +
+            (m.cant.length ? '<div class="rm-mode-cant"><b>제한</b>: ' +
+              m.cant.map(_esc).join(' · ') + '</div>' : '') +
+            (m.enabled
+              ? '<div class="rm-mode-cta">→ 이 모드로 시작</div>'
+              : '<div class="rm-mode-cta disabled">현재 비활성 (서버 미연결)</div>') +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── YouTube 링크 모드 UI ── */
+  function _renderModeYoutube(p) {
     var src = p.source || {};
     var iframeHtml = src.videoId
       ? '<iframe src="https://www.youtube.com/embed/'+_escAttr(src.videoId)+'?rel=0&modestbranding=1" '+
         'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+
         'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>'
-      : (src.fileBlobUrl
-          ? '<video id="rm-video-el" src="'+_escAttr(src.fileBlobUrl)+'" controls preload="metadata" style="width:100%;height:100%;background:#000"></video>'
-          : '<div class="rm-iframe-empty">유튜브 URL 또는 MP4 파일을 넣으면 미리보기가 표시됩니다.</div>');
-
-    return '<div class="rm-toolbar">' +
-      '<div class="rm-tb-row">' +
+      : '<div class="rm-iframe-empty">유튜브 URL 을 입력하면 미리보기가 표시됩니다.</div>';
+    return '<div class="rm-tb-row">' +
         '<input type="url" class="rm-inp" placeholder="유튜브 링크 (watch?v=, shorts/, youtu.be/)" '+
           'value="'+_escAttr(src.youtubeUrl || '')+'" oninput="rmSetYoutubeUrl(this.value)">' +
-        '<label class="rm-tb-btn rm-file"><input type="file" accept="video/mp4,video/webm" onchange="rmLoadVideoFile(event)"> 📁 MP4 업로드</label>' +
+        '<label class="rm-tb-btn rm-file"><input type="file" accept=".srt,.vtt,.txt" onchange="rmLoadCaptionFile(event)"> 📄 자막 파일</label>' +
+        '<button type="button" class="rm-tb-btn" onclick="rmTryAutoTranscript()" '+(src.videoId?'':'disabled')+'>🔄 자동 자막 시도</button>' +
+        '<button type="button" class="rm-tb-btn pri" onclick="rmParseAndSplit()">🪄 장면 분리</button>' +
+      '</div>' +
+      '<div class="rm-yt-warn">⚠️ 유튜브 영상 미리보기만 표시됩니다. 자막/대본을 붙여넣어야 Scene 이 생성됩니다. ' +
+        '자동 자막은 권한·CORS 정책으로 실패할 수 있습니다 — 실패 시 직접 붙여넣기로 진행하세요.</div>' +
+      '<div class="rm-tb-row">' +
+        '<div class="rm-iframe-box">' + iframeHtml + '</div>' +
+        _renderPasteArea(p) +
+      '</div>';
+  }
+
+  /* ── MP4 업로드 모드 UI ── */
+  function _renderModeUpload(p) {
+    var src = p.source || {};
+    var videoHtml = src.fileBlobUrl
+      ? '<video id="rm-video-el" src="'+_escAttr(src.fileBlobUrl)+'" controls preload="metadata" style="width:100%;height:100%;background:#000"></video>'
+      : '<div class="rm-iframe-empty">📁 MP4 파일을 업로드하면 미리보기가 표시됩니다.</div>';
+    return '<div class="rm-tb-row">' +
+        '<label class="rm-tb-btn rm-file rm-file-pri">' +
+          '<input type="file" accept="video/mp4,video/webm,video/quicktime" onchange="rmLoadVideoFile(event)"> 📁 MP4 / WebM 업로드' +
+          (src.fileName ? ' (현재: '+_esc(src.fileName)+')' : '') +
+        '</label>' +
         '<label class="rm-tb-btn rm-file"><input type="file" accept=".srt,.vtt,.txt" onchange="rmLoadCaptionFile(event)"> 📄 자막 파일</label>' +
         '<button type="button" class="rm-tb-btn pri" onclick="rmParseAndSplit()">🪄 장면 분리</button>' +
       '</div>' +
+      '<div class="rm-up-info">📁 본인 영상 또는 사용 허가받은 영상만 업로드하세요. ' +
+        'MP4 모드에서는 Scene 별 프레임 캡처가 가능합니다 (Scene 카드의 📷 캡처 버튼).</div>' +
       '<div class="rm-tb-row">' +
-        '<div class="rm-iframe-box">' + iframeHtml + '</div>' +
-        '<div class="rm-paste-wrap">' +
-          '<textarea class="rm-paste" id="rm-paste-ta" '+
-            'placeholder="자막 / 대본 붙여넣기 — SRT, VTT, 시간 포함, 일반 줄/문장 모두 OK&#10;&#10;⚠️ 영상은 미리보기로만 표시됩니다. 자막/대본을 붙여넣어야 장면 편집과 자동숏츠 전달이 가능합니다." '+
-            'oninput="rmSetTranscriptRaw(this.value)" onpaste="rmOnPaste(event)" onblur="rmOnPasteBlur()">'+_esc(p.transcript.raw || '')+'</textarea>' +
-          '<div class="rm-paste-hint">' +
-            (p.transcript.raw && (p.scenes || []).length === 0
-              ? '⚠️ 자막이 입력됐습니다 — "🪄 장면 분리" 를 눌러 Scene 카드를 생성하세요.'
-              : !p.transcript.raw
-                ? '👇 위 영역에 자막/대본을 붙여넣으세요 (붙여넣으면 자동으로 장면 분리됩니다)'
-                : '✅ '+(p.scenes || []).length+'개 씬 생성됨 — 왼쪽 보드에서 편집할 수 있습니다.') +
-          '</div>' +
-        '</div>' +
+        '<div class="rm-iframe-box">' + videoHtml + '</div>' +
+        _renderPasteArea(p) +
+      '</div>';
+  }
+
+  /* ── 서버 자동 가져오기 모드 (준비중) ── */
+  function _renderModeServer(p) {
+    return '<div class="rm-server-info">' +
+      '<b>☁️ 서버 자동 가져오기 — 현재 준비중</b>' +
+      '<p style="margin:6px 0">이 기능은 서버 API 가 연결되면 사용할 수 있습니다. ' +
+        '현재는 <b>YouTube 링크 + 자막 붙여넣기</b> 또는 <b>MP4 업로드</b> 를 사용하세요.</p>' +
+      '<div style="font-size:11px;color:#7b6080;line-height:1.7">' +
+        '필요한 서버 엔드포인트:<br>' +
+        '<code>/api/youtube/meta?v={videoId}</code> — 영상 메타<br>' +
+        '<code>/api/youtube/transcript?v={videoId}</code> — 자막 자동 추출<br>' +
+        '<code>POST /api/youtube/keyframes {videoId, times[]}</code> — 프레임 추출<br>' +
+        '<small>구현 후보: Cloudflare Worker · Vercel Serverless · Node API · yt-dlp + ffmpeg</small>' +
+      '</div>' +
+      '<button type="button" class="rm-tb-btn" onclick="rmResetSource()" style="margin-top:8px">← 다른 모드 선택</button>' +
+    '</div>';
+  }
+
+  /* ── 자막 붙여넣기 영역 (youtube/upload 모드 공통) ── */
+  function _renderPasteArea(p) {
+    return '<div class="rm-paste-wrap">' +
+      '<textarea class="rm-paste" id="rm-paste-ta" '+
+        'placeholder="자막 / 대본 붙여넣기 — SRT, VTT, 시간 포함, 일반 줄/문장 모두 OK&#10;&#10;⚠️ 자막/대본을 붙여넣어야 Scene 이 생성됩니다." '+
+        'oninput="rmSetTranscriptRaw(this.value)" onpaste="rmOnPaste(event)" onblur="rmOnPasteBlur()">'+_esc(p.transcript.raw || '')+'</textarea>' +
+      '<div class="rm-paste-hint">' +
+        (p.transcript.raw && (p.scenes || []).length === 0
+          ? '⚠️ 자막이 입력됐습니다 — "🪄 장면 분리" 를 누르거나 paste 자동 분리를 기다리세요.'
+          : !p.transcript.raw
+            ? '👇 자막/대본을 붙여넣거나 SRT/TXT 파일을 업로드하세요 (자동으로 장면 분리됩니다)'
+            : '✅ '+(p.scenes || []).length+'개 씬 생성됨 — 왼쪽 보드에서 편집할 수 있습니다.') +
       '</div>' +
     '</div>';
   }
@@ -239,6 +332,10 @@
     var inline = '';
     if (sc.editedCaption) inline += '<div class="rm-inl ko"><span class="rm-tag">수정</span>'+_esc(sc.editedCaption)+'</div>';
     if (sc.captionJa)     inline += '<div class="rm-inl ja"><span class="rm-tag">日本</span>'+_esc(sc.captionJa)+'</div>';
+    /* MP4 업로드 모드 + 캡처된 프레임 없을 때 📷 캡처 버튼 노출 */
+    var captureBtn = (p.source && p.source.type === 'upload' && sc.previewStatus !== 'ready')
+      ? ' <button type="button" class="rm-mini" onclick="event.stopPropagation();rmCaptureFrame('+i+')" title="이 시점 프레임 캡처">📷 캡처</button>'
+      : '';
     return '<div class="rm-card '+(active?'active':'')+' '+(deleted?'deleted':'')+'" onclick="rmSetActive('+i+')">' +
       '<div class="rm-card-row">' +
         '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation();rmToggleSel('+i+')">' +
@@ -247,6 +344,7 @@
           '<div class="rm-card-no">씬 '+sc.sceneNumber +
             (sc.timeRange ? ' · '+_esc(sc.timeRange) : '') +
             (deleted ? ' <span class="rm-tag-del">삭제됨</span>' : '') +
+            captureBtn +
           '</div>' +
           (chips ? '<div class="rm-chips">'+chips+'</div>' : '<div class="rm-empty-line">(빈 자막)</div>') +
           inline +
@@ -431,13 +529,73 @@
   }
 
   window.rmGotoStage      = function(id){ window.RM_CORE.setStage(id); _re(); };
-  window.rmSetYoutubeUrl  = function(v){ window.RM_SOURCE.setYoutubeUrl(v); _re(); };
+  /* ── 소스 모드 선택 / 리셋 ── */
+  window.rmSetSourceMode = function(modeId){
+    var p = window.RM_CORE.project();
+    /* 기존 소스 정보 유지 — 모드만 셋팅 (이미 입력된 url/file 이 있으면 그대로 둠) */
+    p.source = p.source || {};
+    p.source.type = modeId;
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmResetSource = function(){
+    if (typeof window.RM_SOURCE.clearSource === 'function') window.RM_SOURCE.clearSource();
+    var p = window.RM_CORE.project();
+    p.source = p.source || {};
+    p.source.type = '';
+    window.RM_CORE.save();
+    _re();
+  };
+  /* 자동 자막 시도 — YT_IMPORT.fetchTimedText 가 있으면 호출, 실패 시 명확히 안내 */
+  window.rmTryAutoTranscript = async function(){
+    var p = window.RM_CORE.project();
+    if (!p.source || !p.source.videoId) {
+      _setStatus('⚠️ 유튜브 링크가 없습니다.', 'warn');
+      return;
+    }
+    if (!window.YT_IMPORT || typeof window.YT_IMPORT.fetchTimedText !== 'function') {
+      _setStatus('⚠️ 자동 자막 모듈 미로드 — 자막을 직접 붙여넣어 주세요.', 'warn');
+      return;
+    }
+    _setStatus('🔄 자동 자막 시도 중... (CORS 정책으로 실패할 수 있음)', 'loading');
+    try {
+      var cues = await window.YT_IMPORT.fetchTimedText(p.source.videoId);
+      if (cues && cues.length) {
+        var raw = cues.map(function(c){
+          var s = Math.floor(c.startSec||0);
+          var m = Math.floor(s/60); var ss = s%60;
+          return m+':'+(ss<10?'0'+ss:ss)+' '+(c.text||'');
+        }).join('\n');
+        window.RM_CORE.setTranscriptRaw(raw, 'timestamp');
+        _setStatus('✅ 자동 자막 ' + cues.length + ' 큐 가져옴 — "🪄 장면 분리" 를 눌러 Scene 생성', 'ok');
+      } else {
+        _setStatus('⚠️ 자동 자막 가져오기 실패 (CORS 차단 또는 자막 없음). 자막을 직접 붙여넣어 주세요.', 'warn');
+        _focusPasteTextarea();
+      }
+    } catch(e) {
+      _setStatus('❌ 자동 자막 오류: ' + (e && e.message || e) + ' — 직접 붙여넣기로 진행하세요.', 'err');
+      _focusPasteTextarea();
+    }
+  };
+  window.rmSetYoutubeUrl  = function(v){
+    window.RM_SOURCE.setYoutubeUrl(v);
+    /* URL 입력 시 모드 안 정해져 있으면 youtube 모드로 자동 셋팅 */
+    var p = window.RM_CORE.project();
+    if (!p.source.type && p.source.videoId) p.source.type = 'youtube';
+    window.RM_CORE.save();
+    _re();
+  };
   window.rmLoadVideoFile  = function(ev){
     var f = ev && ev.target && ev.target.files && ev.target.files[0];
     if (!f) return;
     window.RM_SOURCE.loadMp4File(f, function(meta){
+      /* MP4 업로드 → 자동으로 upload 모드 셋팅 */
+      var p = window.RM_CORE.project();
+      p.source.type = 'upload';
+      window.RM_CORE.save();
       _setStatus('✅ MP4 로드 — ' + meta.fileName + ' (' + meta.durationSec + '초)', 'ok');
       try { ev.target.value = ''; } catch(_) {}
+      _re();
     });
   };
   window.rmLoadCaptionFile = function(ev){
@@ -448,7 +606,33 @@
       _setStatus('✅ 자막 파일 로드 — ' + d.fileName + ' ('+d.format+')', 'ok');
       try { ev.target.value = ''; } catch(_) {}
       _re();
+      /* 자막 파일은 보통 충분히 긴 본문이므로 자동 파싱 시도 */
+      setTimeout(_maybeAutoParse, 50);
     });
+  };
+
+  /* ── MP4 frame capture (Scene 카드의 📷 버튼) ── */
+  window.rmCaptureFrame = async function(idx) {
+    var p = window.RM_CORE.project();
+    if (!p.source || p.source.type !== 'upload') {
+      _setStatus('⚠️ 프레임 캡처는 MP4 업로드 모드에서만 가능합니다.', 'warn');
+      return;
+    }
+    var sc = (p.scenes || [])[idx];
+    if (!sc) return;
+    if (!window.RM_SOURCE || typeof window.RM_SOURCE.captureFrameAtSec !== 'function') {
+      _setStatus('❌ 캡처 모듈 미로드', 'err');
+      return;
+    }
+    _setStatus('📷 ' + (sc.startSec || 0) + '초 프레임 캡처 중...', 'loading');
+    try {
+      var midSec = ((sc.startSec || 0) + (sc.endSec || sc.startSec || 0)) / 2;
+      var url = await window.RM_SOURCE.captureFrameAtSec(midSec);
+      window.RM_CORE.patchScene(idx, { thumbnailUrl: url, frameUrl: url, previewStatus: 'ready' });
+      _setStatus('✅ 씬 ' + sc.sceneNumber + ' 프레임 캡처 완료', 'ok');
+    } catch(e) {
+      _setStatus('❌ 캡처 실패: ' + (e && e.message || e), 'err');
+    }
   };
   /* textarea oninput → state 갱신 + 디바운스 자동 분리 (입력/타이핑 케이스도 커버) */
   window.rmSetTranscriptRaw = function(v){
