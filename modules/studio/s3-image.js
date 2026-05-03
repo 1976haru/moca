@@ -798,7 +798,10 @@ function studioS3ThumbStyle(val, btn){
 async function studioS3GenThumb(variant){
   var s3 = STUDIO.project.s3||{};
   var title = document.getElementById('s3-thumb-title')?.value||'';
-  var key = (typeof ucGetApiKey==='function') ? ucGetApiKey('openai') : localStorage.getItem('uc_openai_key')||'';
+  /* 통합 store(script.openai) 우선, 미설정 시 ucGetApiKey → legacy uc_openai_key fallback */
+  var key = (typeof window.mocaGetApiKey==='function') ? window.mocaGetApiKey('script','openai')
+            : (typeof ucGetApiKey==='function') ? ucGetApiKey('openai')
+            : localStorage.getItem('uc_openai_key')||'';
   if(!key){ alert('OpenAI API 키를 입력해주세요'); return; }
   if(!title){ alert('썸네일 제목을 입력해주세요'); return; }
   if(typeof ucShowToast==='function') ucShowToast('⏳ 썸네일 '+variant+'안 생성 중...','info');

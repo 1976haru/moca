@@ -678,8 +678,10 @@ async function studioS4GenLipSync(idx){
   var audioUrl=(s4.audios||[])[idx];
   if(!audioUrl){alert('먼저 씬 음성을 생성해주세요');return;}
 
-  /* HeyGen API 연동 */
-  var heygenKey=(typeof ucGetApiKey==='function')?ucGetApiKey('heygen'):localStorage.getItem('uc_heygen_key')||'';
+  /* HeyGen API 연동 — 통합 store(video.heygen) 우선, 미설정 시 legacy uc_heygen_key fallback */
+  var heygenKey=(typeof window.mocaGetApiKey==='function')?window.mocaGetApiKey('video','heygen')
+                :(typeof ucGetApiKey==='function')?ucGetApiKey('heygen')
+                :localStorage.getItem('uc_heygen_key')||'';
   if(!heygenKey){
     if(confirm('HeyGen API 키가 없어요.\nAPI 설정에서 등록할까요?')){renderApiSettings();}
     return;
@@ -701,8 +703,10 @@ async function studioS4SearchBgm(){
     '감동':'emotional','히스토리':'epic cinematic','사자성어':'traditional',
   };
   var query=moodMap[genre]||'background music';
-  /* 통합 store(stock.pixabay) → ucGetApiKey 가 자동 처리 */
-  var key=(typeof ucGetApiKey==='function')?ucGetApiKey('pixabay'):localStorage.getItem('uc_pixabay_key')||'';
+  /* 통합 store(stock.pixabay) 우선, 미설정 시 ucGetApiKey → legacy uc_pixabay_key fallback */
+  var key=(typeof window.mocaGetApiKey==='function')?window.mocaGetApiKey('stock','pixabay')
+          :(typeof ucGetApiKey==='function')?ucGetApiKey('pixabay')
+          :localStorage.getItem('uc_pixabay_key')||'';
   if(!key){
     if (confirm('Pixabay API 키가 없습니다. 통합 API 설정(스톡 탭)을 열까요?')) {
       if (typeof window.openApiSettingsModal === 'function') window.openApiSettingsModal('stock');

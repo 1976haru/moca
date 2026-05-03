@@ -137,7 +137,11 @@ function gen(){
     if(v28parsed.images){var imgBox=document.getElementById('gen-img-box');if(imgBox){imgBox.textContent=v28parsed.images;document.getElementById('gen-img-wrap').style.display='block';}}
     // 유튜브전략 분리 저장
     if(v28parsed.youtube){var ytBox=document.getElementById('gen-yt-box');if(ytBox){ytBox.textContent=v28parsed.youtube;}}
-    document.getElementById('result').classList.add('on');localStorage.setItem('uc_claude_key',key);addHH();
+    /* 통합 store(script.claude) + legacy uc_claude_key 동시 저장 — 마이그레이션 호환 */
+    document.getElementById('result').classList.add('on');
+    try { localStorage.setItem('uc_claude_key',key); } catch(_){}
+    if (typeof window.setApiProvider === 'function') { try { window.setApiProvider('script','claude',{ apiKey:key, enabled:true }); } catch(_){} }
+    addHH();
     document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
     /* 부모(자동숏츠 스튜디오)에 대본 전달 */
     try {
@@ -682,7 +686,10 @@ async function genAB() {
     if (abA) abA.className = 'ab-tab on-a';
     if (abB) abB.className = 'ab-tab';
     showViral(abStore.a);
-    addHH(); localStorage.setItem('uc_claude_key', key);
+    /* 통합 store + legacy 동시 저장 */
+    addHH();
+    try { localStorage.setItem('uc_claude_key', key); } catch(_){}
+    if (typeof window.setApiProvider === 'function') { try { window.setApiProvider('script','claude',{ apiKey:key, enabled:true }); } catch(_){} }
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) { showErr('오류: ' + e.message); }
   document.getElementById('genbtn').disabled = false;
