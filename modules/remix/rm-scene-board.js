@@ -199,21 +199,10 @@
       '</div>';
   }
 
-  /* ── 서버 자동 가져오기 모드 (준비중) ── */
+  /* ── 서버 자동 가져오기 모드 — 실제 렌더는 rm-server-ui.js 가 담당 (1000줄 회피) ── */
   function _renderModeServer(p) {
-    return '<div class="rm-server-info">' +
-      '<b>☁️ 서버 자동 가져오기 — 현재 준비중</b>' +
-      '<p style="margin:6px 0">이 기능은 서버 API 가 연결되면 사용할 수 있습니다. ' +
-        '현재는 <b>YouTube 링크 + 자막 붙여넣기</b> 또는 <b>MP4 업로드</b> 를 사용하세요.</p>' +
-      '<div style="font-size:11px;color:#7b6080;line-height:1.7">' +
-        '필요한 서버 엔드포인트:<br>' +
-        '<code>/api/youtube/meta?v={videoId}</code> — 영상 메타<br>' +
-        '<code>/api/youtube/transcript?v={videoId}</code> — 자막 자동 추출<br>' +
-        '<code>POST /api/youtube/keyframes {videoId, times[]}</code> — 프레임 추출<br>' +
-        '<small>구현 후보: Cloudflare Worker · Vercel Serverless · Node API · yt-dlp + ffmpeg</small>' +
-      '</div>' +
-      '<button type="button" class="rm-tb-btn" onclick="rmResetSource()" style="margin-top:8px">← 다른 모드 선택</button>' +
-    '</div>';
+    if (typeof window._rmRenderModeServer === 'function') return window._rmRenderModeServer(p);
+    return '<div class="rm-server-box">⚠️ rm-server-ui.js 미로드 — script 순서를 확인하세요.</div>';
   }
 
   /* ── 자막 붙여넣기 영역 (youtube/upload 모드 공통) ── */
@@ -610,6 +599,9 @@
       setTimeout(_maybeAutoParse, 50);
     });
   };
+
+  /* 서버 자동 가져오기 액션은 rm-server-ui.js 에 있음 — auto parse helper 만 노출 */
+  window._rmMaybeAutoParse = _maybeAutoParse;
 
   /* ── MP4 frame capture (Scene 카드의 📷 버튼) ── */
   window.rmCaptureFrame = async function(idx) {

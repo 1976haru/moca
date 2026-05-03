@@ -128,6 +128,35 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 .rm-file-pri { background:linear-gradient(135deg,#fff5fa,#f5f0ff)!important;
   border-color:#c7b3e5!important; color:#5b1a4a!important; }
 
+/* ── 서버 자동 가져오기 박스 ── */
+.rm-server-box { padding:12px; background:#fafafe; border:1.5px solid #c7b3e5;
+  border-radius:12px; display:flex; flex-direction:column; gap:8px; }
+.rm-server-hd { font-weight:800; color:#5b1a4a; font-size:13px; }
+.rm-server-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.rm-server-lbl { font-size:11px; font-weight:700; color:#5a4a56; flex:0 0 auto; }
+.rm-server-status { padding:6px 10px; border-radius:8px; font-size:11.5px; font-weight:700;
+  line-height:1.55; }
+.rm-server-status.ok { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+.rm-server-status.err { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+.rm-server-hint { font-size:11px; color:#7b6080; padding:4px 8px; }
+.rm-feat-row { display:flex; flex-wrap:wrap; gap:5px; }
+.rm-feat-pill { padding:3px 8px; border-radius:6px; font-size:10.5px; font-weight:700;
+  border:1px solid; line-height:1.4; }
+.rm-feat-pill.on { background:#dcfce7; color:#166534; border-color:#86efac; }
+.rm-feat-pill.off { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+.rm-server-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+@media(max-width:600px) { .rm-server-actions { grid-template-columns:1fr; } }
+.rm-server-action { padding:8px 10px; background:#fff; border:1px solid #d6c7e0;
+  border-radius:8px; font-size:11.5px; line-height:1.55; display:flex; flex-direction:column; gap:5px; }
+.rm-server-action b { color:#5b1a4a; font-weight:800; }
+.rm-server-action small { color:#7b6080; line-height:1.5; }
+.rm-server-action-row { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+.rm-server-help { padding:6px 10px; background:#fff; border:1px solid #f1dce7; border-radius:8px;
+  font-size:11px; color:#5a4a56; }
+.rm-server-help summary { cursor:pointer; font-weight:800; color:#5b1a4a; }
+.rm-server-help code { font-family:'SFMono-Regular', Consolas, monospace; font-size:10.5px;
+  background:#fafafe; padding:1px 5px; border:1px solid #d6c7e0; border-radius:3px; color:#5b1a4a; }
+
 /* ── 모드 바 ── */
 .rm-modebar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:6px 8px;
   background:#fafafe; border:1px solid #f1dce7; border-radius:8px; margin-bottom:8px; }
