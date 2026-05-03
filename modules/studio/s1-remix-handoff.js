@@ -190,19 +190,93 @@
     _toast(toastMsg, 'success');
     try { console.log('[remix-handoff]', toastMsg, '· source:', proj.remixSource); } catch(_){}
 
-    return {
-      ok: true,
+    var counts = {
+      s1Scenes:       proj.s1.scenes.length,
+      projectScenes:  proj.scenes.length,
+      s3ImagePrompts: proj.s3.imagePrompts.length,
+      s3VideoPrompts: proj.s3.videoPrompts.length,
+      s3ScenePrompts: proj.s3.scenePrompts.length,
+    };
+
+    /* persistent banner — toast 와 별도로 페이지 상단에 영구 표시 (사용자가 dismiss 하기 전까지) */
+    _injectBanner({
       sceneCount: studioScenes.length,
       remixSource: proj.remixSource,
-      counts: {
-        s1Scenes:       proj.s1.scenes.length,
-        projectScenes:  proj.scenes.length,
-        s3ImagePrompts: proj.s3.imagePrompts.length,
-        s3VideoPrompts: proj.s3.videoPrompts.length,
-        s3ScenePrompts: proj.s3.scenePrompts.length,
-      },
-    };
+      counts: counts,
+    });
+
+    return { ok: true, sceneCount: studioScenes.length, remixSource: proj.remixSource, counts: counts };
   }
+
+  /* Step 2 페이지 DOM 에 dismissible banner 삽입 — DOM API 누락 환경 (테스트 sandbox 등) 에서도
+     예외가 handoff 핵심 흐름을 깨지 않도록 try/catch 감싸기. */
+  function _injectBanner(info) {
+    function _doInject() {
+      try {
+        if (typeof document === 'undefined' || !document.getElementById) return;
+        if (document.getElementById('moca-remix-handoff-banner')) return;
+        var host = document.getElementById('studio-body') || document.getElementById('studioDetail') || document.body;
+        if (!host || typeof host.insertBefore !== 'function') return;
+      var src = info.remixSource || {};
+      var c = info.counts || {};
+      var html =
+        '<div id="moca-remix-handoff-banner" class="moca-rh-banner">' +
+          '<div class="moca-rh-banner-hd">' +
+            '<span>🎞️</span><b>영상 리믹스에서 ' + info.sceneCount + '개 장면을 가져왔어요</b>' +
+            '<button type="button" class="moca-rh-close" onclick="this.parentElement.parentElement.remove()" title="닫기">✕</button>' +
+          '</div>' +
+          '<div class="moca-rh-banner-body">' +
+            (src.title ? '<span class="moca-rh-pill"><b>제목</b> ' + _esc(src.title) + '</span>' : '') +
+            (src.videoId ? '<span class="moca-rh-pill"><b>YouTube</b> ' + _esc(src.videoId) + '</span>' : '') +
+            (src.fileName ? '<span class="moca-rh-pill"><b>파일</b> ' + _esc(src.fileName) + '</span>' : '') +
+            '<span class="moca-rh-pill"><b>씬</b> ' + (c.s1Scenes||0) + '</span>' +
+            '<span class="moca-rh-pill"><b>scenePrompts</b> ' + (c.s3ScenePrompts||0) + '</span>' +
+            '<span class="moca-rh-pill"><b>imagePrompts</b> ' + (c.s3ImagePrompts||0) + '</span>' +
+            '<span class="moca-rh-pill"><b>videoPrompts</b> ' + (c.s3VideoPrompts||0) + '</span>' +
+            (src.mode ? '<span class="moca-rh-pill"><b>mode</b> ' + _esc(src.mode) + '</span>' : '') +
+          '</div>' +
+        '</div>';
+        var div = document.createElement('div');
+        div.innerHTML = html;
+        var node = div.firstChild;
+        host.insertBefore(node, host.firstChild);
+        _injectBannerStyle();
+      } catch(e) {
+        try { console.debug('[remix-handoff] banner inject skipped:', e && e.message); } catch(_){}
+      }
+    }
+    /* studio-body 가 아직 비어있을 수 있으므로 setTimeout 으로 한 번 더 시도 */
+    _doInject();
+    if (typeof setTimeout === 'function') {
+      try { setTimeout(_doInject, 250); } catch(_){}
+      try { setTimeout(_doInject, 800); } catch(_){}
+    }
+  }
+  function _injectBannerStyle() {
+    try {
+      if (typeof document === 'undefined' || !document.getElementById) return;
+      if (document.getElementById('moca-rh-style')) return;
+      if (!document.head || typeof document.head.appendChild !== 'function') return;
+    } catch(_) { return; }
+    var st = document.createElement('style');
+    st.id = 'moca-rh-style';
+    st.textContent =
+      '.moca-rh-banner{margin:8px 0;padding:10px 14px;background:linear-gradient(135deg,#dcfce7,#dbeafe);' +
+        'border:1.5px solid #86efac;border-radius:12px;font-size:12px;line-height:1.55;color:#0f3d27;' +
+        'box-shadow:0 4px 12px rgba(16,185,129,.12)}' +
+      '.moca-rh-banner-hd{display:flex;align-items:center;gap:8px;font-size:13px;color:#0f3d27}' +
+      '.moca-rh-banner-hd b{font-weight:900}' +
+      '.moca-rh-close{margin-left:auto;width:24px;height:24px;border:1px solid #86efac;background:#fff;' +
+        'border-radius:6px;color:#166534;font-weight:900;cursor:pointer;font-family:inherit}' +
+      '.moca-rh-close:hover{background:#dcfce7}' +
+      '.moca-rh-banner-body{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}' +
+      '.moca-rh-pill{padding:3px 10px;background:#fff;border:1px solid #86efac;border-radius:8px;' +
+        'font-size:11px;color:#0f3d27}' +
+      '.moca-rh-pill b{color:#166534;margin-right:4px}';
+    document.head.appendChild(st);
+  }
+  function _esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
   window.MOCA_REMIX_HANDOFF = {
     HANDOFF_KEY: HANDOFF_KEY,

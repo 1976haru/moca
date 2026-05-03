@@ -24,6 +24,7 @@
     var p = window.RM_CORE.load();
     root.innerHTML = '' +
       _renderTopBar(p) +
+      _renderStateBadge(p) +
       _renderStageHeader(p) +
       _renderToolbar(p) +
       _renderModeBar(p) +
@@ -32,6 +33,47 @@
       _renderStatus(p) +
       _renderCopyNotice() +
     '';
+  }
+
+  /* ── 3단계 상태 배지 ──
+     1: 영상 미리보기 준비됨 (소스 설정 + 자막 없음)
+     2: 자막/대본 필요 (소스 없음 또는 자막 비어있음)
+     3: Scene 생성 완료 (scenes.length > 0) */
+  function _renderStateBadge(p) {
+    var hasSrc    = !!(p.source && (p.source.videoId || p.source.fileBlobUrl));
+    var hasRaw    = String(p.transcript.raw || '').trim().length > 0;
+    var sceneN    = (p.scenes || []).filter(function(s){ return !s.deleted; }).length;
+    var hasScenes = sceneN > 0;
+    var jaN       = (p.scenes || []).filter(function(s){ return !s.deleted && (s.captionJa||'').trim(); }).length;
+
+    var s1Cls = (hasSrc && !hasRaw) ? 'on' : (hasSrc ? 'done' : 'pending');
+    var s2Cls = hasRaw ? (hasScenes ? 'done' : 'on') : 'pending';
+    var s3Cls = hasScenes ? 'on' : 'pending';
+
+    var msg;
+    if (!hasSrc && !hasRaw) {
+      msg = '👇 시작하기 — 유튜브 링크 입력 or MP4 업로드 + 자막/대본 붙여넣기';
+    } else if (hasSrc && !hasRaw) {
+      msg = '⚠️ 영상 미리보기만으로는 장면 편집이 불가능합니다. 자막/대본을 붙여넣어야 Scene 이 생성됩니다.';
+    } else if (hasRaw && !hasScenes) {
+      msg = '⚠️ 자막이 입력됐습니다 — "🪄 장면 분리" 를 누르거나 paste 자동분리를 기다리세요.';
+    } else {
+      msg = '✅ ' + sceneN + ' 개 Scene 생성 완료 · 일본어 자막 ' + jaN + ' 개 — 자동숏츠로 전달 가능합니다.';
+    }
+
+    return '<div class="rm-statebar">' +
+      '<div class="rm-state-pills">' +
+        '<span class="rm-state-pill '+s1Cls+'"><b>1</b> 영상 미리보기 ' +
+          (hasSrc ? '✅' : '◻') + '</span>' +
+        '<span class="rm-state-arrow">→</span>' +
+        '<span class="rm-state-pill '+s2Cls+'"><b>2</b> 자막/대본 ' +
+          (hasRaw ? '✅' : '◻') + '</span>' +
+        '<span class="rm-state-arrow">→</span>' +
+        '<span class="rm-state-pill '+s3Cls+'"><b>3</b> Scene 생성 ' +
+          (hasScenes ? '✅ ('+sceneN+')' : '◻') + '</span>' +
+      '</div>' +
+      '<div class="rm-state-msg '+(hasScenes?'ok':hasSrc&&!hasRaw?'warn':'init')+'">'+_esc(msg)+'</div>' +
+    '</div>';
   }
 
   /* ── 상단 권한/저작권 안내 + 상태 ── */
@@ -438,19 +480,38 @@
     _maybeAutoParse();
   };
 
+  /* 자막 textarea 가 비어있을 때 — focus + 스크롤 + 플래시 하이라이트 */
+  function _focusPasteTextarea() {
+    var ta = document.getElementById('rm-paste-ta');
+    if (!ta) return;
+    try {
+      ta.scrollIntoView({ behavior:'smooth', block:'center' });
+      ta.classList.add('rm-paste-flash');
+      setTimeout(function(){ try { ta.focus(); } catch(_) {} }, 180);
+      setTimeout(function(){ try { ta.classList.remove('rm-paste-flash'); } catch(_) {} }, 1600);
+    } catch(_) {}
+  }
   window.rmParseAndSplit = function(){
     var p = window.RM_CORE.project();
     var raw = String(p.transcript.raw || '').trim();
-    if (!raw) { _setStatus('⚠️ 자막을 먼저 붙여넣어 주세요.', 'warn'); return; }
+    if (!raw) {
+      _setStatus('⚠️ 자막/대본이 비어 있습니다. 유튜브 자막, 직접 받아쓴 대본, SRT/TXT 내용을 먼저 붙여넣어 주세요.', 'warn');
+      _focusPasteTextarea();
+      return;
+    }
     var r = window.RM_PARSER.parseAndSplit(raw, { videoId: p.source.videoId });
-    if (!r.scenes.length) { _setStatus('❌ 장면 분리 실패 — 자막 형식을 확인하세요.', 'err'); return; }
+    if (!r.scenes.length) {
+      _setStatus('❌ 장면 분리 실패 — 자막 형식을 확인하세요. (SRT/VTT 형식 또는 일반 줄/문장 텍스트가 필요합니다)', 'err');
+      _focusPasteTextarea();
+      return;
+    }
     window.RM_CORE.setTranscriptCues(r.cues, r.format);
     window.RM_CORE.setScenes(r.scenes);
     var pp = window.RM_CORE.project();
     pp._active = 0;
     window.RM_CORE.setStage('scenes');
     window.RM_CORE.save();
-    _setStatus('✅ '+r.scenes.length+'개 씬 분리 완료', 'ok');
+    _setStatus('✅ '+r.scenes.length+'개 씬 분리 완료 · 형식 '+r.format, 'ok');
   };
 
   window.rmSetMode  = function(m){ window.RM_CORE.setMode(m); _re(); };
