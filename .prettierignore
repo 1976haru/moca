@@ -6,7 +6,6 @@ build/
 engines/content/
 engines/media/
 test/
-files/
 .claude/
 *.bak
 *.zip
