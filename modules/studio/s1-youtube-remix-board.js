@@ -70,6 +70,8 @@
     /* legacy → import packet 마이그레이션 (1회) */
     try { if (window.YT_IMPORT && typeof window.YT_IMPORT.migrateLegacy === 'function') window.YT_IMPORT.migrateLegacy(); } catch(_){}
     var hasScenes = (YRX.detectedScenes || []).length > 0;
+    /* 일본어 자막 테스트 모드 — 토글 ON 이면 board 대신 ja-test 패널을 본문으로 사용 */
+    var jaMode = !!YRX.jaTestMode;
     return '' +
     '<div class="s1s-block s1s-mode-block yrxb-wrap">' +
       '<div class="s1s-label">🎬 유튜브 리믹스 보드 — 영상을 보면서 장면별로 수정·번역·각색</div>' +
@@ -79,10 +81,14 @@
       _renderImportStatus(YRX) +
       _renderImportErrors(YRX) +
       _renderBridgeBanner(YRX) +
-      _renderPasteArea(YRX) +
-      _renderModeBar(YRX) +
-      (hasScenes ? _renderBoard(YRX) : _renderEmptyHint()) +
-      (hasScenes ? _renderActionBar(YRX) : '') +
+      (jaMode
+        ? (typeof window._s1RenderJaTestPanel === 'function' ? window._s1RenderJaTestPanel() : '')
+        : (
+          _renderPasteArea(YRX) +
+          _renderModeBar(YRX) +
+          (hasScenes ? _renderBoard(YRX) : _renderEmptyHint()) +
+          (hasScenes ? _renderActionBar(YRX) : '')
+        )) +
       _renderFooter(YRX) +
       _renderStatus(YRX) +
     '</div>';
@@ -169,6 +175,9 @@
       '</label>' +
       '<button type="button" class="yrxb-tb-btn pri" '+(YRX.busy?'disabled':'')+
         ' onclick="yrxBoardRunImport()">🪄 가져오기 / 장면 분리</button>' +
+      (YRX.jaTestMode
+        ? '<button type="button" class="yrxb-tb-btn" onclick="yrxJaTestExit()" title="일반 보드로 돌아가기">← 일반 보드</button>'
+        : '<button type="button" class="yrxb-tb-btn" onclick="yrxJaTestEnter()" title="원본 ↔ 일본어 자막 비교 + 일괄 번역 + SRT/TXT 다운로드">🇯🇵 자막 일본어 테스트 모드</button>') +
     '</div>';
   }
 
