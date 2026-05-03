@@ -146,8 +146,14 @@
     var br = YRX.bridgeResult;
     if (!br) return '';
     if (br.ok) {
+      var scenes = YRX.detectedScenes || [];
+      var totN = scenes.filter(_isVisible).length;
+      var selN = scenes.filter(function(sc){ return _isVisible(sc) && sc.selected; }).length;
+      var excludeNote = (totN > selN)
+        ? ' (선택 안 된 ' + (totN - selN) + '개 씬은 export 에서 제외됨)'
+        : '';
       return '<div class="yrxb-errpanel ok">' +
-        '<div class="yrxb-errpanel-hd">✅ Step 2 전달 성공 — 씬 '+br.written.scenes+'개 · prompt '+br.written.prompts+'개</div>' +
+        '<div class="yrxb-errpanel-hd">✅ Step 2 전달 성공 — 씬 '+br.written.scenes+'개 · prompt '+br.written.prompts+'개'+_esc(excludeNote)+'</div>' +
         '<div class="yrxb-errpanel-fix">' +
           '<button type="button" class="yrxb-mini ok" onclick="if(window.studioGoto)studioGoto(2)">→ Step 2 (이미지·영상) 으로 이동</button>' +
         '</div>' +
@@ -262,6 +268,7 @@
         '</label>' +
         (anyDeleted ? '<button type="button" class="yrxb-mini" onclick="yrxBoardRestoreAll()">↺ 전체 복구</button>' : '') +
       '</div>' +
+      '<div class="yrxb-list-note">선택 해제된 씬은 Step 2 export 에서 자동 제외됩니다.</div>' +
       '<div class="yrxb-cards">' +
         scenes.map(function(sc, i){ return _renderSceneCard(YRX, sc, i); }).join('') +
       '</div>' +
@@ -296,6 +303,23 @@
     var jumpBtn = (sc.startSec != null && YRX.videoId)
       ? '<button type="button" class="yrxb-card-jump" onclick="event.stopPropagation();yrxJumpTo('+(sc.startSec||0)+')" title="이 시점부터 영상 보기">▶ '+_esc(_fmtSec(sc.startSec))+'</button>'
       : '';
+    /* 카드 안 인라인 미리보기 — 수정 자막 / 일본어 자막 (값이 있을 때만) */
+    var ad = (YRX.adaptedScenes || [])[i] || {};
+    var editedKo = sc.editedText || ad.adaptedNarration || '';
+    var captionJa = ad.captionJa || sc.captionJa || sc.translatedJa || '';
+    var inline = '';
+    if (editedKo) {
+      inline += '<div class="yrxb-card-inline ko">' +
+        '<span class="yrxb-card-tag">수정</span>' +
+        '<span class="yrxb-card-text">'+_esc(editedKo)+'</span>' +
+      '</div>';
+    }
+    if (captionJa) {
+      inline += '<div class="yrxb-card-inline ja">' +
+        '<span class="yrxb-card-tag">日本語</span>' +
+        '<span class="yrxb-card-text">'+_esc(captionJa)+'</span>' +
+      '</div>';
+    }
     return '<div class="yrxb-card '+(active?'active':'')+' '+(deleted?'deleted':'')+'" onclick="yrxBoardSetActive('+i+')">' +
       '<div class="yrxb-card-row1">' +
         '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation();yrxBoardToggleSelect('+i+')">' +
@@ -310,6 +334,7 @@
           '</div>' +
           (chips ? '<div class="yrxb-chips">'+chips+'</div>' :
             '<div class="yrxb-card-empty">(빈 자막 — 공백 삭제로 정리 가능)</div>') +
+          inline +
         '</div>' +
       '</div>' +
     '</div>';
@@ -413,6 +438,9 @@
   /* ── 하단 액션 바 ── */
   function _renderActionBar(YRX) {
     var busy = !!YRX.busy;
+    var scenes = YRX.detectedScenes || [];
+    var selN = scenes.filter(function(sc){ return _isVisible(sc) && sc.selected; }).length;
+    var totN = scenes.filter(_isVisible).length;
     return '<div class="yrxb-actionbar">' +
       '<button type="button" class="yrxb-act-btn" onclick="yrxBoardClearSelect()">선택 해제</button>' +
       '<button type="button" class="yrxb-act-btn" onclick="yrxBoardDeleteSelected()">🗑 선택 삭제</button>' +
@@ -427,7 +455,8 @@
         ' onclick="yrxAdaptAll()">🪄 전체 각색 (현재 모드)</button>' +
       '<span class="yrxb-act-sep"></span>' +
       '<button type="button" class="yrxb-act-btn pri" onclick="yrxRunSafety()">🛡 유사도 검사</button>' +
-      '<button type="button" class="yrxb-act-btn pri" onclick="yrxBoardBridgeToStep2()">→ Step 2 로 보내기</button>' +
+      '<button type="button" class="yrxb-act-btn pri" onclick="yrxBoardBridgeToStep2()">'+
+        '→ Step 2 로 보내기 <span class="yrxb-act-cnt">선택 '+selN+' / '+totN+'</span></button>' +
     '</div>';
   }
 
