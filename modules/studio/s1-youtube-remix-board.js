@@ -67,6 +67,8 @@
       return '<div class="s1s-block s1s-mode-block"><div class="yrxb-empty">' +
         'YRX_STATE 미초기화 — s1-youtube-remix.js 가 먼저 로드돼야 합니다.</div></div>';
     }
+    /* legacy → import packet 마이그레이션 (1회) */
+    try { if (window.YT_IMPORT && typeof window.YT_IMPORT.migrateLegacy === 'function') window.YT_IMPORT.migrateLegacy(); } catch(_){}
     var hasScenes = (YRX.detectedScenes || []).length > 0;
     return '' +
     '<div class="s1s-block s1s-mode-block yrxb-wrap">' +
@@ -74,6 +76,9 @@
       '<div class="yrxb-notice">⚠️ 영상 다운로드/원본 파일 저장 금지 — iframe 미리보기 + 사용자가 붙여넣은 자막/대본만 사용합니다. ' +
         '원본 문장을 그대로 복제하지 말고 수정/번역/각색해 주세요.</div>' +
       _renderToolbar(YRX) +
+      _renderImportStatus(YRX) +
+      _renderImportErrors(YRX) +
+      _renderBridgeBanner(YRX) +
       _renderPasteArea(YRX) +
       _renderModeBar(YRX) +
       (hasScenes ? _renderBoard(YRX) : _renderEmptyHint()) +
@@ -82,6 +87,73 @@
       _renderStatus(YRX) +
     '</div>';
   };
+
+  /* ── import 단계별 상태 (1/4 → 4/4) ── */
+  function _renderImportStatus(YRX) {
+    var st = YRX.importStatus;
+    if (!st || !st.steps) return '';
+    return '<div class="yrxb-impst">' +
+      st.steps.map(function(s){
+        var cls = s.state || 'pending';
+        var icon = cls === 'ok' ? '✅' : cls === 'error' ? '❌' : cls === 'warn' ? '⚠️' : cls === 'running' ? '⏳' : '◻';
+        return '<div class="yrxb-impst-step '+cls+'">' +
+          '<span class="yrxb-impst-icon">'+icon+'</span>' +
+          '<span class="yrxb-impst-label">'+_esc(s.label)+'</span>' +
+          (s.detail ? '<span class="yrxb-impst-detail">'+_esc(s.detail)+'</span>' : '') +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  /* ── import 실패 / 경고 패널 (조용한 실패 금지) ── */
+  function _renderImportErrors(YRX) {
+    var pk = (window.YT_IMPORT && typeof window.YT_IMPORT.getImport === 'function') ? window.YT_IMPORT.getImport() : null;
+    var errs = (pk && pk.errors) || [];
+    var warns = (pk && pk.warnings) || [];
+    if (!errs.length && !warns.length) return '';
+    var html = '';
+    if (errs.length) {
+      html += '<div class="yrxb-errpanel high">' +
+        '<div class="yrxb-errpanel-hd">❌ import 실패 / 미완료</div>' +
+        '<ul>' + errs.map(function(e){
+          return '<li><b>['+_esc(e.code||'error')+']</b> '+_esc(e.message||'')+'</li>';
+        }).join('') + '</ul>' +
+        '<div class="yrxb-errpanel-fix">' +
+          '<button type="button" class="yrxb-mini" onclick="yrxBoardTogglePaste()">📋 자막 직접 붙여넣기</button>' +
+          '<button type="button" class="yrxb-mini" onclick="yrxBoardRunImport()">↻ 다시 가져오기</button>' +
+        '</div>' +
+      '</div>';
+    }
+    if (warns.length) {
+      html += '<div class="yrxb-errpanel warn">' +
+        '<div class="yrxb-errpanel-hd">⚠️ 경고 (진행 가능)</div>' +
+        '<ul>' + warns.map(function(w){
+          return '<li><b>['+_esc(w.code||'warn')+']</b> '+_esc(w.message||'')+'</li>';
+        }).join('') + '</ul>' +
+      '</div>';
+    }
+    return html;
+  }
+
+  /* ── Step 2 bridge 결과 배너 ── */
+  function _renderBridgeBanner(YRX) {
+    var br = YRX.bridgeResult;
+    if (!br) return '';
+    if (br.ok) {
+      return '<div class="yrxb-errpanel ok">' +
+        '<div class="yrxb-errpanel-hd">✅ Step 2 전달 성공 — 씬 '+br.written.scenes+'개 · prompt '+br.written.prompts+'개</div>' +
+        '<div class="yrxb-errpanel-fix">' +
+          '<button type="button" class="yrxb-mini ok" onclick="if(window.studioGoto)studioGoto(2)">→ Step 2 (이미지·영상) 으로 이동</button>' +
+        '</div>' +
+      '</div>';
+    }
+    return '<div class="yrxb-errpanel high">' +
+      '<div class="yrxb-errpanel-hd">❌ Step 2 전달 실패</div>' +
+      '<ul>' + (br.errors||[]).map(function(e){
+        return '<li><b>['+_esc(e.code||'')+']</b> '+_esc(e.message||'')+'</li>';
+      }).join('') + '</ul>' +
+    '</div>';
+  }
 
   /* ── 상단 툴바 ── */
   function _renderToolbar(YRX) {
@@ -96,7 +168,7 @@
         '<input type="file" accept=".srt,.vtt,.txt" onchange="yrxBoardLoadFile(event)">' +
       '</label>' +
       '<button type="button" class="yrxb-tb-btn pri" '+(YRX.busy?'disabled':'')+
-        ' onclick="yrxBoardParseAndShow()">🪄 분석 / 장면으로 나누기</button>' +
+        ' onclick="yrxBoardRunImport()">🪄 가져오기 / 장면 분리</button>' +
     '</div>';
   }
 
@@ -134,12 +206,21 @@
     '</div>';
   }
 
-  /* ── 빈 상태 ── */
+  /* ── 빈 상태 — 큰 안내 + 즉시 paste textarea 노출 ── */
   function _renderEmptyHint() {
     return '<div class="yrxb-empty-hint">' +
-      '<b>📋 자막/대본을 붙여넣고 "🪄 분석 / 장면으로 나누기" 를 누르세요.</b><br>' +
-      '시간 표기가 있으면 자동으로 씬 단위로 분해되고, 없으면 문장 단위로 묶입니다.<br>' +
-      '<small>자동 가져오기는 CORS 정책으로 실패할 수 있습니다 — 이때는 유튜브 자막(CC) 텍스트를 복사해서 붙여넣어 주세요.</small>' +
+      '<div class="yrxb-empty-hd">📋 가져오기 시작 — 다음 중 하나를 입력하세요</div>' +
+      '<ol class="yrxb-empty-steps">' +
+        '<li><b>유튜브 링크</b> — 위 입력창에 URL 을 붙여 넣고 "🔄 자막 자동 가져오기" 를 시도</li>' +
+        '<li><b>자막/대본 직접 붙여넣기</b> — 자동 가져오기 실패 시 유튜브 자막(CC) 또는 SRT/VTT 를 복사해서 아래 textarea 에 붙여넣기</li>' +
+        '<li><b>파일 불러오기</b> — .srt/.vtt/.txt 파일을 직접 선택</li>' +
+      '</ol>' +
+      '<div class="yrxb-empty-warn">⚠️ 클라이언트 단독으로는 자막/프레임 자동 추출이 CORS 로 막힐 수 있습니다. ' +
+        '서버(/api/youtube/...)가 설정되지 않은 환경에서는 <b>자막 직접 붙여넣기</b>가 가장 확실한 방법입니다.</div>' +
+      '<div class="yrxb-empty-cta">' +
+        '<button type="button" class="yrxb-act-btn pri" onclick="yrxBoardRunImport()">🪄 가져오기 / 장면 분리 시작</button>' +
+        '<button type="button" class="yrxb-act-btn" onclick="yrxBoardTogglePaste()">📋 자막 붙여넣기 영역 열기</button>' +
+      '</div>' +
     '</div>';
   }
 
@@ -181,11 +262,26 @@
   function _renderSceneCard(YRX, sc, i) {
     var active = YRX.activeSceneIdx === i;
     var deleted = !!sc.deleted;
-    var selected = !!sc.selected;
-    var thumb = YRX.videoId
-      ? '<img class="yrxb-card-thumb" src="https://img.youtube.com/vi/'+_escAttr(YRX.videoId)+'/default.jpg" alt="" loading="lazy">'
-      : '<div class="yrxb-card-thumb empty"></div>';
-    var chips = _toChips(sc.original).slice(0, 12).map(function(w){
+    var selected = sc.selected !== false;
+    /* 썸네일 — 서버 keyframes 가 ready 면 그 URL, 아니면 영상 hqdefault placeholder */
+    var thumbUrl = sc.thumbnailUrl ||
+      (YRX.videoId ? 'https://img.youtube.com/vi/'+YRX.videoId+'/default.jpg' : '');
+    var status = sc.previewStatus || (thumbUrl ? 'placeholder' : 'missing');
+    var thumb;
+    if (thumbUrl) {
+      thumb = '<div class="yrxb-card-thumbwrap">' +
+        '<img class="yrxb-card-thumb" src="'+_escAttr(thumbUrl)+'" alt="" loading="lazy">' +
+        (status === 'placeholder' ? '<span class="yrxb-thumb-badge">프레임 미생성</span>' : '') +
+        (status === 'missing'     ? '<span class="yrxb-thumb-badge err">썸네일 없음</span>' : '') +
+        (sc.timeRange ? '<span class="yrxb-thumb-time">'+_esc(sc.timeRange)+'</span>' : '') +
+      '</div>';
+    } else {
+      thumb = '<div class="yrxb-card-thumbwrap"><div class="yrxb-card-thumb empty">no preview</div>' +
+        '<span class="yrxb-thumb-badge err">프레임 없음</span></div>';
+    }
+    /* 자막 칩 — original 또는 originalText */
+    var chipText = sc.originalText || sc.original || '';
+    var chips = _toChips(chipText).slice(0, 12).map(function(w){
       return '<span class="yrxb-chip">'+_esc(w)+'</span>';
     }).join('');
     var jumpBtn = (sc.startSec != null && YRX.videoId)
@@ -322,7 +418,7 @@
         ' onclick="yrxAdaptAll()">🪄 전체 각색 (현재 모드)</button>' +
       '<span class="yrxb-act-sep"></span>' +
       '<button type="button" class="yrxb-act-btn pri" onclick="yrxRunSafety()">🛡 유사도 검사</button>' +
-      '<button type="button" class="yrxb-act-btn pri" onclick="yrxSendAllToStep2()">→ Step 2 로 보내기</button>' +
+      '<button type="button" class="yrxb-act-btn pri" onclick="yrxBoardBridgeToStep2()">→ Step 2 로 보내기</button>' +
     '</div>';
   }
 
@@ -508,6 +604,93 @@
       if (YRX2) YRX2.boardPasteOpen = false;
       _save(); _refresh();
     }
+  };
+
+  /* ⭐ 새 import pipeline — 단계별 status 를 UI 에 노출, 모든 실패는 errors[] 로 표시 */
+  window.yrxBoardRunImport = async function() {
+    var YRX = _state(); if (!YRX) return;
+    if (!window.YT_IMPORT) {
+      _toast('❌ YT_IMPORT 미로드 — s1-youtube-import-pipeline.js 를 확인하세요.', 'error');
+      return;
+    }
+    if (YRX.busy) return;
+    YRX.busy = true; YRX.busyTag = 'import';
+    YRX.bridgeResult = null;
+    /* 단계별 상태를 매 단계마다 화면에 즉시 반영 */
+    function onStatus(st) {
+      YRX.importStatus = st;
+      _refresh();
+    }
+    try {
+      var packet = await window.YT_IMPORT.runImport({
+        url: YRX.url || '',
+        transcript: YRX.transcript || '',
+        mode: YRX.adaptationMode || 'subtitle_only',
+      }, onStatus);
+      /* packet 적용 — YRX 상태 동기화 */
+      if (packet && packet.scenes && packet.scenes.length) {
+        YRX.detectedScenes = packet.scenes.slice();
+        YRX.adaptedScenes  = []; /* 새 import → 기존 adaptedScenes 초기화 */
+        YRX.safety         = null;
+        YRX.activeSceneIdx = 0;
+        YRX.boardPasteOpen = false;
+        if (packet.videoId) YRX.videoId = packet.videoId;
+        if (packet.url)     YRX.url     = packet.url;
+        if (packet.meta && packet.meta.title) YRX.title = packet.meta.title;
+        _toast('✅ 가져오기 완료 — '+packet.scenes.length+'개 씬 생성', 'success');
+      } else if (packet && packet.errors && packet.errors.length) {
+        _toast('❌ 가져오기 실패 — 패널의 안내를 확인하세요.', 'error');
+        YRX.boardPasteOpen = true;
+      } else {
+        _toast('⚠️ 가져오기 결과가 비어있습니다.', 'warn');
+      }
+    } catch(e) {
+      _toast('❌ 가져오기 예외: '+(e&&e.message||e), 'error');
+    }
+    YRX.busy = false; YRX.busyTag = '';
+    _save(); _refresh();
+  };
+
+  /* ⭐ Step 2 bridge — 검증 포함, 결과를 화면에 명시 */
+  window.yrxBoardBridgeToStep2 = function() {
+    var YRX = _state(); if (!YRX) return;
+    if (!window.YT_BRIDGE) {
+      _toast('❌ YT_BRIDGE 미로드 — s1-youtube-import-bridge.js 를 확인하세요.', 'error');
+      return;
+    }
+    var scenes = YRX.detectedScenes || [];
+    if (!scenes.length) {
+      YRX.bridgeResult = { ok:false, written:{scenes:0,prompts:0},
+        errors:[{code:'no-scenes',message:'씬이 없습니다 — 먼저 자막을 가져오세요.'}], warnings:[] };
+      _refresh();
+      _toast('❌ 씬이 없습니다 — 먼저 자막을 가져오기 하세요.', 'error');
+      return;
+    }
+    /* deleted/edited 반영해 bridge 에 넘김 — adaptedScenes 가 있으면 우선 사용 */
+    var ad = YRX.adaptedScenes || [];
+    var merged = scenes.map(function(sc, i){
+      var a = ad[i] || {};
+      return Object.assign({}, sc, {
+        editedText:   sc.editedText || a.adaptedNarration || '',
+        translatedJa: sc.translatedJa || a.captionJa || '',
+        captionKo:    a.captionKo || '',
+        captionJa:    a.captionJa || sc.translatedJa || '',
+        visualDescription: a.visualDescription || sc.visualDescription || '',
+        adaptedCaption:    a.adaptedCaption || '',
+        adaptedNarration:  a.adaptedNarration || sc.editedText || '',
+        imagePrompt:  a.imagePrompt || sc.imagePrompt || '',
+        videoPrompt:  a.videoPrompt || sc.videoPrompt || '',
+      });
+    });
+    var result = window.YT_BRIDGE.bridgeToStep2(merged);
+    YRX.bridgeResult = result;
+    if (result.ok) {
+      _toast('✅ Step 2 전달 성공 — 씬 '+result.written.scenes+'개', 'success');
+    } else {
+      _toast('❌ Step 2 전달 실패 — 패널 확인', 'error');
+    }
+    _save();
+    _refresh();
   };
   /* 모드 변경 후 즉시 전체 각색 — "자막만 번역" / "일부 각색" 빠른 실행 */
   window.yrxBoardRunMode = function(modeId) {
