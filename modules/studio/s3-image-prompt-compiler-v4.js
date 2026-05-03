@@ -265,6 +265,11 @@
 
     var parts = [];
     parts.push('[' + _roleLabel(intent.role || '') + ']');
+    /* characterBible.masterPrompt — animal_character 장르에서 모든 씬 prefix 로 부착.
+       v4 grammar styleHints 보다 먼저 와야 캐릭터 외형이 우선 결정됨. */
+    if (profile && profile.characterBible && profile.characterBible.masterPrompt) {
+      parts.push(profile.characterBible.masterPrompt);
+    }
     parts.push(_providerPrefix(providerId, grammar));
     parts.push(grammar.styleHints.join(', '));
     if (subject) parts.push(subject);

@@ -7,20 +7,21 @@
    기능: 모드선택 + 12장르 + 길이슬라이더(롱폼은 dropdown) + 훅패턴/강도 + 고급설정 8필드 + 검수
    ================================================ */
 
-/* ── 스타일 옵션 (12개) ── */
+/* ── 스타일 옵션 (13개) ── */
 const S1_STYLES = [
-  { id:'emotional', ico:'❤️', label:'감동',         desc:'공감·눈물·따뜻함' },
-  { id:'info',      ico:'📊', label:'정보',         desc:'팁·노하우·정리' },
-  { id:'humor',     ico:'😄', label:'유머',         desc:'웃음·반전·코믹' },
-  { id:'drama',     ico:'🎭', label:'드라마',       desc:'긴장·폭로·반전' },
-  { id:'senior',    ico:'👴', label:'시니어',       desc:'건강·노후·생활' },
-  { id:'knowledge', ico:'🧠', label:'지식',         desc:'전문·학습·교양' },
-  { id:'tikitaka',  ico:'💬', label:'티키타카',     desc:'A vs B 배틀·비교' },
-  { id:'trivia',    ico:'🧩', label:'잡학·트리비아',desc:'궁금증 자극·놀라운 사실' },
-  { id:'saying',    ico:'📜', label:'사자성어·명언',desc:'지혜·교훈' },
-  { id:'lyric',     ico:'🎵', label:'가사/음원',    desc:'Suno 프롬프트·트로트·엔카' },
-  { id:'longform',  ico:'📺', label:'롱폼',         desc:'10~15분 챕터 구조' },
-  { id:'custom',    ico:'✏️', label:'직접 입력',    desc:'스타일 직접 지정' },
+  { id:'emotional',         ico:'❤️', label:'감동',          desc:'공감·눈물·따뜻함' },
+  { id:'info',              ico:'📊', label:'정보',          desc:'팁·노하우·정리' },
+  { id:'humor',             ico:'😄', label:'유머',          desc:'웃음·반전·코믹' },
+  { id:'drama',             ico:'🎭', label:'드라마',        desc:'긴장·폭로·반전' },
+  { id:'senior',            ico:'👴', label:'시니어',        desc:'건강·노후·생활' },
+  { id:'knowledge',         ico:'🧠', label:'지식',          desc:'전문·학습·교양' },
+  { id:'tikitaka',          ico:'💬', label:'티키타카',      desc:'A vs B 배틀·비교' },
+  { id:'trivia',            ico:'🧩', label:'잡학·트리비아', desc:'궁금증 자극·놀라운 사실' },
+  { id:'saying',            ico:'📜', label:'사자성어·명언', desc:'지혜·교훈' },
+  { id:'animal_character',  ico:'🐹', label:'동물 의인화',   desc:'햄스터·강아지·고양이 일상 상황극' },
+  { id:'lyric',             ico:'🎵', label:'가사/음원',     desc:'Suno 프롬프트·트로트·엔카' },
+  { id:'longform',          ico:'📺', label:'롱폼',          desc:'10~15분 챕터 구조' },
+  { id:'custom',            ico:'✏️', label:'직접 입력',     desc:'스타일 직접 지정' },
 ];
 
 /* ⭐ 자동숏츠 Step 1 은 "새 영상 만들기" 흐름 전용입니다.
@@ -652,6 +653,10 @@ function _s1BuildSystemPrompt(topic) {
   if (_s1Mode === 'longform' && typeof _s1BuildLongformPromptExtra === 'function') {
     lines.push(_s1BuildLongformPromptExtra());
   }
+  /* 장르별 추가 — animal_character (s1-animal-character.js) */
+  if (_s1Style === 'animal_character' && typeof window._acBuildSystemPromptExtra === 'function') {
+    lines.push(window._acBuildSystemPromptExtra());
+  }
 
   if (needJa) lines.push(`한국어 대본 작성 후, 아래에 "=== 일본어 ===" 를 쓰고 일본어 번역본도 작성하세요.`);
   if (_s1Adv.extra) lines.push(`\n[추가 지시]\n${_s1Adv.extra}`);
@@ -726,7 +731,9 @@ function _s1SaveToProject(topic) {
     s1.recommendedScriptProviders = window.getRecommendedProviders('script', _recTask);
     if (!s1.scriptProvider) s1.scriptProvider = s1.recommendedScriptProviders[0] || '';
   }
-  /* 장르별 설정은 _spSet/_lpSet 에서 자체 저장 */
+  /* 장르별 설정은 _spSet/_lpSet/_acSet 에서 자체 저장.
+     animal_character: characterBible 캐싱은 s1-animal-character.js 가 담당. */
+  if (typeof window._acPersistCharacterBible === 'function') window._acPersistCharacterBible(STUDIO.project);
 
   /* 호환 — 기존 STUDIO.project 평면 키 */
   STUDIO.project.style     = _s1Style;

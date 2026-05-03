@@ -121,6 +121,12 @@ function _s1RenderStylePanel(genre, wid) {
       ? _s1RenderLyricPanel(wid)
       : '<div class="sp-block">⚠️ s1-lyric-panel.js 가 로드되지 않았습니다.</div>';
   }
+  if (genre === 'animal_character') {
+    /* 동물 의인화는 별도 모듈(s1-animal-character.js) */
+    return (typeof window._acRender === 'function')
+      ? window._acRender(wid)
+      : '<div class="sp-block">⚠️ s1-animal-character.js 가 로드되지 않았습니다.</div>';
+  }
   return ''; /* emotional, info, senior, longform, custom 등은 패널 없음 */
 }
 

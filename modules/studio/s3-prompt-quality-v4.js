@@ -427,6 +427,27 @@
     if (f8.score < f8.max * 0.6) issues.push('연속성/제작 조건 미흡 — ' + f8.note);
     else                          strengths.push('제작 조건 ✓');
 
+    /* 동물 의인화 장르 전용 힌트 — s1-animal-character.js 가 노출.
+       missing 항목 1개당 -3 (max -15) 페널티. 메시지는 사용자 친화 형식으로 표시. */
+    if (profile && profile.genre === 'animal_anime' && typeof window._acQualityHints === 'function') {
+      try {
+        var miss = window._acQualityHints(prompt, type) || [];
+        if (miss.length) {
+          var penalty = Math.min(15, miss.length * 3);
+          total = Math.max(0, total - penalty);
+          pass = total >= 150;
+          tier = _tierFor(total);
+          miss.slice(0, 4).forEach(function(code){
+            var msg = (typeof window._acQualityMessage === 'function')
+              ? window._acQualityMessage(code) : code;
+            issues.push('🐹 동물 의인화: ' + msg);
+          });
+        } else {
+          strengths.push('동물 의인화 일관성·구체성 ✓');
+        }
+      } catch (_) {}
+    }
+
     return {
       total:    total,
       max:      180,

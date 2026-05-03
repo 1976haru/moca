@@ -51,6 +51,7 @@
       tikitaka:'tikitaka', '티키타카':'tikitaka',
       senior_info:'senior_info', '시니어':'senior_info', '시니어잡학':'senior_info',
       animal:'animal_anime', '동물':'animal_anime', '애니':'animal_anime',
+      animal_character:'animal_anime', '동물의인화':'animal_anime', '의인화':'animal_anime',
       real_korea:'real_korea', '실사한국':'real_korea',
       real_japan:'real_japan', '실사일본':'real_japan',
       news:'news', '뉴스':'news', '뉴스형':'news',
@@ -273,6 +274,13 @@
     var continuityWardrobe   = _detectWardrobe(scriptText);
     var continuitySetting    = _detectSetting(scriptText);
 
+    /* characterBible — animal_character 장르에서 s1-script-step 가 저장.
+       continuityCharacters 의 1순위로 사용해 모든 씬에서 동일 캐릭터 유지. */
+    var characterBible = s3.characterBible || s1.characterBible || null;
+    if (characterBible && characterBible.visualSubject) {
+      continuityCharacters = [characterBible.visualSubject].concat(continuityCharacters);
+    }
+
     var topic = (s1.topic || p.topic || '').toString().trim();
     var subTopic = (s1.subTopic || s1.angle || s1.target || '').toString().trim();
 
@@ -298,8 +306,11 @@
       continuityCharacters:    continuityCharacters,
       continuityWardrobe:      continuityWardrobe,
       continuitySetting:       continuitySetting,
-      tabooElements:           _buildTaboos(genre, visualWorldType),
+      tabooElements:           (characterBible && characterBible.taboos)
+                               ? _buildTaboos(genre, visualWorldType).concat(characterBible.taboos)
+                               : _buildTaboos(genre, visualWorldType),
       mustNotGenericize:       _buildMustNotGenericize(),
+      characterBible:          characterBible,
       platform:                'shorts',
       aspectMode:              aspectMode,
       aspectRatio:             aspectRatio,

@@ -242,10 +242,16 @@
     var styleHintsStr = (grammar && grammar.styleHints && grammar.styleHints.length)
       ? grammar.styleHints.slice(0, 3).join(', ') : '';
 
+    /* characterBible.masterPrompt — animal_character 장르에서 prefix 부착.
+       모든 영상 씬에서 동일 캐릭터 외형 유지. */
+    var characterBiblePrefix = (profile && profile.characterBible && profile.characterBible.masterPrompt)
+      ? profile.characterBible.masterPrompt : '';
+
     var prompt = [
       roleTag,
       'duration: ' + dur + 's',
       (profile.aspectRatio || '9:16') + ' vertical short-form video',
+      characterBiblePrefix,
       styleHintsStr,
       subjectBit,
       actionBit ? (actionBit + locBit + emoBit + propsBit) : (locBit + emoBit + propsBit).replace(/^,\s*/, ''),
