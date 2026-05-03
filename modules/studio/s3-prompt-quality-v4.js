@@ -428,22 +428,26 @@
     else                          strengths.push('제작 조건 ✓');
 
     /* 동물 의인화 장르 전용 힌트 — s1-animal-character.js 가 노출.
-       missing 항목 1개당 -3 (max -15) 페널티. 메시지는 사용자 친화 형식으로 표시. */
+       missing 항목 1개당 -3 (max -15) 페널티. 장르별 시그널이 가장 우선이므로
+       unshift 로 issues/strengths 맨 앞에 배치 — slice(0, N) 절단 방지. */
+    var animalQualityHints = null;
     if (profile && profile.genre === 'animal_anime' && typeof window._acQualityHints === 'function') {
       try {
         var miss = window._acQualityHints(prompt, type) || [];
+        animalQualityHints = miss;
         if (miss.length) {
           var penalty = Math.min(15, miss.length * 3);
           total = Math.max(0, total - penalty);
           pass = total >= 150;
           tier = _tierFor(total);
-          miss.slice(0, 4).forEach(function(code){
+          /* 역순 unshift — 원본 순서를 유지하면서 맨 앞에 배치 */
+          miss.slice(0, 4).reverse().forEach(function(code){
             var msg = (typeof window._acQualityMessage === 'function')
               ? window._acQualityMessage(code) : code;
-            issues.push('🐹 동물 의인화: ' + msg);
+            issues.unshift('🐹 동물 의인화: ' + msg);
           });
         } else {
-          strengths.push('동물 의인화 일관성·구체성 ✓');
+          strengths.unshift('🐹 동물 의인화 일관성·구체성 ✓');
         }
       } catch (_) {}
     }
@@ -465,9 +469,10 @@
         suitability:      f7,
         continuity:       f8
       },
-      issues:    issues.slice(0, 6),
-      strengths: strengths.slice(0, 5),
-      version:   'v4'
+      issues:              issues.slice(0, 6),
+      strengths:           strengths.slice(0, 5),
+      animalQualityHints:  animalQualityHints,  /* 동물 의인화 분기 미작동 시 null */
+      version:             'v4'
     };
   }
   window.scorePromptQualityV4 = scorePromptQualityV4;
