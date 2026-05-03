@@ -81,8 +81,18 @@
       '</div>' +
       '<div class="rm-tb-row">' +
         '<div class="rm-iframe-box">' + iframeHtml + '</div>' +
-        '<textarea class="rm-paste" placeholder="자막 / 대본 붙여넣기 — SRT, VTT, 시간 포함, 일반 줄/문장 모두 OK" '+
-          'oninput="rmSetTranscriptRaw(this.value)">'+_esc(p.transcript.raw || '')+'</textarea>' +
+        '<div class="rm-paste-wrap">' +
+          '<textarea class="rm-paste" id="rm-paste-ta" '+
+            'placeholder="자막 / 대본 붙여넣기 — SRT, VTT, 시간 포함, 일반 줄/문장 모두 OK&#10;&#10;⚠️ 영상은 미리보기로만 표시됩니다. 자막/대본을 붙여넣어야 장면 편집과 자동숏츠 전달이 가능합니다." '+
+            'oninput="rmSetTranscriptRaw(this.value)" onpaste="rmOnPaste(event)" onblur="rmOnPasteBlur()">'+_esc(p.transcript.raw || '')+'</textarea>' +
+          '<div class="rm-paste-hint">' +
+            (p.transcript.raw && (p.scenes || []).length === 0
+              ? '⚠️ 자막이 입력됐습니다 — "🪄 장면 분리" 를 눌러 Scene 카드를 생성하세요.'
+              : !p.transcript.raw
+                ? '👇 위 영역에 자막/대본을 붙여넣으세요 (붙여넣으면 자동으로 장면 분리됩니다)'
+                : '✅ '+(p.scenes || []).length+'개 씬 생성됨 — 왼쪽 보드에서 편집할 수 있습니다.') +
+          '</div>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }
@@ -123,9 +133,29 @@
 
   function _renderSceneList(p, hasScenes) {
     if (!hasScenes) {
+      var hasRaw = String(p.transcript.raw || '').trim().length > 0;
       return '<div class="rm-list"><div class="rm-empty">' +
-        '<b>📋 자막을 붙여넣고 "🪄 장면 분리" 를 누르세요.</b><br>' +
-        '<small>SRT/VTT 파일은 "📄 자막 파일" 로 업로드. 시간 표기가 있으면 자동으로 씬 단위로 분해됩니다.</small>' +
+        '<b>📋 Scene 카드는 자막/대본을 분리해야 표시됩니다.</b>' +
+        '<ol style="text-align:left;margin:10px 0 6px 0;padding-left:20px;line-height:1.8">' +
+          '<li' + (p.source && (p.source.videoId || p.source.fileBlobUrl) ? ' style="color:#86efac"' : '') + '>' +
+            (p.source && (p.source.videoId || p.source.fileBlobUrl) ? '✅ ' : '◻ ') +
+            '유튜브 링크 입력 또는 MP4 업로드' +
+          '</li>' +
+          '<li' + (hasRaw ? ' style="color:#86efac"' : '') + '>' +
+            (hasRaw ? '✅ ' : '◻ ') +
+            '자막/대본 붙여넣기 (위 textarea) <b>또는</b> SRT/VTT/TXT 파일 업로드' +
+            (hasRaw ? '' : ' <span style="color:#9181ff">← 지금 필요</span>') +
+          '</li>' +
+          '<li' + (hasRaw ? ' style="color:#9181ff;font-weight:800"' : ' style="opacity:.55"') + '>' +
+            '◻ "🪄 장면 분리" 버튼 클릭 ' +
+            (hasRaw
+              ? '<button class="rm-mini ok" onclick="rmParseAndSplit()" style="margin-left:6px">🪄 지금 장면 분리</button>'
+              : '<small>(자막 입력 후 자동 실행됩니다)</small>') +
+          '</li>' +
+          '<li style="opacity:.55">◻ Scene 카드에서 일본어 자막 생성 / 일부 수정</li>' +
+          '<li style="opacity:.55">◻ 자동숏츠 Step 2 로 보내기</li>' +
+        '</ol>' +
+        '<small>붙여넣은 자막에 시간 표기가 있으면 자동으로 씬 단위로 분해됩니다 (1분 영상 기준 8~20개 씬).</small>' +
       '</div></div>';
     }
     var scenes = p.scenes || [];
@@ -379,6 +409,34 @@
     });
   };
   window.rmSetTranscriptRaw = function(v){ window.RM_CORE.setTranscriptRaw(v); };
+
+  /* ── 붙여넣기 시 자동 장면 분리 — 사용자가 "장면 분리" 버튼을 누르지 않아도 동작 ──
+       1) onpaste 이벤트로 즉시 paste 본문 캡처 → 100ms 후 자동 parse (textarea 가 채워질 시간 줌)
+       2) blur (포커스 이탈) 시에도 한 번 더 — 수동 입력 종료 시점 처리 */
+  var _autoParseTimer = null;
+  function _maybeAutoParse(){
+    var p = window.RM_CORE.project();
+    var raw = String(p.transcript.raw || '').trim();
+    /* 너무 짧으면 (50자 미만) 자동 파싱 보류 — 의도치 않은 짧은 문장에서 동작 방지 */
+    if (raw.length < 50) return false;
+    /* 이미 scenes 가 있고 raw 길이가 비슷하면 다시 안 함 */
+    if ((p.scenes || []).length > 0) return false;
+    if (typeof window.rmParseAndSplit === 'function') window.rmParseAndSplit();
+    return true;
+  }
+  window.rmOnPaste = function(ev){
+    /* paste 이벤트 직후엔 textarea 값에 아직 paste 본문이 없을 수 있음 — setTimeout 으로 다음 tick 에 확인 */
+    if (_autoParseTimer) clearTimeout(_autoParseTimer);
+    _autoParseTimer = setTimeout(function(){
+      _autoParseTimer = null;
+      _maybeAutoParse();
+    }, 120);
+  };
+  window.rmOnPasteBlur = function(){
+    if (_autoParseTimer) clearTimeout(_autoParseTimer);
+    _autoParseTimer = null;
+    _maybeAutoParse();
+  };
 
   window.rmParseAndSplit = function(){
     var p = window.RM_CORE.project();
