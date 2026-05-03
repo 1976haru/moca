@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>영상 리믹스 스튜디오 — MOCA</title>
+<link rel="stylesheet" href="../../modules/remix/rm-ui.css">
+</head>
+<body>
+
+<div class="rm-page">
+  <div id="rm-root">
+    <div style="padding:24px;text-align:center;color:#5a4a56">
+      <h2>🎞 영상 리믹스 스튜디오</h2>
+      <p>로딩 중...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ───── 코어 (자동숏츠 와 동일 — 같은 API/번역 어댑터 재사용) ───── -->
+<script src="../../config/providers.js"></script>
+<script src="../../core/api-adapter.js"></script>
+<script src="../../core/cost-tracker.js"></script>
+
+<!-- ───── 자동숏츠 흐름과 공유하는 인프라 (Step 2 bridge / 번역 어댑터 / scene splitter) ───── -->
+<!-- studio core (STUDIO 전역 / studioSave / studioNewProjectObj) — 자동숏츠로 보낼 때 필요 -->
+<script src="../../modules/studio/index.js"></script>
+<script src="../../modules/studio/s1-script.js"></script>
+<!-- 유튜브 import / 번역 어댑터 / safety / Step 2 bridge — 코드 재사용 -->
+<script src="../../modules/studio/s1-youtube-remix-parser.js"></script>
+<script src="../../modules/studio/s1-youtube-remix-safety.js"></script>
+<script src="../../modules/studio/s1-youtube-remix-adapter.js"></script>
+<script src="../../modules/studio/s1-youtube-import-pipeline.js"></script>
+<script src="../../modules/studio/s1-youtube-import-bridge.js"></script>
+
+<!-- ───── 영상 리믹스 스튜디오 모듈 ───── -->
+<script src="../../modules/remix/rm-core.js"></script>
+<script src="../../modules/remix/rm-source.js"></script>
+<script src="../../modules/remix/rm-caption-parser.js"></script>
+<script src="../../modules/remix/rm-translate.js"></script>
+<script src="../../modules/remix/rm-voiceover.js"></script>
+<script src="../../modules/remix/rm-export.js"></script>
+<script src="../../modules/remix/rm-scene-board.js"></script>
+
+<script>
+  /* ── 초기 렌더 ── */
+  document.addEventListener('DOMContentLoaded', function(){
+    /* 필수 모듈 점검 */
+    var req = {
+      RM_CORE: typeof window.RM_CORE,
+      RM_SOURCE: typeof window.RM_SOURCE,
+      RM_PARSER: typeof window.RM_PARSER,
+      RM_TRANSLATE: typeof window.RM_TRANSLATE,
+      RM_VOICE: typeof window.RM_VOICE,
+      RM_EXPORT: typeof window.RM_EXPORT,
+      RM_BOARD: typeof window.RM_BOARD,
+    };
+    var missing = Object.keys(req).filter(function(k){ return req[k] !== 'object'; });
+    var root = document.getElementById('rm-root');
+    if (missing.length) {
+      root.innerHTML = '<div style="padding:24px;background:#fee2e2;color:#991b1b;border-radius:10px;font-family:inherit">' +
+        '<h3>⚠️ 모듈 로드 실패</h3>' +
+        '<p>다음 모듈이 누락됐습니다: <b>' + missing.join(', ') + '</b></p>' +
+        '<p>script 태그 순서나 경로를 확인하세요.</p>' +
+      '</div>';
+      return;
+    }
+    /* STUDIO.project 가 없으면 새로 생성 — bridge 가 안전하게 동작 */
+    try {
+      if (typeof window.STUDIO === 'undefined' || !window.STUDIO || !window.STUDIO.project) {
+        if (typeof window.studioNewProjectObj === 'function') {
+          window.STUDIO = { project: window.studioNewProjectObj() };
+        } else {
+          window.STUDIO = window.STUDIO || {};
+          window.STUDIO.project = window.STUDIO.project || { s1:{}, s2:{}, s3:{}, scenes:[] };
+        }
+      }
+    } catch(e) { try { console.debug('[remix] STUDIO init', e && e.message); } catch(_){} }
+    /* studioSave 가 없으면 localStorage 에 저장하는 폴백 — bridge 가 호출 */
+    if (typeof window.studioSave !== 'function') {
+      window.studioSave = function() {
+        try { localStorage.setItem('studio.project', JSON.stringify(window.STUDIO.project || {})); } catch(_){}
+      };
+    }
+    window.RM_BOARD.render('rm-root');
+  });
+
+  /* 토스트 폴백 — shared/topnav 등이 없을 수 있음 */
+  if (typeof window.ucShowToast !== 'function') {
+    window.ucShowToast = function(msg, kind) {
+      var t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = 'position:fixed;right:20px;top:20px;z-index:9999;padding:10px 14px;border-radius:8px;font-weight:800;font-size:12px;'+
+        (kind === 'success' ? 'background:#dcfce7;color:#166534;' :
+         kind === 'error'   ? 'background:#fee2e2;color:#991b1b;' :
+         kind === 'warn'    ? 'background:#fef3c7;color:#92400e;' :
+                              'background:#eef5ff;color:#2b66c4;');
+      document.body.appendChild(t);
+      setTimeout(function(){ try { t.remove(); } catch(_){} }, 3500);
+    };
+  }
+</script>
+
+</body>
+</html>

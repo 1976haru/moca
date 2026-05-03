@@ -75,6 +75,10 @@
     return '' +
     '<div class="s1s-block s1s-mode-block yrxb-wrap">' +
       '<div class="s1s-label">🎬 유튜브 리믹스 보드 — 영상을 보면서 장면별로 수정·번역·각색</div>' +
+      '<div class="yrxb-notice" style="background:linear-gradient(135deg,#fff5fa,#f5f0ff);border-color:#c7b3e5">' +
+        '🎞 더 깔끔한 흐름이 필요하다면 <a href="../remix/index.html" style="color:#9181ff;text-decoration:underline;font-weight:800">영상 리믹스 스튜디오 (신규)</a> 를 사용해 보세요. ' +
+        'URL/MP4 업로드 + 자막 SRT/TXT + 장면 보드 + 일본어 자막 + 음성 교체가 한 화면에 모여 있습니다.' +
+      '</div>' +
       '<div class="yrxb-notice">⚠️ 영상 다운로드/원본 파일 저장 금지 — iframe 미리보기 + 사용자가 붙여넣은 자막/대본만 사용합니다. ' +
         '원본 문장을 그대로 복제하지 말고 수정/번역/각색해 주세요.</div>' +
       _renderToolbar(YRX) +

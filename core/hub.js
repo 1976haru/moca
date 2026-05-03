@@ -12,6 +12,8 @@ const categories = [
 
 {id:'shorts',   icon:'📱', title:'숏츠 스튜디오',     desc:'🏆 대본·이미지·영상 올인원 (6단계)'},
 
+{id:'remix',    icon:'🎞️', title:'영상 리믹스 스튜디오', desc:'영상·자막을 불러와 번역·각색·음성교체'},
+
 {id:'media',    icon:'🎨', title:'콘텐츠 빌더',       desc:'글·이미지·영상 조합 완성'},
 
 // 대본 생성기 제거 — 숏츠 스튜디오 Step2에 흡수됨
@@ -309,6 +311,11 @@ function renderGrid(){
   if(hpSample) hpSample.style.display = showHomeWidgets ? '' : 'none';
   if(hpSetup)  hpSetup.style.display  = showHomeWidgets ? hpSetup.style.display : 'none';
 
+  // 🎞 영상 리믹스 스튜디오 — 별도 엔진 페이지로 이동
+  if (state.category === 'remix' && state.mode === 'normal') {
+    window.location.href = 'engines/remix/index.html';
+    return;
+  }
   // 📁 내 보관함 카테고리
   if (state.category === 'library' && state.mode === 'normal') {
     if(hero) hero.style.display = 'none';

@@ -1,0 +1,508 @@
+/* ================================================
+   modules/remix/rm-scene-board.js
+   영상 리믹스 스튜디오 — 메인 보드 렌더 + 액션
+   * 6 단계 워크플로우: 소스 → 자막 → 장면 → 번역 → 음성 → 출력
+   * 좌(60%) Scene 리스트 / 우(40%) iframe + 편집 패널
+   * 자막 붙여넣기 → 장면 분리 → 번역 → 음성/출력 모두 한 화면에서 가능
+   * 의존: RM_CORE · RM_SOURCE · RM_PARSER · RM_TRANSLATE · RM_VOICE · RM_EXPORT
+   ================================================ */
+(function(){
+  'use strict';
+
+  function _esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function _escAttr(s){ return String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/'/g, "\\'"); }
+  function _fmtSec(sec){ var s = Math.max(0, Math.round(sec || 0)); var m = Math.floor(s/60); var ss = s%60;
+    return m+':'+(ss<10?'0'+ss:ss); }
+  function _toChips(t){ return String(t || '').split(/[\s,.!?。、！？]+/).filter(Boolean); }
+  function _toast(msg, kind){ if (typeof window.ucShowToast === 'function') window.ucShowToast(msg, kind || 'info'); }
+
+  /* ── render entry — engines/remix/index.html 가 호출 ── */
+  function render(rootId) {
+    var root = document.getElementById(rootId || 'rm-root');
+    if (!root) return;
+    var p = window.RM_CORE.load();
+    root.innerHTML = '' +
+      _renderTopBar(p) +
+      _renderStageHeader(p) +
+      _renderToolbar(p) +
+      _renderModeBar(p) +
+      _renderBoard(p) +
+      _renderActionBar(p) +
+      _renderStatus(p) +
+      _renderCopyNotice() +
+    '';
+  }
+
+  /* ── 상단 권한/저작권 안내 + 상태 ── */
+  function _renderTopBar(p) {
+    var src = p.source || {};
+    var stage = (window.RM_CORE.STAGES.find(function(s){ return s.id === p.stage; }) || { label: '' }).label;
+    return '<div class="rm-topbar">' +
+      '<div class="rm-topbar-l"><b>🎞 영상 리믹스 스튜디오</b> <span class="rm-stage">'+_esc(stage)+'</span></div>' +
+      '<div class="rm-topbar-r">' +
+        (src.videoId ? '<span class="rm-pill">YouTube · '+_esc(src.videoId)+'</span>' :
+         src.fileName ? '<span class="rm-pill">파일 · '+_esc(src.fileName)+'</span>' :
+         '<span class="rm-pill muted">소스 미설정</span>') +
+        ' <a href="../../index.html" class="rm-link">← 메인</a>' +
+        ' <a href="../shorts/index.html" class="rm-link">자동숏츠 →</a>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── 단계 헤더 (1~6) ── */
+  function _renderStageHeader(p) {
+    var idx = window.RM_CORE.STAGES.findIndex(function(s){ return s.id === p.stage; });
+    return '<div class="rm-stages">' + window.RM_CORE.STAGES.map(function(s, i){
+      var cls = i < idx ? 'done' : i === idx ? 'on' : '';
+      return '<button type="button" class="rm-stage-btn '+cls+'" onclick="rmGotoStage(\''+s.id+'\')">' +
+        '<b>'+(i+1)+'</b> '+_esc(s.label.split('. ')[1] || s.label)+'</button>';
+    }).join('') + '</div>';
+  }
+
+  /* ── 툴바 (URL / 파일 / 자막 입력 / 분석) ── */
+  function _renderToolbar(p) {
+    var src = p.source || {};
+    var iframeHtml = src.videoId
+      ? '<iframe src="https://www.youtube.com/embed/'+_escAttr(src.videoId)+'?rel=0&modestbranding=1" '+
+        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+
+        'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>'
+      : (src.fileBlobUrl
+          ? '<video id="rm-video-el" src="'+_escAttr(src.fileBlobUrl)+'" controls preload="metadata" style="width:100%;height:100%;background:#000"></video>'
+          : '<div class="rm-iframe-empty">유튜브 URL 또는 MP4 파일을 넣으면 미리보기가 표시됩니다.</div>');
+
+    return '<div class="rm-toolbar">' +
+      '<div class="rm-tb-row">' +
+        '<input type="url" class="rm-inp" placeholder="유튜브 링크 (watch?v=, shorts/, youtu.be/)" '+
+          'value="'+_escAttr(src.youtubeUrl || '')+'" oninput="rmSetYoutubeUrl(this.value)">' +
+        '<label class="rm-tb-btn rm-file"><input type="file" accept="video/mp4,video/webm" onchange="rmLoadVideoFile(event)"> 📁 MP4 업로드</label>' +
+        '<label class="rm-tb-btn rm-file"><input type="file" accept=".srt,.vtt,.txt" onchange="rmLoadCaptionFile(event)"> 📄 자막 파일</label>' +
+        '<button type="button" class="rm-tb-btn pri" onclick="rmParseAndSplit()">🪄 장면 분리</button>' +
+      '</div>' +
+      '<div class="rm-tb-row">' +
+        '<div class="rm-iframe-box">' + iframeHtml + '</div>' +
+        '<textarea class="rm-paste" placeholder="자막 / 대본 붙여넣기 — SRT, VTT, 시간 포함, 일반 줄/문장 모두 OK" '+
+          'oninput="rmSetTranscriptRaw(this.value)">'+_esc(p.transcript.raw || '')+'</textarea>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── 작업 모드 + 자막 언어 + 시니어 톤 ── */
+  function _renderModeBar(p) {
+    var modes = [
+      { id:'subtitle_only',  label:'자막만 번역',     hint:'장면 구조 유지 · 일본어 자막 변환' },
+      { id:'voice_replace',  label:'음성만 교체',     hint:'원본 영상 + 새 TTS 대본 (Step 3 전달)' },
+      { id:'partial_rewrite',label:'일부 각색',       hint:'장면 구조 유지 · 말투/표현만 수정' },
+      { id:'structure_only', label:'구조만 참고',     hint:'대사/장면 새로 작성 (Step 2 전달)' },
+    ];
+    var langs = [{id:'ko',label:'한국어'},{id:'ja',label:'일본어'},{id:'both',label:'한일 동시'}];
+    return '<div class="rm-modebar">' +
+      '<span class="rm-mb-label">🪄 모드</span>' +
+      modes.map(function(m){
+        var on = p.mode === m.id;
+        return '<button type="button" class="rm-mb-btn '+(on?'on':'')+'" onclick="rmSetMode(\''+m.id+'\')" title="'+_escAttr(m.hint)+'">'+_esc(m.label)+'</button>';
+      }).join('') +
+      '<span class="rm-mb-sep"></span>' +
+      '<span class="rm-mb-label">자막</span>' +
+      langs.map(function(l){
+        var on = p.captionLang === l.id;
+        return '<button type="button" class="rm-mb-btn '+(on?'on':'')+'" onclick="rmSetLang(\''+l.id+'\')">'+_esc(l.label)+'</button>';
+      }).join('') +
+      '<label class="rm-mb-chk"><input type="checkbox" '+(p.seniorTone?'checked':'')+' onchange="rmToggleSenior()"> 시니어 친화 톤</label>' +
+    '</div>';
+  }
+
+  /* ── 60/40 보드 ── */
+  function _renderBoard(p) {
+    var hasScenes = (p.scenes || []).length > 0;
+    return '<div class="rm-board">' +
+      _renderSceneList(p, hasScenes) +
+      _renderRightPanel(p, hasScenes) +
+    '</div>';
+  }
+
+  function _renderSceneList(p, hasScenes) {
+    if (!hasScenes) {
+      return '<div class="rm-list"><div class="rm-empty">' +
+        '<b>📋 자막을 붙여넣고 "🪄 장면 분리" 를 누르세요.</b><br>' +
+        '<small>SRT/VTT 파일은 "📄 자막 파일" 로 업로드. 시간 표기가 있으면 자동으로 씬 단위로 분해됩니다.</small>' +
+      '</div></div>';
+    }
+    var scenes = p.scenes || [];
+    var visible = scenes.filter(function(sc){ return !sc.deleted; });
+    var sel = visible.filter(function(sc){ return sc.selected !== false; });
+    var allSel = visible.length && sel.length === visible.length;
+    var anyDel = scenes.some(function(sc){ return sc.deleted; });
+    return '<div class="rm-list">' +
+      '<div class="rm-list-hd">' +
+        '<label><input type="checkbox" '+(allSel?'checked':'')+' onchange="rmSelectAll(this.checked)"> ' +
+          '<b>전체 선택</b> <span class="rm-cnt">'+sel.length+' / '+visible.length+'</span></label>' +
+        (anyDel ? '<button class="rm-mini" onclick="rmRestoreAll()">↺ 전체 복구</button>' : '') +
+        '<button class="rm-mini" onclick="rmMergeShort()">🧩 짧은 자막 병합</button>' +
+        '<button class="rm-mini" onclick="rmRemoveBlanks()">⌫ 공백 자막 삭제</button>' +
+      '</div>' +
+      '<div class="rm-list-note">선택 해제 / 삭제된 씬은 export 와 자동숏츠 전달에서 자동 제외됩니다.</div>' +
+      '<div class="rm-cards">' +
+        scenes.map(function(sc, i){ return _renderSceneCard(p, sc, i); }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
+  function _renderSceneCard(p, sc, i) {
+    var active = p._active === i;
+    var deleted = !!sc.deleted;
+    var selected = sc.selected !== false;
+    var thumb = sc.thumbnailUrl ||
+      (p.source && p.source.videoId ? 'https://img.youtube.com/vi/'+p.source.videoId+'/default.jpg' : '');
+    var status = sc.previewStatus || (thumb ? 'placeholder' : 'missing');
+    var thumbHtml = thumb
+      ? '<div class="rm-thumb-wrap"><img class="rm-thumb" src="'+_escAttr(thumb)+'" alt="" loading="lazy">' +
+          (status === 'placeholder' ? '<span class="rm-badge">프레임 미생성</span>' : '') +
+          (sc.timeRange ? '<span class="rm-badge t">'+_esc(sc.timeRange)+'</span>' : '') +
+        '</div>'
+      : '<div class="rm-thumb-wrap"><div class="rm-thumb empty">no preview</div></div>';
+    var chips = _toChips(sc.originalCaption).slice(0, 12).map(function(w){
+      return '<span class="rm-chip">'+_esc(w)+'</span>';
+    }).join('');
+    var inline = '';
+    if (sc.editedCaption) inline += '<div class="rm-inl ko"><span class="rm-tag">수정</span>'+_esc(sc.editedCaption)+'</div>';
+    if (sc.captionJa)     inline += '<div class="rm-inl ja"><span class="rm-tag">日本</span>'+_esc(sc.captionJa)+'</div>';
+    return '<div class="rm-card '+(active?'active':'')+' '+(deleted?'deleted':'')+'" onclick="rmSetActive('+i+')">' +
+      '<div class="rm-card-row">' +
+        '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation();rmToggleSel('+i+')">' +
+        thumbHtml +
+        '<div class="rm-card-info">' +
+          '<div class="rm-card-no">씬 '+sc.sceneNumber +
+            (sc.timeRange ? ' · '+_esc(sc.timeRange) : '') +
+            (deleted ? ' <span class="rm-tag-del">삭제됨</span>' : '') +
+          '</div>' +
+          (chips ? '<div class="rm-chips">'+chips+'</div>' : '<div class="rm-empty-line">(빈 자막)</div>') +
+          inline +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── 우측: iframe + 편집 패널 ── */
+  function _renderRightPanel(p, hasScenes) {
+    if (!hasScenes) {
+      return '<div class="rm-right">' + _renderActiveIframe(p) +
+        '<div class="rm-edit empty">씬을 분리하면 여기에 편집 패널이 표시됩니다.</div></div>';
+    }
+    return '<div class="rm-right">' + _renderActiveIframe(p) + _renderTimeline(p) + _renderEditPanel(p) + '</div>';
+  }
+  function _renderActiveIframe(p) {
+    var src = p.source || {};
+    if (src.videoId) {
+      var startSec = p._activeJump || 0;
+      var iframeSrc = 'https://www.youtube.com/embed/'+src.videoId+'?rel=0&modestbranding=1' +
+        (startSec > 0 ? '&start='+startSec : '');
+      return '<div class="rm-r-iframe">' +
+        '<iframe src="'+_escAttr(iframeSrc)+'" '+
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+
+          'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>' +
+      '</div>';
+    }
+    if (src.fileBlobUrl) {
+      return '<div class="rm-r-iframe">' +
+        '<video id="rm-video-active" src="'+_escAttr(src.fileBlobUrl)+'" controls preload="metadata" style="width:100%;height:100%;background:#000"></video>' +
+      '</div>';
+    }
+    return '<div class="rm-r-iframe empty">미리보기 없음</div>';
+  }
+  function _renderTimeline(p) {
+    var visible = (p.scenes || []).filter(function(sc){ return !sc.deleted; });
+    if (!visible.length) return '';
+    var last = visible[visible.length-1];
+    var total = (last && last.endSec) ? last.endSec : 60;
+    if (total <= 0) total = 60;
+    return '<div class="rm-timeline">' + visible.map(function(sc){
+      var L = ((sc.startSec||0) / total) * 100;
+      var W = (((sc.endSec||(sc.startSec||0)+4) - (sc.startSec||0)) / total) * 100;
+      if (W < 1) W = 1;
+      var act = p._active === sc.sceneIndex;
+      return '<div class="rm-tl-seg '+(act?'active':'')+'" style="left:'+L.toFixed(2)+'%;width:'+W.toFixed(2)+'%" '+
+        'title="씬 '+sc.sceneNumber+' · '+_escAttr(sc.timeRange||'')+'" onclick="rmSetActive('+sc.sceneIndex+')">'+sc.sceneNumber+'</div>';
+    }).join('') + '</div>';
+  }
+  function _renderEditPanel(p) {
+    var idx = (typeof p._active === 'number') ? p._active : 0;
+    var sc = (p.scenes || [])[idx];
+    if (!sc) return '<div class="rm-edit empty">씬 카드를 선택하세요.</div>';
+    return '<div class="rm-edit">' +
+      '<div class="rm-edit-hd">✏️ 씬 '+sc.sceneNumber +
+        (sc.timeRange ? ' · '+_esc(sc.timeRange) : '') +
+        (p.source && (p.source.videoId || p.source.fileBlobUrl) && sc.startSec != null
+          ? ' <button class="rm-mini" onclick="rmJump('+(sc.startSec||0)+')">▶ '+_esc(_fmtSec(sc.startSec))+'</button>'
+          : '') +
+        (sc.deleted
+          ? ' <button class="rm-mini ok" onclick="rmRestoreOne('+idx+')">↺ 복구</button>'
+          : ' <button class="rm-mini danger" onclick="rmDeleteOne('+idx+')">🗑 삭제</button>') +
+      '</div>' +
+      '<label>원본 자막 (편집 불가)</label>' +
+      '<div class="rm-orig">'+_esc(sc.originalCaption || '(빈 자막)')+'</div>' +
+      '<label>수정 자막 (한국어)</label>' +
+      '<textarea class="rm-ta" rows="2" oninput="rmEdit('+idx+',\'editedCaption\',this.value)">'+_esc(sc.editedCaption || '')+'</textarea>' +
+      '<label>일본어 자막</label>' +
+      '<textarea class="rm-ta" rows="2" oninput="rmEdit('+idx+',\'captionJa\',this.value)">'+_esc(sc.captionJa || '')+'</textarea>' +
+      '<label>화면 설명</label>' +
+      '<input type="text" class="rm-inp" oninput="rmEdit('+idx+',\'visualDescription\',this.value)" value="'+_escAttr(sc.visualDescription || '')+'">' +
+      '<label>메모</label>' +
+      '<input type="text" class="rm-inp" oninput="rmEdit('+idx+',\'notes\',this.value)" value="'+_escAttr(sc.notes || '')+'">' +
+      '<div class="rm-edit-actions">' +
+        '<button class="rm-mini" onclick="rmTranslateOne('+idx+')">🇯🇵 다시 번역</button>' +
+        '<button class="rm-mini" onclick="rmVariantOne('+idx+',\'shorter\')">⏬ 더 짧게</button>' +
+        '<button class="rm-mini" onclick="rmVariantOne('+idx+',\'natural\')">💆 자연스럽게</button>' +
+        '<button class="rm-mini" onclick="rmVariantOne('+idx+',\'senior\')">👴 시니어</button>' +
+        '<button class="rm-mini" onclick="rmVariantOne('+idx+',\'casual\')">😄 캐주얼</button>' +
+        '<button class="rm-mini" onclick="rmPolishKo('+idx+')">✨ KO 다듬기</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── 하단 액션 바 (모드별 핵심 액션) ── */
+  function _renderActionBar(p) {
+    var hasScenes = (p.scenes || []).length > 0;
+    if (!hasScenes) return '';
+    var sel = (p.scenes || []).filter(function(sc){ return !sc.deleted && sc.selected !== false; }).length;
+    return '<div class="rm-actbar">' +
+      '<button class="rm-act" onclick="rmTranslateAll()">🇯🇵 전체 일본어 자막 생성</button>' +
+      '<button class="rm-act" onclick="rmTranslateSelected()">🇯🇵 선택 ('+sel+')만 일본어 생성</button>' +
+      '<button class="rm-act" onclick="rmBuildBoth()">🇰🇷🇯🇵 한일 동시 자막 묶기</button>' +
+      '<span class="rm-sep"></span>' +
+      '<button class="rm-act" onclick="rmDownloadSrt(\'ja\')">📄 SRT (JA)</button>' +
+      '<button class="rm-act" onclick="rmDownloadSrt(\'ko\')">📄 SRT (KO)</button>' +
+      '<button class="rm-act" onclick="rmDownloadTxt(\'ja\')">📄 TXT (JA)</button>' +
+      '<button class="rm-act" onclick="rmDownloadTxt(\'both\')">📄 TXT (한일)</button>' +
+      '<button class="rm-act" onclick="rmDownloadJson()">📄 JSON</button>' +
+      '<span class="rm-sep"></span>' +
+      '<button class="rm-act pri" onclick="rmBridgeVoice()">🎙 음성 교체 → Step 3</button>' +
+      '<button class="rm-act pri" onclick="rmBridgeShorts()">🪄 자동숏츠 → Step 2</button>' +
+    '</div>';
+  }
+
+  function _renderStatus(p) {
+    var html = '';
+    if (p._status) {
+      var cls = p._status.kind || 'init';
+      html += '<div class="rm-status '+cls+'">'+_esc(p._status.text || '')+'</div>';
+    }
+    var errs = (p.errors || []).slice(-3);
+    var warns = (p.warnings || []).slice(-3);
+    if (errs.length) {
+      html += '<div class="rm-errpanel high"><b>❌ 오류</b><ul>' +
+        errs.map(function(e){ return '<li><b>['+_esc(e.code)+']</b> '+_esc(e.message)+'</li>'; }).join('') +
+        '</ul></div>';
+    }
+    if (warns.length) {
+      html += '<div class="rm-errpanel warn"><b>⚠️ 경고</b><ul>' +
+        warns.map(function(w){ return '<li><b>['+_esc(w.code)+']</b> '+_esc(w.message)+'</li>'; }).join('') +
+        '</ul></div>';
+    }
+    /* 마지막 export 결과 배너 */
+    if (p.lastExport && p.lastExport.result) {
+      var r = p.lastExport.result;
+      if (r.ok) {
+        html += '<div class="rm-errpanel ok"><b>✅ 자동숏츠로 전달 완료</b> — 씬 '+r.written.scenes+'개 / prompt '+r.written.prompts+'개. ' +
+          '<button class="rm-mini ok" onclick="rmGotoShorts2()">→ Step 2</button> ' +
+          '<button class="rm-mini ok" onclick="rmGotoShorts3()">→ Step 3 (음성)</button></div>';
+      } else if (r.errors && r.errors.length) {
+        html += '<div class="rm-errpanel high"><b>❌ 자동숏츠 전달 실패</b><ul>' +
+          r.errors.map(function(e){ return '<li><b>['+_esc(e.code)+']</b> '+_esc(e.message)+'</li>'; }).join('') +
+          '</ul></div>';
+      }
+    }
+    return html;
+  }
+
+  function _renderCopyNotice() {
+    return '<details class="rm-notice"><summary>📚 권한 / 저작권 안내 + 후속 기능</summary><ul>' +
+      window.RM_SOURCE.COPY_NOTICE.map(function(x){ return '<li>'+_esc(x)+'</li>'; }).join('') +
+      '<li><i>후속(이번 PR 미포함):</i> OAuth 자막 자동 가져오기 / 서버 proxy 자막·프레임 처리 / 업로드 MP4 의 ffmpeg.wasm 프레임 추출</li>' +
+    '</ul></details>';
+  }
+
+  /* ════════════════════════════════════════════════
+     액션 핸들러 (window 노출)
+     ════════════════════════════════════════════════ */
+  function _re() { render(); }
+  function _setStatus(text, kind) {
+    var p = window.RM_CORE.project();
+    p._status = text ? { text: text, kind: kind || 'init' } : null;
+    window.RM_CORE.save();
+    _re();
+  }
+
+  window.rmGotoStage      = function(id){ window.RM_CORE.setStage(id); _re(); };
+  window.rmSetYoutubeUrl  = function(v){ window.RM_SOURCE.setYoutubeUrl(v); _re(); };
+  window.rmLoadVideoFile  = function(ev){
+    var f = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!f) return;
+    window.RM_SOURCE.loadMp4File(f, function(meta){
+      _setStatus('✅ MP4 로드 — ' + meta.fileName + ' (' + meta.durationSec + '초)', 'ok');
+      try { ev.target.value = ''; } catch(_) {}
+    });
+  };
+  window.rmLoadCaptionFile = function(ev){
+    var f = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!f) return;
+    window.RM_SOURCE.loadCaptionFile(f, function(d){
+      window.RM_CORE.setTranscriptRaw(d.text, d.format);
+      _setStatus('✅ 자막 파일 로드 — ' + d.fileName + ' ('+d.format+')', 'ok');
+      try { ev.target.value = ''; } catch(_) {}
+      _re();
+    });
+  };
+  window.rmSetTranscriptRaw = function(v){ window.RM_CORE.setTranscriptRaw(v); };
+
+  window.rmParseAndSplit = function(){
+    var p = window.RM_CORE.project();
+    var raw = String(p.transcript.raw || '').trim();
+    if (!raw) { _setStatus('⚠️ 자막을 먼저 붙여넣어 주세요.', 'warn'); return; }
+    var r = window.RM_PARSER.parseAndSplit(raw, { videoId: p.source.videoId });
+    if (!r.scenes.length) { _setStatus('❌ 장면 분리 실패 — 자막 형식을 확인하세요.', 'err'); return; }
+    window.RM_CORE.setTranscriptCues(r.cues, r.format);
+    window.RM_CORE.setScenes(r.scenes);
+    var pp = window.RM_CORE.project();
+    pp._active = 0;
+    window.RM_CORE.setStage('scenes');
+    window.RM_CORE.save();
+    _setStatus('✅ '+r.scenes.length+'개 씬 분리 완료', 'ok');
+  };
+
+  window.rmSetMode  = function(m){ window.RM_CORE.setMode(m); _re(); };
+  window.rmSetLang  = function(l){ window.RM_CORE.setCaptionLang(l); _re(); };
+  window.rmToggleSenior = function(){
+    var p = window.RM_CORE.project(); window.RM_CORE.setSeniorTone(!p.seniorTone); _re();
+  };
+
+  window.rmSetActive = function(idx){
+    var p = window.RM_CORE.project();
+    p._active = idx;
+    var sc = (p.scenes || [])[idx];
+    if (sc && typeof sc.startSec === 'number') p._activeJump = sc.startSec;
+    window.RM_CORE.save();
+    /* MP4 video 가 있으면 currentTime 으로 바로 seek */
+    var v = document.getElementById('rm-video-active');
+    if (v && sc && typeof sc.startSec === 'number') {
+      try { v.currentTime = sc.startSec; } catch(_) {}
+    }
+    _re();
+  };
+  window.rmJump = function(sec){
+    var p = window.RM_CORE.project();
+    p._activeJump = sec;
+    window.RM_CORE.save();
+    var v = document.getElementById('rm-video-active');
+    if (v) { try { v.currentTime = sec; v.play && v.play().catch(function(){}); } catch(_){} _re(); return; }
+    _re();
+  };
+  window.rmToggleSel = function(idx){
+    var p = window.RM_CORE.project();
+    if (!p.scenes[idx]) return;
+    p.scenes[idx].selected = p.scenes[idx].selected === false ? true : false;
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmSelectAll = function(on){
+    var p = window.RM_CORE.project();
+    p.scenes = window.RM_PARSER.selectAll(p.scenes, on);
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmDeleteOne = function(idx){
+    var p = window.RM_CORE.project();
+    if (!p.scenes[idx]) return;
+    p.scenes[idx].deleted = true; p.scenes[idx].selected = false;
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmRestoreOne = function(idx){
+    var p = window.RM_CORE.project();
+    if (!p.scenes[idx]) return;
+    p.scenes[idx].deleted = false;
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmRestoreAll = function(){
+    var p = window.RM_CORE.project();
+    p.scenes = window.RM_PARSER.restoreAll(p.scenes);
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmMergeShort = function(){
+    var p = window.RM_CORE.project();
+    var before = (p.scenes || []).length;
+    p.scenes = window.RM_PARSER.mergeShortScenes(p.scenes, 1.5);
+    window.RM_CORE.save();
+    _setStatus('🧩 짧은 자막 병합 — ' + before + ' → ' + p.scenes.length + ' 씬', 'ok');
+  };
+  window.rmRemoveBlanks = function(){
+    var p = window.RM_CORE.project();
+    p.scenes = window.RM_PARSER.markBlanksDeleted(p.scenes);
+    window.RM_CORE.save();
+    _re();
+  };
+  window.rmEdit = function(idx, key, val){
+    window.RM_CORE.patchScene(idx, (function(o){ var x = {}; x[key] = val; return x; })());
+  };
+
+  window.rmTranslateOne = async function(idx){
+    _setStatus('🇯🇵 번역 중...', 'loading');
+    var ja = await window.RM_TRANSLATE.translateOne(idx);
+    _setStatus(ja ? '✅ 번역 완료' : '⚠️ 번역 결과 없음', ja ? 'ok' : 'warn');
+  };
+  window.rmTranslateAll = async function(){
+    _setStatus('🇯🇵 전체 번역 중...', 'loading');
+    var r = await window.RM_TRANSLATE.translateBatch('all', null, function(i, n){
+      _setStatus('🇯🇵 번역 ' + i + ' / ' + n, 'loading');
+    });
+    _setStatus('✅ 번역 완료 — 성공 '+r.ok+' / 실패 '+r.fail, r.ok ? 'ok' : 'warn');
+  };
+  window.rmTranslateSelected = async function(){
+    _setStatus('🇯🇵 선택 씬 번역 중...', 'loading');
+    var r = await window.RM_TRANSLATE.translateBatch('selected', null, function(i, n){
+      _setStatus('🇯🇵 번역 ' + i + ' / ' + n, 'loading');
+    });
+    _setStatus('✅ 선택 씬 번역 완료 — 성공 '+r.ok+' / 실패 '+r.fail, r.ok ? 'ok' : 'warn');
+  };
+  window.rmVariantOne = async function(idx, variant){
+    _setStatus('🪄 ' + variant + ' 변형 중...', 'loading');
+    var r = await window.RM_TRANSLATE.variantOne(idx, variant);
+    _setStatus(r ? '✅ 변형 완료' : '⚠️ 변형 결과 없음', r ? 'ok' : 'warn');
+  };
+  window.rmPolishKo = async function(idx){
+    _setStatus('✨ 한국어 다듬기...', 'loading');
+    var r = await window.RM_TRANSLATE.polishKo(idx);
+    _setStatus(r ? '✅ 다듬기 완료' : '⚠️ 다듬기 결과 없음', r ? 'ok' : 'warn');
+  };
+  window.rmBuildBoth = function(){
+    window.RM_TRANSLATE.buildBothAll();
+    _setStatus('✅ 한일 동시 자막 묶음 갱신', 'ok');
+  };
+
+  window.rmDownloadSrt  = function(lang){ window.RM_EXPORT.downloadSrt(lang, { selectedOnly: false }); };
+  window.rmDownloadTxt  = function(lang){ window.RM_EXPORT.downloadTxt(lang, { selectedOnly: false }); };
+  window.rmDownloadJson = function(){ window.RM_EXPORT.downloadJson(); };
+
+  window.rmBridgeVoice = function(){
+    var p = window.RM_CORE.project();
+    var lang = p.captionLang || 'ja';
+    var payload = window.RM_VOICE.buildAndBridge({ language: lang, selectedOnly: false });
+    if (payload) {
+      _setStatus('✅ 음성 payload 준비 — Step 3 (음성) 으로 이동 가능', 'ok');
+    } else {
+      _setStatus('❌ 음성 payload 생성 실패', 'err');
+    }
+  };
+  window.rmBridgeShorts = function(){
+    var r = window.RM_EXPORT.sendToShorts({ selectedOnly: false });
+    _re();
+    if (r && r.ok) _setStatus('✅ 자동숏츠 전달 — 씬 '+r.written.scenes+'개', 'ok');
+    else _setStatus('❌ 자동숏츠 전달 실패', 'err');
+  };
+  window.rmGotoShorts2 = function(){ window.RM_EXPORT.gotoShortsStep2(); };
+  window.rmGotoShorts3 = function(){ window.RM_EXPORT.gotoShortsStep3(); };
+
+  window.RM_BOARD = { render: render };
+})();

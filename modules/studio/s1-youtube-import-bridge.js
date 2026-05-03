@@ -56,8 +56,8 @@
       endSec:            sc.endSec,
       timeRange:         sc.timeRange || '',
       adaptedFromSourceSceneIndex: i,
-      source:            'youtube_import',
-      sourceType:        'youtube_import',
+      source:            sc.source || sc.sourceType || 'youtube_import',
+      sourceType:        sc.sourceType || sc.source || 'youtube_import',
     };
   }
 
@@ -149,7 +149,7 @@
         role:              sc.role,
         startSec:          sc.startSec,
         endSec:            sc.endSec,
-        source:            'youtube_import',
+        source:            sc.source || sc.sourceType || 'youtube_import',
         adaptedFromSourceSceneIndex: k,
       };
     });
