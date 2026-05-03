@@ -1,0 +1,55 @@
+/* ================================================
+   modules/agents/agent-ui.css
+   에이전트 점검 UI (prefix: ma-)
+   ================================================ */
+
+.moca-agents { margin: 8px 0 12px 0; padding: 12px; background: #fff; border: 1.5px solid #c7b3e5;
+  border-radius: 12px; box-shadow: 0 4px 12px rgba(126,87,110,.06); display: flex;
+  flex-direction: column; gap: 8px; font-family: inherit; }
+.ma-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ma-title { font-weight: 800; color: #5b1a4a; font-size: 14px; }
+.ma-title small { color: #9b8a93; font-weight: 600; font-size: 10.5px; margin-left: 6px; }
+.ma-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ma-btn { padding: 6px 12px; border: 1.5px solid #f1dce7; border-radius: 8px; background: #fff;
+  color: #5a4a56; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.ma-btn:hover { border-color: #9181ff; color: #9181ff; }
+.ma-btn.pri { border: none; background: linear-gradient(135deg, #ef6fab, #9181ff); color: #fff; }
+.ma-btn.pri:hover { opacity: .92; color: #fff; }
+.ma-btn.sm { padding: 3px 9px; font-size: 10.5px; }
+
+.ma-empty { padding: 14px; background: #fafafe; border: 1px dashed #d6c7e0; border-radius: 8px;
+  text-align: center; color: #5a4a56; font-size: 11.5px; line-height: 1.6; }
+
+/* 카드 그리드 */
+.ma-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+.ma-card { background: #fafafe; border: 1.5px solid #f1dce7; border-radius: 10px; padding: 10px;
+  display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; line-height: 1.55; }
+.ma-card.good   { border-color: #86efac; background: #f0fdf4; }
+.ma-card.warn   { border-color: #fcd34d; background: #fffbeb; }
+.ma-card.danger { border-color: #fca5a5; background: #fef2f2; }
+
+.ma-card-hd { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ma-card-emoji { font-size: 18px; }
+.ma-card-label { font-weight: 800; color: #2b2430; flex: 1; min-width: 80px; }
+.ma-card-score { font-size: 18px; font-weight: 900; color: #5b1a4a; }
+.ma-card-score small { font-size: 10px; color: #9b8a93; font-weight: 700; margin-left: 1px; }
+.ma-card-status { padding: 2px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 800; }
+.ma-card.good   .ma-card-status { background: #dcfce7; color: #166534; }
+.ma-card.warn   .ma-card-status { background: #fef3c7; color: #92400e; }
+.ma-card.danger .ma-card-status { background: #fee2e2; color: #991b1b; }
+.ma-card-summary { font-size: 10.5px; color: #5a4a56; padding: 4px 8px;
+  background: #fff; border: 1px dashed #d6c7e0; border-radius: 6px; }
+
+.ma-section { font-size: 11px; color: #2b2430; }
+.ma-section b { font-weight: 800; color: #5b1a4a; font-size: 11px; }
+.ma-section ul { margin: 3px 0 0 18px; padding: 0; }
+.ma-section ul li { margin-bottom: 2px; line-height: 1.5; }
+.ma-section code { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 10px;
+  padding: 1px 5px; background: #fff; border: 1px solid #d6c7e0; border-radius: 3px;
+  color: #5b1a4a; margin-right: 4px; }
+
+.ma-actions-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+
+.ma-card-foot { display: flex; align-items: center; justify-content: space-between;
+  margin-top: auto; padding-top: 4px; border-top: 1px solid #f1dce7; }
+.ma-card-time { font-size: 9.5px; color: #9b8a93; }
