@@ -450,24 +450,31 @@
       _re();
     });
   };
-  window.rmSetTranscriptRaw = function(v){ window.RM_CORE.setTranscriptRaw(v); };
+  /* textarea oninput → state 갱신 + 디바운스 자동 분리 (입력/타이핑 케이스도 커버) */
+  window.rmSetTranscriptRaw = function(v){
+    window.RM_CORE.setTranscriptRaw(v);
+    /* 타이핑 직후 800ms 동안 더 입력 없으면 자동 분리 시도. paste 와 blur 와 별도 타이머. */
+    if (_typingTimer) clearTimeout(_typingTimer);
+    _typingTimer = setTimeout(function(){ _typingTimer = null; _maybeAutoParse(); }, 800);
+  };
 
-  /* ── 붙여넣기 시 자동 장면 분리 — 사용자가 "장면 분리" 버튼을 누르지 않아도 동작 ──
-       1) onpaste 이벤트로 즉시 paste 본문 캡처 → 100ms 후 자동 parse (textarea 가 채워질 시간 줌)
-       2) blur (포커스 이탈) 시에도 한 번 더 — 수동 입력 종료 시점 처리 */
+  /* ── 자동 장면 분리 — 사용자가 "장면 분리" 버튼을 누르지 않아도 동작 ──
+       1) onpaste — 즉시 paste 본문 캡처 (120ms 지연으로 textarea 갱신 대기)
+       2) oninput debounce — 타이핑 종료 후 800ms (rmSetTranscriptRaw)
+       3) onblur — 포커스 이탈 시 한 번 더 */
   var _autoParseTimer = null;
+  var _typingTimer = null;
   function _maybeAutoParse(){
     var p = window.RM_CORE.project();
     var raw = String(p.transcript.raw || '').trim();
     /* 너무 짧으면 (50자 미만) 자동 파싱 보류 — 의도치 않은 짧은 문장에서 동작 방지 */
     if (raw.length < 50) return false;
-    /* 이미 scenes 가 있고 raw 길이가 비슷하면 다시 안 함 */
+    /* 이미 scenes 가 있으면 다시 안 함 (사용자가 명시적으로 "🪄 장면 분리" 버튼 눌러야 재파싱) */
     if ((p.scenes || []).length > 0) return false;
     if (typeof window.rmParseAndSplit === 'function') window.rmParseAndSplit();
     return true;
   }
-  window.rmOnPaste = function(ev){
-    /* paste 이벤트 직후엔 textarea 값에 아직 paste 본문이 없을 수 있음 — setTimeout 으로 다음 tick 에 확인 */
+  window.rmOnPaste = function(){
     if (_autoParseTimer) clearTimeout(_autoParseTimer);
     _autoParseTimer = setTimeout(function(){
       _autoParseTimer = null;
@@ -476,7 +483,9 @@
   };
   window.rmOnPasteBlur = function(){
     if (_autoParseTimer) clearTimeout(_autoParseTimer);
+    if (_typingTimer)    clearTimeout(_typingTimer);
     _autoParseTimer = null;
+    _typingTimer    = null;
     _maybeAutoParse();
   };
 
