@@ -277,7 +277,9 @@
       '<button class="rm-act" onclick="rmDownloadJson()">📄 JSON</button>' +
       '<span class="rm-sep"></span>' +
       '<button class="rm-act pri" onclick="rmBridgeVoice()">🎙 음성 교체 → Step 3</button>' +
-      '<button class="rm-act pri" onclick="rmBridgeShorts()">🪄 자동숏츠 → Step 2</button>' +
+      '<button class="rm-act" onclick="rmPreflight()">🔍 자동숏츠 검증 (preflight)</button>' +
+      '<button class="rm-act pri" onclick="rmBridgeShorts()">📦 핸드오프 저장</button>' +
+      '<button class="rm-act pri" onclick="rmGotoShorts2()">→ Step 2 로 이동</button>' +
     '</div>';
   }
 
@@ -299,15 +301,38 @@
         warns.map(function(w){ return '<li><b>['+_esc(w.code)+']</b> '+_esc(w.message)+'</li>'; }).join('') +
         '</ul></div>';
     }
-    /* 마지막 export 결과 배너 */
+    /* 마지막 export 결과 배너 + 검증 패널 (counts) */
     if (p.lastExport && p.lastExport.result) {
       var r = p.lastExport.result;
+      var c = p.lastExport.counts || r.counts;
+      var preOnly = !!p.lastExport.preflightOnly;
       if (r.ok) {
-        html += '<div class="rm-errpanel ok"><b>✅ 자동숏츠로 전달 완료</b> — 씬 '+r.written.scenes+'개 / prompt '+r.written.prompts+'개. ' +
-          '<button class="rm-mini ok" onclick="rmGotoShorts2()">→ Step 2</button> ' +
-          '<button class="rm-mini ok" onclick="rmGotoShorts3()">→ Step 3 (음성)</button></div>';
+        html += '<div class="rm-errpanel ok">' +
+          '<b>'+(preOnly?'✅ 검증 통과 (preflight)':'✅ 자동숏츠 핸드오프 준비 완료')+'</b>' +
+          (c ? '<div style="font-size:11px;margin-top:4px">' +
+            '전체 ' + (c.total||0) + ' · 활성 ' + (c.active||0) +
+            ' · 자막 있음 ' + (c.withCaption||0) + ' · 자막 비어있음 ' + (c.empty||0) +
+            ' · 일본어 자막 ' + (c.ja||0) +
+          '</div>' : '') +
+          (r.written ? '<div style="font-size:11px;margin-top:2px">' +
+            '저장 경로: s1.scenes ' + r.written.scenes + ' · s3.scenePrompts ' + r.written.prompts +
+          '</div>' : '') +
+          (r.warnings && r.warnings.length ? '<ul style="font-size:11px">' +
+            r.warnings.map(function(w){ return '<li>⚠️ <b>['+_esc(w.code)+']</b> '+_esc(w.message)+'</li>'; }).join('') +
+          '</ul>' : '') +
+          '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
+            (preOnly ? '<button class="rm-mini ok" onclick="rmBridgeShorts()">📦 핸드오프 저장</button> ' : '') +
+            '<button class="rm-mini ok" onclick="rmGotoShorts2()">→ Step 2 로 이동</button>' +
+            '<button class="rm-mini ok" onclick="rmGotoShorts3()">→ Step 3 (음성)</button>' +
+          '</div>' +
+        '</div>';
       } else if (r.errors && r.errors.length) {
-        html += '<div class="rm-errpanel high"><b>❌ 자동숏츠 전달 실패</b><ul>' +
+        html += '<div class="rm-errpanel high"><b>❌ 자동숏츠 전달 차단</b>' +
+          (c ? '<div style="font-size:11px;margin-top:4px">' +
+            '전체 ' + (c.total||0) + ' · 활성 ' + (c.active||0) +
+            ' · 자막 있음 ' + (c.withCaption||0) +
+          '</div>' : '') +
+          '<ul>' +
           r.errors.map(function(e){ return '<li><b>['+_esc(e.code)+']</b> '+_esc(e.message)+'</li>'; }).join('') +
           '</ul></div>';
       }
@@ -498,11 +523,45 @@
   window.rmBridgeShorts = function(){
     var r = window.RM_EXPORT.sendToShorts({ selectedOnly: false });
     _re();
-    if (r && r.ok) _setStatus('✅ 자동숏츠 전달 — 씬 '+r.written.scenes+'개', 'ok');
-    else _setStatus('❌ 자동숏츠 전달 실패', 'err');
+    if (r && r.ok) {
+      _setStatus('✅ 자동숏츠 핸드오프 준비 완료 — 씬 '+r.scenes.length+'개. "→ Step 2 로 이동" 버튼을 누르세요.', 'ok');
+    } else {
+      var msg = (r && r.errors && r.errors[0] && r.errors[0].message) || '자동숏츠 전달 실패';
+      _setStatus('❌ ' + msg, 'err');
+    }
   };
-  window.rmGotoShorts2 = function(){ window.RM_EXPORT.gotoShortsStep2(); };
-  window.rmGotoShorts3 = function(){ window.RM_EXPORT.gotoShortsStep3(); };
+  /* preflight 만 실행 — 검증 패널이 결과를 표시 (저장 X) */
+  window.rmPreflight = function(){
+    var pf = window.RM_EXPORT.preflight({ selectedOnly: false });
+    var p = window.RM_CORE.project();
+    p.lastExport = { at: Date.now(), result: pf, mode: p.mode, counts: pf.counts, preflightOnly: true };
+    window.RM_CORE.save();
+    _re();
+    if (pf.ok) _setStatus('✅ 검증 통과 — 자동숏츠로 보낼 준비가 완료되었습니다.', 'ok');
+    else _setStatus('⚠️ 검증 실패 — 패널의 안내를 확인하세요.', 'warn');
+  };
+  window.rmGotoShorts2 = function(){
+    /* 핸드오프 키가 없으면 미리 sendToShorts 호출 — 사용자가 검증만 한 뒤 바로 이동 시도 */
+    var hasKey = false;
+    try { hasKey = !!localStorage.getItem(window.RM_EXPORT.HANDOFF_KEY || 'moca_remix_to_shorts_v1'); } catch(_){}
+    if (!hasKey) {
+      var r = window.RM_EXPORT.sendToShorts({ selectedOnly: false });
+      if (!r || !r.ok) {
+        _setStatus('❌ 핸드오프 저장 실패 — 자동숏츠로 이동하지 않습니다.', 'err');
+        _re(); return;
+      }
+    }
+    window.RM_EXPORT.gotoShortsStep2();
+  };
+  window.rmGotoShorts3 = function(){
+    var hasKey = false;
+    try { hasKey = !!localStorage.getItem(window.RM_EXPORT.HANDOFF_KEY || 'moca_remix_to_shorts_v1'); } catch(_){}
+    if (!hasKey) {
+      var r = window.RM_EXPORT.sendToShorts({ selectedOnly: false });
+      if (!r || !r.ok) { _setStatus('❌ 핸드오프 저장 실패', 'err'); _re(); return; }
+    }
+    window.RM_EXPORT.gotoShortsStep3();
+  };
 
   window.RM_BOARD = { render: render };
 })();

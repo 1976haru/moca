@@ -87,74 +87,157 @@
     return true;
   }
 
-  /* ── 자동숏츠로 보내기 ──
-     YT_BRIDGE.bridgeToStep2 가 s1.scenes / project.scenes / s3.scenePrompts 등
-     모든 경로를 작성하고 verifyBridge 로 검증함. */
-  function sendToShorts(opts) {
+  /* ── pre-flight 검증 — UI 가 보내기 직전 호출 ──
+     scenes 0 / 자막 모두 비어있음 → errors 채워 차단 사유 반환 */
+  function preflight(opts) {
     opts = opts || {};
-    if (!window.YT_BRIDGE || typeof window.YT_BRIDGE.bridgeToStep2 !== 'function') {
-      _toast('❌ YT_BRIDGE 미로드 — 자동숏츠로 보낼 수 없습니다.', 'error');
-      return { ok: false, errors: [{ code: 'no-bridge', message: 'YT_BRIDGE not loaded' }] };
-    }
     var p = window.RM_CORE.project();
-    var scenes = (p.scenes || []).filter(function(sc){
+    var rawScenes = p.scenes || [];
+    var scenes = rawScenes.filter(function(sc){
       if (sc.deleted) return false;
       if (opts.selectedOnly && sc.selected === false) return false;
       return true;
     });
-    if (!scenes.length) {
-      _toast('⚠️ 보낼 씬이 없습니다 — 선택 또는 생성해 주세요.', 'warn');
-      return { ok: false, errors: [{ code: 'empty', message: 'no scenes' }] };
+    var errors = [], warnings = [];
+    if (!rawScenes.length) {
+      errors.push({ code:'no-scenes',
+        message:'장면이 없습니다. 자막/대본을 붙여넣고 "장면 분리" 를 누르세요.' });
+    } else if (!scenes.length) {
+      errors.push({ code:'all-filtered',
+        message:'활성 씬이 0 개입니다. 삭제된 씬을 복구하거나 선택을 켜세요.' });
     }
-    /* rm schema → bridge 가 받아주는 schema 로 매핑 */
-    var mapped = scenes.map(function(sc, i){
-      return Object.assign({}, sc, {
-        sceneIndex:    i,
-        sceneNumber:   i + 1,
-        originalText:  sc.originalCaption || '',
-        editedText:    sc.editedCaption || '',
-        translatedJa:  sc.captionJa || '',
-        captionKo:     sc.editedCaption || sc.originalCaption || '',
-        captionJa:     sc.captionJa || '',
-        captionBoth:   sc.captionBoth || '',
-        adaptedNarration: sc.editedCaption || sc.captionJa || sc.originalCaption || '',
-        adaptedCaption:   sc.captionJa || sc.editedCaption || sc.originalCaption || '',
-        visualDescription: sc.visualDescription || '',
-        thumbnailUrl:  sc.thumbnailUrl || '',
-        previewStatus: sc.previewStatus || 'placeholder',
-        sourceType:    'video_remix_studio',
-      });
+    var withCaption = scenes.filter(function(sc){
+      var t = (sc.editedCaption || sc.originalCaption || sc.captionJa || '').trim();
+      return t.length > 0;
     });
-    var result = window.YT_BRIDGE.bridgeToStep2(mapped);
-    var pp = window.RM_CORE.project();
-    pp.lastExport = { at: Date.now(), result: result, mode: p.mode };
-    window.RM_CORE.save();
-    if (result.ok) {
-      _toast('✅ 자동숏츠로 전달 — 씬 ' + result.written.scenes + '개', 'success');
-    } else {
-      _toast('❌ 전달 실패 — 패널 메시지를 확인하세요.', 'error');
+    if (scenes.length && !withCaption.length) {
+      errors.push({ code:'empty-captions',
+        message:'씬은 있지만 자막이 모두 비어있습니다. 자막을 붙여넣거나 일본어 자막을 먼저 생성하세요.' });
     }
-    return result;
+    var emptyCount = scenes.length - withCaption.length;
+    if (emptyCount > 0 && withCaption.length > 0) {
+      warnings.push({ code:'some-empty',
+        message: emptyCount + ' 개 씬에 자막이 없습니다 — Step 2 에서 빈 자막으로 표시됩니다.' });
+    }
+    var jaCount = scenes.filter(function(sc){ return (sc.captionJa||'').trim(); }).length;
+    var counts = { total: rawScenes.length, active: scenes.length,
+                   withCaption: withCaption.length, empty: emptyCount, ja: jaCount };
+    if (errors.length) return { ok:false, scenes:scenes, errors:errors, warnings:warnings, counts:counts };
+    return { ok:true, scenes:scenes, errors:[], warnings:warnings, counts:counts,
+             payload:_buildHandoffPayload(scenes, p) };
   }
 
-  /* ── 자동숏츠 페이지로 이동 ── */
+  /* ── handoff payload — 다른 페이지(자동숏츠) 가 진입 시 읽음 ── */
+  function _buildHandoffPayload(scenes, p) {
+    var mappedScenes = scenes.map(function(sc, i){
+      var narr = sc.editedCaption || sc.captionJa || sc.originalCaption || '';
+      var cap  = sc.captionJa || sc.editedCaption || sc.originalCaption || '';
+      return {
+        sceneIndex:        i,
+        sceneNumber:       i + 1,
+        startSec:          sc.startSec || 0,
+        endSec:            sc.endSec   || ((sc.startSec || 0) + 4),
+        originalCaption:   sc.originalCaption || '',
+        editedCaption:     sc.editedCaption   || '',
+        captionKo:         sc.editedCaption || sc.originalCaption || '',
+        captionJa:         sc.captionJa || '',
+        captionBoth:       sc.captionBoth || '',
+        narration:         narr,
+        caption:           cap,
+        role:              sc.role || '',
+        roleLabel:         sc.roleLabel || '',
+        visualDescription: sc.visualDescription || '',
+        imagePrompt:       sc.imagePrompt || '',
+        videoPrompt:       sc.videoPrompt || '',
+        thumbnailUrl:      sc.thumbnailUrl || '',
+        previewStatus:     sc.previewStatus || 'placeholder',
+        notes:             sc.notes || '',
+        source:            sc.source || 'manual_caption',
+        sourceType:        'video_remix_studio',
+      };
+    });
+    return {
+      version: 1,
+      sentAt:  Date.now(),
+      remixSource: {
+        url:        (p.source && p.source.youtubeUrl)   || '',
+        videoId:    (p.source && p.source.videoId)      || '',
+        title:      (p.source && p.source.title)        || '',
+        type:       (p.source && p.source.type)         || '',
+        fileName:   (p.source && p.source.fileName)     || '',
+        durationSec:(p.source && p.source.durationSec)  || 0,
+      },
+      mode:        p.mode || 'subtitle_only',
+      captionLang: p.captionLang || 'ja',
+      sceneCount:  mappedScenes.length,
+      scenes:      mappedScenes,
+    };
+  }
+
+  /* ── 자동숏츠로 보내기 ──
+     1) preflight — captions 없으면 차단
+     2) localStorage handoff key 에 payload 저장 (engines/shorts/ 가 진입 시 읽음)
+     3) 같은 페이지 STUDIO 가 살아있으면 즉시 YT_BRIDGE 도 호출 (검증/v4 컴파일)
+     4) 결과 반환 — UI 는 검증 패널 + 이동 버튼 표시 */
+  var HANDOFF_KEY = 'moca_remix_to_shorts_v1';
+  function sendToShorts(opts) {
+    opts = opts || {};
+    var pf = preflight(opts);
+    var p  = window.RM_CORE.project();
+    if (!pf.ok) {
+      var pp = window.RM_CORE.project();
+      pp.lastExport = { at: Date.now(), result: pf, mode: p.mode };
+      window.RM_CORE.save();
+      _toast('❌ 전달 차단 — ' + (pf.errors[0] && pf.errors[0].message || '검증 실패'), 'error');
+      return Object.assign({}, pf, { written: { scenes: 0, prompts: 0 } });
+    }
+    /* (1) 핸드오프 저장 — 다른 페이지가 읽음 */
+    try {
+      localStorage.setItem(HANDOFF_KEY, JSON.stringify(pf.payload));
+    } catch(e) {
+      _toast('❌ 핸드오프 저장 실패 (저장공간 가득): ' + (e && e.message), 'error');
+      return { ok:false, scenes: pf.scenes,
+        errors:[{code:'localstorage-fail', message: e && e.message}],
+        warnings: pf.warnings, counts: pf.counts, written: { scenes: 0, prompts: 0 } };
+    }
+    /* (2) 같은 페이지 내 STUDIO 가 있으면 즉시 bridge — v4 컴파일러 트리거 */
+    var bridgeResult = null;
+    if (window.YT_BRIDGE && typeof window.YT_BRIDGE.bridgeToStep2 === 'function' &&
+        window.STUDIO && window.STUDIO.project) {
+      try { bridgeResult = window.YT_BRIDGE.bridgeToStep2(pf.payload.scenes); } catch(_) {}
+    }
+    var pp2 = window.RM_CORE.project();
+    var written = (bridgeResult && bridgeResult.ok)
+      ? bridgeResult.written
+      : { scenes: pf.scenes.length, prompts: pf.scenes.length };
+    pp2.lastExport = { at: Date.now(),
+      result: { ok:true, written: written, errors:[], warnings: pf.warnings },
+      mode: p.mode, counts: pf.counts,
+      payloadSize: JSON.stringify(pf.payload).length };
+    window.RM_CORE.save();
+    _toast('✅ 핸드오프 준비 완료 — ' + pf.scenes.length + ' 씬 (자동숏츠 Step 2 로 이동 가능)', 'success');
+    return { ok: true, scenes: pf.scenes, errors: [], warnings: pf.warnings,
+             counts: pf.counts, written: written, payload: pf.payload };
+  }
+
+  /* ── 자동숏츠 페이지로 이동 (반드시 sendToShorts 후 호출) ── */
   function gotoShortsStep2() {
-    /* engines/remix/index.html 에서 호출 — 자동숏츠 페이지 step 2 로 이동 */
-    var url = '../../engines/shorts/index.html?step=2';
-    /* 같은 origin 이므로 location.assign — STUDIO.project 는 localStorage 에 살아 있음 */
+    var url = '../../engines/shorts/index.html?step=2&source=remix';
     window.location.assign(url);
   }
   function gotoShortsStep3() {
-    var url = '../../engines/shorts/index.html?step=3';
+    var url = '../../engines/shorts/index.html?step=3&source=remix';
     window.location.assign(url);
   }
 
   window.RM_EXPORT = {
+    preflight:       preflight,
     downloadSrt:     downloadSrt,
     downloadTxt:     downloadTxt,
     downloadJson:    downloadJson,
     sendToShorts:    sendToShorts,
     gotoShortsStep2: gotoShortsStep2,
     gotoShortsStep3: gotoShortsStep3,
+    HANDOFF_KEY:     HANDOFF_KEY,
   };
 })();

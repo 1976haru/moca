@@ -38,10 +38,12 @@
           startSec: c.startSec, endSec: c.endSec, original: c.text, role: 'evidence' };
       });
     }
-    /* yt schema → rm schema 매핑 */
+    /* yt schema → rm schema 매핑 (사용자 명세 schema 그대로 — narration/captionKo/captionBoth/source 포함) */
+    var src = (opts && opts.captionSource) || 'manual_caption';
     return ytScenes.map(function(sc, i){
       var thumb = sc.thumbnailUrl ||
         (opts.videoId ? 'https://img.youtube.com/vi/'+opts.videoId+'/hqdefault.jpg' : '');
+      var orig = sc.originalText || sc.original || '';
       return {
         id:               'rm_' + String(i + 1).padStart(3, '0'),
         sceneIndex:       i,
@@ -49,10 +51,12 @@
         startSec:         sc.startSec || 0,
         endSec:           sc.endSec   || 4,
         timeRange:        sc.timeRange || (_fmtSec(sc.startSec)+'~'+_fmtSec(sc.endSec)),
-        originalCaption:  sc.originalText || sc.original || '',
+        originalCaption:  orig,
         editedCaption:    '',
+        captionKo:        orig,
         captionJa:        '',
         captionBoth:      '',
+        narration:        orig,            /* 자동숏츠 narration 호환 (수정 시 editedCaption 우선) */
         selected:         true,
         deleted:          false,
         thumbnailUrl:     thumb,
@@ -62,6 +66,7 @@
         roleLabel:        sc.roleLabel || '',
         notes:            '',
         visualDescription:'',
+        source:           src,             /* 'srt' | 'vtt' | 'timestamp' | 'manual_caption' | 'txt' */
         sourceType:       'video_remix_studio',
       };
     });
@@ -69,10 +74,17 @@
 
   /* ── 한 번에 raw text → scenes ── */
   function parseAndSplit(text, opts) {
+    opts = opts || {};
     var cues = parseToCues(text, opts);
     if (!cues.length) return { cues: [], scenes: [], format: '' };
-    var scenes = cuesToScenes(cues, opts || {});
     var format = _guessFormat(text);
+    /* captionSource 자동 결정 — opts.captionSource 가 있으면 그대로, 없으면 format 기반 */
+    var capSrc = opts.captionSource ||
+                 (format === 'srt' ? 'srt' :
+                  format === 'vtt' ? 'vtt' :
+                  format === 'timestamp' ? 'timestamp' :
+                  'manual_caption');
+    var scenes = cuesToScenes(cues, Object.assign({}, opts, { captionSource: capSrc }));
     return { cues: cues, scenes: scenes, format: format };
   }
   function _guessFormat(text) {

@@ -139,6 +139,8 @@ window.renderAll = window.renderAll || function(){};
 <script src="../../modules/studio/s1-youtube-remix-board.js"></script>
 <!-- ⭐ 자막만 일본어로 바꾸기 테스트 모드 (board 가 토글 ON 시 호출) -->
 <script src="../../modules/studio/s1-youtube-subtitle-ja.js"></script>
+<!-- ⭐ 영상 리믹스 → 자동숏츠 핸드오프 (?source=remix 진입 시 localStorage payload 적용) -->
+<script src="../../modules/studio/s1-remix-handoff.js"></script>
 <script src="../../modules/studio/s1-review.js"></script>
 <script src="../../modules/studio/s3-source-tabs.js"></script>
 <script src="../../modules/studio/s1-script.js"></script>
@@ -300,17 +302,32 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!window.STUDIO.project) {
     window.STUDIO.project = studioNewProjectObj();
   }
-  /* URL 파라미터: ?step=0~5  &topic=... */
+  /* URL 파라미터: ?step=0~5  &topic=...  &source=remix */
   var __params  = new URLSearchParams(location.search);
   var __rawStep = parseInt(__params.get('step'), 10);
   var __step    = (Number.isFinite(__rawStep) && __rawStep >= 0 && __rawStep <= 5) ? __rawStep : 0;
   var __topic   = (__params.get('topic') || '').trim();
   var __genre   = __params.get('genre');
+  var __source  = __params.get('source');
   window.STUDIO.project.step = __step;
   if (__topic) {
     window.STUDIO.project.topic = __topic;
     if (!window.STUDIO.project.s1) window.STUDIO.project.s1 = {};
     window.STUDIO.project.s1.topic = __topic;
+  }
+  /* ⭐ 영상 리믹스 핸드오프 — ?source=remix 진입 시 localStorage payload 를 STUDIO.project 에 적용.
+        반드시 renderStudio() 호출 전에 동기적으로 처리해야 첫 렌더에 씬이 표시됨. */
+  if (__source === 'remix' && window.MOCA_REMIX_HANDOFF && typeof window.MOCA_REMIX_HANDOFF.apply === 'function') {
+    try {
+      var __handoff = window.MOCA_REMIX_HANDOFF.apply();
+      if (__handoff && __handoff.ok) {
+        console.log('[shorts] 영상 리믹스 핸드오프 적용 — 씬', __handoff.sceneCount, '개');
+        /* step 강제 — handoff 는 step=2 를 셋팅하지만 URL ?step= 가 우선될 수 있어 다시 적용 */
+        window.STUDIO.project.step = (__step >= 2 ? __step : 2);
+      } else if (__handoff && !__handoff.skip) {
+        console.warn('[shorts] 영상 리믹스 핸드오프 실패:', __handoff.reason);
+      }
+    } catch(e) { console.error('[shorts] 핸드오프 예외:', e && e.message); }
   }
 
   /* 5) 진입 — renderStudio() 우선, 없으면 openStudio(step) fallback */
