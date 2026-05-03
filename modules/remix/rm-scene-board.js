@@ -187,7 +187,9 @@
     var srvHealth = (p && p._serverHealth) || null;
     var serverConnected = !!(srvHealth && srvHealth.ok);
     var feats = (srvHealth && srvHealth.features) || {};
-    var publicCaptionEnabled = !!(serverConnected && feats.youtubePublicTranscript !== false);
+    /* 서버 URL 만 있으면 일단 시도 가능 — health 가 아직 안 돌았어도 버튼은 활성 (호출 시 자체 검증).
+       단, health 가 명시적으로 youtubePublicTranscript=false 라고 응답했으면 비활성. */
+    var publicCaptionEnabled = !!(hasServer && (!srvHealth || feats.youtubePublicTranscript !== false));
     var iframeHtml = src.videoId
       ? '<iframe src="https://www.youtube.com/embed/'+_escAttr(src.videoId)+'?rel=0&modestbranding=1" '+
         'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '+

@@ -435,22 +435,24 @@ function _s5vT3() {
     <details class="s5v-api-detail">
       <summary>🔑 자동 업로드 API 설정 (선택)</summary>
       <div class="s5v-api-body">
-        <div class="s5v-api-row">
-          <label>YouTube Client ID</label>
-          <input type="password" class="s5v-api-inp"
-            value="${localStorage.getItem('s5_yt_client_id')||''}"
-            oninput="localStorage.setItem('s5_yt_client_id',this.value)"
-            placeholder="YouTube OAuth Client ID">
-        </div>
-        <div class="s5v-api-row">
-          <label>TikTok App Key</label>
-          <input type="password" class="s5v-api-inp"
-            value="${localStorage.getItem('s5_tt_app_key')||''}"
-            oninput="localStorage.setItem('s5_tt_app_key',this.value)"
-            placeholder="TikTok App Key">
-        </div>
+        ${(function(){
+          var ytSaved = (localStorage.getItem('s5_yt_client_id')||'').length > 4;
+          var ttSaved = (localStorage.getItem('s5_tt_app_key')||'').length > 4;
+          return '<div class="s5v-api-row">' +
+            '<label>YouTube Client ID ' + (ytSaved ? '<small style="color:#1a7a5a">✅ 저장됨</small>' : '') + '</label>' +
+            '<input type="password" class="s5v-api-inp" autocomplete="off" ' +
+              'placeholder="YouTube OAuth Client ID' + (ytSaved ? ' (저장됨 — 변경 시에만 입력)' : '') + '" ' +
+              'oninput="(function(v){if(v && v.indexOf(\'••••\')<0) localStorage.setItem(\'s5_yt_client_id\',v);})(this.value)">' +
+          '</div>' +
+          '<div class="s5v-api-row">' +
+            '<label>TikTok App Key ' + (ttSaved ? '<small style="color:#1a7a5a">✅ 저장됨</small>' : '') + '</label>' +
+            '<input type="password" class="s5v-api-inp" autocomplete="off" ' +
+              'placeholder="TikTok App Key' + (ttSaved ? ' (저장됨 — 변경 시에만 입력)' : '') + '" ' +
+              'oninput="(function(v){if(v && v.indexOf(\'••••\')<0) localStorage.setItem(\'s5_tt_app_key\',v);})(this.value)">' +
+          '</div>';
+        })()}
         <div class="s5v-api-hint">
-          🔒 API 키는 브라우저 로컬에만 저장됩니다.
+          🔒 API 키는 브라우저 로컬에만 저장되며, 입력 후 마스킹됩니다 (DOM 노출 방지).
         </div>
       </div>
     </details>

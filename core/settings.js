@@ -110,12 +110,29 @@ function renderSetSection(id){
 
 /* ─── 섹션 1: 🔑 AI 연결 ─── */
 
+/* 키 마스킹 — 원문 DOM 노출 금지. 저장된 키가 있으면 앞 4 + ••••• + 끝 4 로 표시. */
+function _setMaskKey(k){
+  if(!k) return '';
+  const s = String(k);
+  if(s.length <= 8) return '••••';
+  return s.slice(0,4) + '••••' + s.slice(-4);
+}
+function _setIsMaskedValue(v){
+  return /^[•]+$/.test(v||'') || (v||'').indexOf('••••') >= 0;
+}
+
 function renderSetAi(){
   const keys = {
     claude:  localStorage.getItem('uc_claude_key')||'',
     openai:  localStorage.getItem('uc_openai_key')||'',
     gemini:  localStorage.getItem('uc_gemini_key')||'',
     minimax: localStorage.getItem('uc_minimax_key')||''
+  };
+  const masked = {
+    claude:  _setMaskKey(keys.claude),
+    openai:  _setMaskKey(keys.openai),
+    gemini:  _setMaskKey(keys.gemini),
+    minimax: _setMaskKey(keys.minimax),
   };
   const models = {
     claude:  ['claude-sonnet-4-5','claude-haiku-4-5-20251001'],
@@ -139,7 +156,7 @@ function renderSetAi(){
       <div class="set-row">
         <div style="grid-column:1/3">
           <label>API 키</label>
-          <input class="set-in" id="sk-${p}" type="password" placeholder="${p==='claude'?'sk-ant-api03-...':'sk-...'}" value="${keys[p]}">
+          <input class="set-in" id="sk-${p}" type="password" placeholder="${p==='claude'?'sk-ant-api03-...':'sk-...'}" value="${masked[p]}" autocomplete="off">
         </div>
         <div>
           <label>모델</label>
@@ -165,9 +182,9 @@ function renderSetAi(){
     <details class="gd-fold">
       <summary>🎙 음성·🖼 이미지·🎬 영상·🎵 음악 키 (고급)</summary>
       <div style="padding:10px 0">
-        <div class="set-row"><div style="grid-column:1/4"><label>🎙 ElevenLabs</label><input class="set-in" type="password" id="sk-11l" placeholder="sk_..." value="${localStorage.getItem('uc_elevenlabs_key')||''}"><button class="set-btn" onclick="saveMiscKey('11l','uc_elevenlabs_key')" style="margin-top:6px">저장</button><p class="hint" style="margin:6px 0 0;font-size:11px">💡 ElevenLabs에서 일본어 지원 음성을 선택하세요 (예: Yuki, Aria 등)</p></div></div>
-        <div class="set-row"><div style="grid-column:1/4"><label>🎬 InVideo</label><input class="set-in" type="password" id="sk-iv" placeholder="..." value="${localStorage.getItem('uc_invideo_key')||''}"><button class="set-btn" onclick="saveMiscKey('iv','uc_invideo_key')" style="margin-top:6px">저장</button></div></div>
-        <div class="set-row"><div style="grid-column:1/4"><label>🎵 Suno</label><input class="set-in" type="password" id="sk-suno" placeholder="..." value="${localStorage.getItem('uc_suno_key')||''}"><button class="set-btn" onclick="saveMiscKey('suno','uc_suno_key')" style="margin-top:6px">저장</button></div></div>
+        <div class="set-row"><div style="grid-column:1/4"><label>🎙 ElevenLabs</label><input class="set-in" type="password" id="sk-11l" placeholder="sk_..." value="${_setMaskKey(localStorage.getItem('uc_elevenlabs_key')||'')}" autocomplete="off"><button class="set-btn" onclick="saveMiscKey('11l','uc_elevenlabs_key')" style="margin-top:6px">저장</button><p class="hint" style="margin:6px 0 0;font-size:11px">💡 ElevenLabs에서 일본어 지원 음성을 선택하세요 (예: Yuki, Aria 등)</p></div></div>
+        <div class="set-row"><div style="grid-column:1/4"><label>🎬 InVideo</label><input class="set-in" type="password" id="sk-iv" placeholder="..." value="${_setMaskKey(localStorage.getItem('uc_invideo_key')||'')}" autocomplete="off"><button class="set-btn" onclick="saveMiscKey('iv','uc_invideo_key')" style="margin-top:6px">저장</button></div></div>
+        <div class="set-row"><div style="grid-column:1/4"><label>🎵 Suno</label><input class="set-in" type="password" id="sk-suno" placeholder="..." value="${_setMaskKey(localStorage.getItem('uc_suno_key')||'')}" autocomplete="off"><button class="set-btn" onclick="saveMiscKey('suno','uc_suno_key')" style="margin-top:6px">저장</button></div></div>
         <p class="hint">🖼 DALL·E는 OpenAI 키를 자동으로 씁니다 (위에서 저장한 키 사용)</p>
       </div>
     </details>
@@ -478,6 +495,16 @@ function resetFeatureMatrix(){
 function saveProvKey(p){
   const key = document.getElementById('sk-'+p).value.trim();
   const model = document.getElementById('sm-'+p).value;
+  /* 마스킹된 표시값을 그대로 저장하면 키가 망가짐 — 무시하고 모델만 갱신 */
+  if (_setIsMaskedValue(key)) {
+    if (p === 'openai')  localStorage.setItem('uc_openai_model', model);
+    if (p === 'gemini')  localStorage.setItem('uc_gemini_model', model);
+    if (p === 'minimax') localStorage.setItem('uc_minimax_model', model);
+    alert('ℹ️ 키는 변경되지 않았습니다 (모델 설정만 저장). 새 키를 입력하려면 입력란을 비우고 다시 입력하세요.');
+    updateCostBar();
+    return;
+  }
+  if (!key) { alert('⚠️ 키를 입력하세요.'); return; }
   localStorage.setItem('uc_'+p+'_key', key);
   if (p === 'openai')  localStorage.setItem('uc_openai_model', model);
   if (p === 'gemini')  localStorage.setItem('uc_gemini_model', model);
@@ -488,7 +515,12 @@ function saveProvKey(p){
   alert('💾 '+p+' 키 저장됨');
   updateCostBar();
 }
-function saveMiscKey(id, key){ localStorage.setItem(key, document.getElementById('sk-'+id).value.trim()); alert('💾 저장됨'); }
+function saveMiscKey(id, key){
+  const v = document.getElementById('sk-'+id).value.trim();
+  if (_setIsMaskedValue(v)) { alert('ℹ️ 마스킹된 값은 저장되지 않습니다. 새 키를 입력하세요.'); return; }
+  localStorage.setItem(key, v);
+  alert('💾 저장됨');
+}
 function toggleKeyVis(id){ const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
 
 /* ─── 섹션 2: 💰 비용 관리 ─── */

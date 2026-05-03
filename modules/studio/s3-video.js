@@ -395,15 +395,19 @@ function _s3vRenderToolBlock() {
       `).join('')}
     </div>
 
-    <!-- API 키 입력 (자동 연동 툴 선택 시) -->
-    ${S3V_TOOLS.auto.find(t=>t.id===_s3vTool) ? `
-    <div class="s3v-api-row">
-      <span>API 키</span>
-      <input type="password" class="s3v-api-inp"
-        value="${localStorage.getItem(S3V_TOOLS.auto.find(t=>t.id===_s3vTool)?.apiKey||'')||''}"
-        placeholder="${_s3vTool} API Key"
-        oninput="localStorage.setItem('s3v_${_s3vTool}_key',this.value)">
-    </div>` : ''}
+    <!-- API 키 입력 (자동 연동 툴 선택 시) — 마스킹된 미리보기, 새 값 입력 시 저장 -->
+    ${(function(){
+      var t = S3V_TOOLS.auto.find(t=>t.id===_s3vTool);
+      if (!t) return '';
+      var saved = localStorage.getItem(t.apiKey||'') || '';
+      var hasKey = saved.length > 4;
+      return '<div class="s3v-api-row">' +
+        '<span>API 키 ' + (hasKey ? '<small style="color:#1a7a5a">✅ 저장됨</small>' : '') + '</span>' +
+        '<input type="password" class="s3v-api-inp" autocomplete="off" ' +
+          'placeholder="' + _s3vTool + ' API Key' + (hasKey ? ' (저장됨 — 변경 시에만 입력)' : '') + '" ' +
+          'oninput="(function(v){if(v && v.indexOf(\'••••\')<0) localStorage.setItem(\'' + (t.apiKey||'') + '\',v);})(this.value)">' +
+      '</div>';
+    })()}
   </div>`;
 }
 
